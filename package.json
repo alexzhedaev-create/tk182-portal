@@ -1,0 +1,27 @@
+{
+  "name": "tk182-portal",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.8.0",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=10.8.0"
+  },
+  "scripts": {
+    "postinstall": "pnpm --filter @tk182/shared-types build",
+    "dev": "concurrently -n web,api -c blue,green \"pnpm --filter @tk182/web dev\" \"pnpm --filter @tk182/api dev\"",
+    "dev:web": "pnpm --filter @tk182/web dev",
+    "dev:api": "pnpm --filter @tk182/api dev",
+    "build": "pnpm --filter @tk182/shared-types build && pnpm --filter @tk182/api build && pnpm --filter @tk182/web build",
+    "typecheck": "pnpm --filter @tk182/shared-types build && pnpm --filter @tk182/api typecheck && pnpm --filter @tk182/web typecheck",
+    "compose:config": "docker compose -f infra/docker-compose.yml config > /dev/null",
+    "compose:up": "docker compose -f infra/docker-compose.yml up --build",
+    "compose:down": "docker compose -f infra/docker-compose.yml down",
+    "compose:down:volumes": "docker compose -f infra/docker-compose.yml down -v",
+    "check": "pnpm run typecheck && pnpm run compose:config"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  }
+}

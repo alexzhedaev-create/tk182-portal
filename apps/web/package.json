@@ -1,0 +1,23 @@
+{
+  "name": "@tk182/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname ${WEB_HOST:-127.0.0.1} --port ${WEB_PORT:-3000}",
+    "build": "next build",
+    "start": "next start --hostname ${WEB_HOST:-127.0.0.1} --port ${WEB_PORT:-3000}",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tk182/shared-types": "workspace:*",
+    "next": "^14.2.24",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "typescript": "^5.7.3"
+  }
+}
