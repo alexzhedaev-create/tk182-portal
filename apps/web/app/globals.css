@@ -32,6 +32,11 @@ body {
   line-height: 1.6;
 }
 
+button,
+input {
+  font: inherit;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -340,6 +345,72 @@ a {
 
 .workspace-main {
   padding: 28px 0 64px;
+}
+
+.form-card {
+  display: grid;
+  gap: 16px;
+}
+
+.field-label {
+  display: grid;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.text-input {
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+}
+
+.text-input:focus-visible {
+  outline: 2px solid rgba(15, 60, 102, 0.28);
+  outline-offset: 2px;
+}
+
+.stack-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.pill-button {
+  border: none;
+  cursor: pointer;
+}
+
+.pill-button:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.status-note {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
+.status-note-error {
+  color: #8f2a2a;
+}
+
+.document-card {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.document-card strong {
+  display: block;
+  margin-bottom: 6px;
 }
 
 @media (max-width: 720px) {

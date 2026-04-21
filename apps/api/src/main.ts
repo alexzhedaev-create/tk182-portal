@@ -8,10 +8,13 @@ import { AppModule } from "./app.module";
 import { getApplicationConfig } from "./common/config/environment";
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, {
-    cors: true
-  });
+  const app = await NestFactory.create(AppModule);
   const configuration = getApplicationConfig();
+
+  app.enableCors({
+    origin: configuration.web.allowedOrigins,
+    credentials: true
+  });
 
   await app.listen(configuration.api.port, configuration.api.host);
 

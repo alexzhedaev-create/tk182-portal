@@ -1,12 +1,22 @@
 # TK182 Portal
 
-TK182 Portal is the local-first MVP monorepo for the official Technical Committee 182 portal.
+TK182 Portal is the local MVP monorepo for the official Technical Committee 182 portal.
 
-The scaffold currently includes:
-- `apps/web`: Next.js + TypeScript scaffold with a public website plus separate participant and secretariat placeholder surfaces
-- `apps/api`: NestJS + TypeScript API foundation with health, auth scaffold, and module inventory endpoints
-- `packages/shared-types`: shared DTO and type placeholders
-- `infra/docker-compose.yml`: local PostgreSQL plus containerized web and api services
+This repository currently includes:
+- `apps/web`: Next.js + TypeScript web app with a public site plus protected participant and secretariat workspaces
+- `apps/api`: NestJS + TypeScript API with PostgreSQL-backed auth, sessions, organizations, users, and documents
+- `packages/shared-types`: shared DTOs and cross-app types
+- `infra/docker-compose.yml`: local PostgreSQL plus containerized app services
+
+This is still a local MVP. The core persistence and local authentication slice is now implemented, while broader business modules remain intentionally minimal.
+
+## Stack
+
+- Frontend: Next.js + TypeScript
+- Backend: NestJS + TypeScript
+- Database: PostgreSQL
+- Package manager: pnpm
+- Local infrastructure: Docker Compose
 
 ## Requirements
 
@@ -14,7 +24,7 @@ The scaffold currently includes:
 - pnpm 10+
 - Docker with Compose
 
-## Local setup
+## Exact local setup
 
 1. Copy the environment file:
 
@@ -34,66 +44,66 @@ pnpm install
 docker compose -f infra/docker-compose.yml up -d postgres
 ```
 
-4. Start the API in one terminal:
+4. Run migrations and seed the local database:
+
+```bash
+pnpm db:setup
+```
+
+5. Start the web app and API:
+
+```bash
+pnpm dev
+```
+
+Or run them separately:
 
 ```bash
 pnpm dev:api
-```
-
-5. Start the web app in a second terminal:
-
-```bash
 pnpm dev:web
 ```
 
-6. Verify the API endpoints:
-
-```bash
-curl http://localhost:3001/
-curl http://localhost:3001/health
-```
-
-7. Open the portal surfaces:
+6. Open the local portal:
 
 ```text
-Public website: http://localhost:3000
-Participant workspace: http://localhost:3000/participant
-Secretariat workspace: http://localhost:3000/secretariat
+Login: http://127.0.0.1:3000/login
+Participant workspace: http://127.0.0.1:3000/participant
+Secretariat workspace: http://127.0.0.1:3000/secretariat
+API health: http://127.0.0.1:3001/health
+API session: http://127.0.0.1:3001/auth/session
 ```
 
-## Full containerized stack
+Use `127.0.0.1` consistently in local development so session behavior stays predictable.
+
+## Seed credentials
+
+- Admin: `admin@tk182.local` / `AdminPass123!`
+- Secretariat: `secretariat@tk182.local` / `SecretariatPass123!`
+- Participant: `participant@tk182.local` / `ParticipantPass123!`
+
+## What works now
+
+- PostgreSQL migrations and a repeatable seed script
+- Persisted models for `Organization`, `User`, `Session`, and `Document`
+- Local password-based login with hashed passwords
+- httpOnly cookie-backed sessions with logout and live `/auth/session`
+- Role-aware API guards for protected routes
+- Protected `/participant` and `/secretariat` routes in the web app
+- Session persistence across refresh in the web app
+- Seeded user identity display and seeded document loading in both private workspaces
+
+## Current local commands
 
 ```bash
-pnpm compose:up
-```
-
-Stop it with:
-
-```bash
-pnpm compose:down
-```
-
-## Checks
-
-```bash
+pnpm db:migrate
+pnpm db:seed
 pnpm build
 pnpm typecheck
 pnpm check
 ```
 
-## MVP status
+## Still intentionally minimal
 
-Working now:
-- Next.js scaffold with separate public, participant, and secretariat route surfaces
-- NestJS API scaffold with `/`, `/health`, `/auth`, and stubbed MVP module endpoints
-- PostgreSQL wiring for local development and degraded health reporting when the database is unavailable
-- shared types for future cross-app contracts
-
-Local defaults bind to `127.0.0.1`, while Docker Compose overrides both app hosts to `0.0.0.0`.
-
-Still stubbed:
-- credential verification, password hashing, and persisted sessions
-- database entities and migrations
-- participant review workflow data and protected document access
-- secretariat review-cycle management and operational tooling
-- notifications, audit persistence, and document business logic
+- Public site content modules remain mostly placeholder content
+- Approval, notifications, audit, news, meetings, standards, and pages are still scaffold-level modules
+- There is no cloud integration or external auth provider in this MVP

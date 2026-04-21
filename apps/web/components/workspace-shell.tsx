@@ -3,7 +3,7 @@ import Link from "next/link";
 const workspaceNavigation = [
   { href: "/participant", label: "Participant" },
   { href: "/secretariat", label: "Secretariat" },
-  { href: "/login", label: "Login scaffold" },
+  { href: "/login", label: "Login" },
   { href: "/", label: "Public site" }
 ];
 

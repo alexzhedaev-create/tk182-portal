@@ -6,7 +6,13 @@ interface ApplicationConfig {
   database: {
     url: string;
   };
+  session: {
+    cookieName: string;
+    secureCookie: boolean;
+    ttlHours: number;
+  };
   web: {
+    allowedOrigins: string[];
     publicUrl: string;
   };
 }
@@ -16,17 +22,41 @@ function parsePort(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsedValue) ? parsedValue : fallback;
 }
 
+function parseBoolean(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return value.toLowerCase() === "true";
+}
+
 function buildDefaultDatabaseUrl(): string {
   const user = process.env.POSTGRES_USER ?? "postgres";
   const password = process.env.POSTGRES_PASSWORD ?? "postgres";
-  const host = process.env.POSTGRES_HOST ?? "localhost";
+  const host = process.env.POSTGRES_HOST ?? "127.0.0.1";
   const port = parsePort(process.env.POSTGRES_PORT, 5432);
   const database = process.env.POSTGRES_DB ?? "tk182_portal";
 
   return `postgresql://${user}:${password}@${host}:${port}/${database}`;
 }
 
+function buildAllowedOrigins(publicUrl: string): string[] {
+  const origins = new Set([publicUrl]);
+
+  if (publicUrl.includes("127.0.0.1")) {
+    origins.add(publicUrl.replace("127.0.0.1", "localhost"));
+  }
+
+  if (publicUrl.includes("localhost")) {
+    origins.add(publicUrl.replace("localhost", "127.0.0.1"));
+  }
+
+  return [...origins];
+}
+
 export function getApplicationConfig(): ApplicationConfig {
+  const publicWebUrl = process.env.WEB_PUBLIC_URL ?? "http://127.0.0.1:3000";
+
   return {
     api: {
       host: process.env.API_HOST ?? "127.0.0.1",
@@ -35,8 +65,14 @@ export function getApplicationConfig(): ApplicationConfig {
     database: {
       url: process.env.DATABASE_URL ?? buildDefaultDatabaseUrl()
     },
+    session: {
+      cookieName: process.env.SESSION_COOKIE_NAME ?? "tk182_session",
+      secureCookie: parseBoolean(process.env.SESSION_COOKIE_SECURE, false),
+      ttlHours: parsePort(process.env.SESSION_TTL_HOURS, 168)
+    },
     web: {
-      publicUrl: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
+      publicUrl: publicWebUrl,
+      allowedOrigins: buildAllowedOrigins(publicWebUrl)
     }
   };
 }

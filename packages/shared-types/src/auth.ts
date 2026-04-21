@@ -1,6 +1,7 @@
-import type { PlaceholderStatus } from "./common";
+import type { OrganizationSummary } from "./organization";
 
-export type AuthRole = "participant" | "secretariat";
+export type AuthRole = "ADMIN" | "SECRETARIAT" | "PARTICIPANT";
+export type AuthMutationStatus = "success";
 
 export interface LoginRequestDto {
   email: string;
@@ -11,14 +12,15 @@ export interface AuthenticatedUser {
   id: string;
   email: string;
   displayName: string;
-  organizationId?: string;
-  roles: AuthRole[];
+  role: AuthRole;
+  organization: OrganizationSummary | null;
 }
 
 export interface AuthSummaryResponse {
   provider: "local-credentials";
   supportedRoles: AuthRole[];
   loginPath: string;
+  logoutPath: string;
   sessionPath: string;
   configured: boolean;
 }
@@ -26,10 +28,17 @@ export interface AuthSummaryResponse {
 export interface SessionResponseDto {
   authenticated: boolean;
   user: AuthenticatedUser | null;
+  expiresAt?: string | null;
 }
 
 export interface LoginResponseDto {
-  status: PlaceholderStatus;
+  status: AuthMutationStatus;
   message: string;
-  user: AuthenticatedUser | null;
+  user: AuthenticatedUser;
+  expiresAt: string;
+}
+
+export interface LogoutResponseDto {
+  status: AuthMutationStatus;
+  message: string;
 }

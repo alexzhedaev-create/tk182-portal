@@ -1,8 +1,16 @@
 import Link from "next/link";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { LoginForm } from "../../../components/login-form";
+import { WorkspaceSessionCard } from "../../../components/workspace-session-card";
+import { getServerSession, getPublicApiUrl } from "../../../lib/api";
+import { canAccessWorkspace, formatRole, getDefaultWorkspacePath } from "../../../lib/auth";
 
-export default function LoginPage() {
+export const dynamic = "force-dynamic";
+
+export default async function LoginPage() {
+  const apiBaseUrl = getPublicApiUrl();
+  const session = await getServerSession();
+
   return (
     <div className="page-frame">
       <section className="hero-card">
@@ -10,45 +18,71 @@ export default function LoginPage() {
           <div className="eyebrow">Internal access</div>
           <h1 className="page-title">Participant and secretariat login</h1>
           <p className="page-intro">
-            Local credential-based authentication is scaffolded and intentionally
-            limited to the committee workspaces. External identity providers
-            remain out of scope for the MVP.
+            Local credential authentication is now active for the private
+            committee workspaces, using hashed passwords and persisted
+            httpOnly sessions.
           </p>
         </div>
 
         <div className="pill-row">
+          <Link className="pill" href={`${apiBaseUrl}/auth`}>
+            Auth summary
+          </Link>
+          <Link className="pill" href={`${apiBaseUrl}/auth/session`}>
+            API session
+          </Link>
           <Link className="pill" href="/participant">
             Participant workspace
           </Link>
           <Link className="pill" href="/secretariat">
             Secretariat workspace
           </Link>
-          <Link className="pill" href={`${apiBaseUrl}/auth`}>
-            Auth summary
-          </Link>
-          <Link className="pill" href={`${apiBaseUrl}/auth/session`}>
-            Session stub
-          </Link>
         </div>
+      </section>
 
-        <div className="info-grid">
-          <article className="content-card">
-            <h2>Planned access model</h2>
-            <p>
-              Email and password authentication for committee participants and
-              secretariat staff, backed by role-based authorization in the API
-              and protected route guards in the workspaces.
-            </p>
-          </article>
-          <article className="content-card">
-            <h2>Current integration point</h2>
-            <p>
-              The API exposes the health, auth summary, and session placeholder
-              endpoints already, so the credential flow can grow from a stable
-              local scaffold.
-            </p>
-          </article>
-        </div>
+      <section className="info-grid">
+        {session.authenticated && session.user ? (
+          <>
+            <WorkspaceSessionCard heading="Current session" user={session.user} />
+            <article className="content-card">
+              <h2>Active workspace access</h2>
+              <p>
+                You are already signed in as {session.user.displayName} with the{" "}
+                {formatRole(session.user.role)} role.
+              </p>
+              <div className="pill-row">
+                <Link
+                  className="pill"
+                  href={getDefaultWorkspacePath(session.user.role)}
+                >
+                  Open your default workspace
+                </Link>
+                {canAccessWorkspace(session.user.role, "participant") ? (
+                  <Link className="pill" href="/participant">
+                    Participant workspace
+                  </Link>
+                ) : null}
+                {canAccessWorkspace(session.user.role, "secretariat") ? (
+                  <Link className="pill" href="/secretariat">
+                    Secretariat workspace
+                  </Link>
+                ) : null}
+              </div>
+            </article>
+          </>
+        ) : (
+          <>
+            <LoginForm />
+            <article className="content-card">
+              <h2>Session behavior</h2>
+              <p>
+                Successful login stores an httpOnly cookie, `/auth/session`
+                returns live user details, and protected workspace routes enforce
+                role boundaries on both the web and API sides.
+              </p>
+            </article>
+          </>
+        )}
       </section>
     </div>
   );

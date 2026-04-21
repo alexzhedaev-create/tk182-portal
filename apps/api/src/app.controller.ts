@@ -13,31 +13,37 @@ const apiEndpoints: ApiIndexResponse["endpoints"] = [
     method: "GET",
     path: "/auth",
     areas: ["participant", "secretariat"],
-    description: "Local credential-authentication scaffold summary."
+    description: "Local credential-authentication summary and supported roles."
   },
   {
     method: "GET",
     path: "/auth/session",
     areas: ["participant", "secretariat"],
-    description: "Current session placeholder endpoint."
+    description: "Current authenticated user and session state."
   },
   {
     method: "POST",
     path: "/auth/login",
     areas: ["participant", "secretariat"],
-    description: "Local login stub for future credential flow."
+    description: "Local login endpoint with hashed passwords and persisted sessions."
+  },
+  {
+    method: "POST",
+    path: "/auth/logout",
+    areas: ["participant", "secretariat"],
+    description: "Clear the current httpOnly session cookie and server-side session."
   },
   {
     method: "GET",
     path: "/users",
     areas: ["participant", "secretariat"],
-    description: "Committee user registry scaffold."
+    description: "Protected user directory for secretariat and admin roles."
   },
   {
     method: "GET",
     path: "/organizations",
     areas: ["public", "participant", "secretariat"],
-    description: "Organization directory and affiliation scaffold."
+    description: "Organization directory backed by PostgreSQL seed data."
   },
   {
     method: "GET",
@@ -55,7 +61,19 @@ const apiEndpoints: ApiIndexResponse["endpoints"] = [
     method: "GET",
     path: "/documents",
     areas: ["public", "participant", "secretariat"],
-    description: "Document catalogue scaffold across portal areas."
+    description: "Public document catalogue backed by PostgreSQL."
+  },
+  {
+    method: "GET",
+    path: "/documents/participant",
+    areas: ["participant"],
+    description: "Protected participant-visible document feed."
+  },
+  {
+    method: "GET",
+    path: "/documents/secretariat",
+    areas: ["secretariat"],
+    description: "Protected secretariat-visible document feed."
   },
   {
     method: "GET",
@@ -95,9 +113,9 @@ export class AppController {
   getIndex(): ApiIndexResponse {
     return {
       name: "TK182 Portal API",
-      status: "stub",
+      status: "active",
       summary:
-        "Local-first API scaffold for the TK182 public site, participant workspace, and secretariat workspace.",
+        "Local-first API foundation with persisted auth, role-aware access control, and seeded document data for the TK182 portal.",
       endpoints: apiEndpoints
     };
   }

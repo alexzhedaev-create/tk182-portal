@@ -1,63 +1,14 @@
-import { Body, Controller, Get, Injectable, Module, Post } from "@nestjs/common";
+import { Global, Module } from "@nestjs/common";
 
-import type {
-  AuthSummaryResponse,
-  LoginRequestDto,
-  LoginResponseDto,
-  SessionResponseDto
-} from "@tk182/shared-types";
+import { AuthController } from "./auth.controller";
+import { AuthService } from "./auth.service";
+import { RolesGuard } from "./roles.guard";
+import { SessionAuthGuard } from "./session-auth.guard";
 
-@Injectable()
-class AuthService {
-  getSummary(): AuthSummaryResponse {
-    return {
-      provider: "local-credentials",
-      supportedRoles: ["participant", "secretariat"],
-      loginPath: "/auth/login",
-      sessionPath: "/auth/session",
-      configured: false
-    };
-  }
-
-  getSession(): SessionResponseDto {
-    return {
-      authenticated: false,
-      user: null
-    };
-  }
-
-  login(_credentials: LoginRequestDto): LoginResponseDto {
-    return {
-      status: "stub",
-      message:
-        "Authentication is scaffolded but not implemented yet. Local credentials will be added in the next phase.",
-      user: null
-    };
-  }
-}
-
-@Controller("auth")
-class AuthController {
-  constructor(private readonly authService: AuthService) {}
-
-  @Get()
-  getSummary(): AuthSummaryResponse {
-    return this.authService.getSummary();
-  }
-
-  @Get("session")
-  getSession(): SessionResponseDto {
-    return this.authService.getSession();
-  }
-
-  @Post("login")
-  login(@Body() credentials: LoginRequestDto): LoginResponseDto {
-    return this.authService.login(credentials);
-  }
-}
-
+@Global()
 @Module({
   controllers: [AuthController],
-  providers: [AuthService]
+  providers: [AuthService, SessionAuthGuard, RolesGuard],
+  exports: [AuthService, SessionAuthGuard, RolesGuard]
 })
 export class AuthModule {}

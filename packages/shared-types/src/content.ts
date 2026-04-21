@@ -16,6 +16,8 @@ export interface DocumentSummary {
   title: string;
   category: string;
   visibility: "public" | "participant" | "secretariat";
+  summary: string;
+  publishedAt: string;
 }
 
 export interface StandardSummary {
