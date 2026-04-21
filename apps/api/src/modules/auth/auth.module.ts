@@ -11,24 +11,17 @@ import type {
 class AuthService {
   getSummary(): AuthSummaryResponse {
     return {
-      status: "stub",
       provider: "local-credentials",
       supportedRoles: ["participant", "secretariat"],
       loginPath: "/auth/login",
       sessionPath: "/auth/session",
-      notes: [
-        "External auth providers are intentionally excluded from the MVP.",
-        "Participant and secretariat access will use locally managed credentials and role checks.",
-        "Password storage, session persistence, and authorization guards are the next implementation step."
-      ]
+      configured: false
     };
   }
 
   getSession(): SessionResponseDto {
     return {
-      status: "stub",
-      message:
-        "No active session is available yet. Session persistence will be added with local credential auth.",
+      authenticated: false,
       user: null
     };
   }

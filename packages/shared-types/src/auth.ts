@@ -16,17 +16,15 @@ export interface AuthenticatedUser {
 }
 
 export interface AuthSummaryResponse {
-  status: PlaceholderStatus;
   provider: "local-credentials";
   supportedRoles: AuthRole[];
   loginPath: string;
   sessionPath: string;
-  notes: string[];
+  configured: boolean;
 }
 
 export interface SessionResponseDto {
-  status: PlaceholderStatus;
-  message: string;
+  authenticated: boolean;
   user: AuthenticatedUser | null;
 }
 
