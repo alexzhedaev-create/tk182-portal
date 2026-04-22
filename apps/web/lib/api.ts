@@ -3,6 +3,7 @@ import "server-only";
 import type {
   ApprovalAuditEvent,
   AuthenticatedUser,
+  CommitteeBackofficeData,
   CommitteeStructureResponse,
   DocumentSummary,
   NotificationRecord,
@@ -89,6 +90,10 @@ export function getCommitteeSubcommittees(): Promise<SubcommitteeSummary[]> {
   return fetchFromApi<SubcommitteeSummary[]>("/committee/subcommittees");
 }
 
+export function getCommitteeBackofficeData(): Promise<CommitteeBackofficeData> {
+  return fetchFromApi<CommitteeBackofficeData>("/committee/backoffice");
+}
+
 export function getPublicStandards(): Promise<StandardSummary[]> {
   return fetchFromApi<StandardSummary[]>("/standards");
 }
@@ -167,6 +172,10 @@ export function getReviewCycleAuditEvents(
   return fetchFromApi<ApprovalAuditEvent[]>(
     `/audit/review-cycles/${encodeURIComponent(cycleId)}/events`
   );
+}
+
+export function getCommitteeAuditEvents(): Promise<ApprovalAuditEvent[]> {
+  return fetchFromApi<ApprovalAuditEvent[]>("/audit/committee/events");
 }
 
 export function getUsers(): Promise<AuthenticatedUser[]> {

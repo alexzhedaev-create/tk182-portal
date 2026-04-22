@@ -5,7 +5,7 @@ TK182 Portal is the local MVP monorepo for the official Technical Committee 182 
 The repository now includes a real first review workflow on top of the existing auth and PostgreSQL foundation:
 - public website in Russian with the seeded TK 182 committee structure
 - participant workspace for reviewing assigned draft standards
-- secretariat workspace for creating projects, versions, review cycles, participant assignments, and tracking cycle progress
+- secretariat workspace for creating projects, versions, review cycles, participant assignments, tracking cycle progress, and managing committee structure data
 - participant notification center for important workflow events
 
 The MVP remains local-only. There are no cloud integrations, no external auth providers, and no multilingual infrastructure yet. User-facing UI is Russian only in this phase.
@@ -111,6 +111,7 @@ The public portal and workflow now understand the real TK 182 committee structur
 - the seed contains the named co-chairs, deputy co-chairs, secretariat representatives, and subcommittees `ПК 1` through `ПК 7`
 - draft standards are linked to a responsible subcommittee
 - the responsible subcommittee is shown on the public standards catalogue, participant draft-standard cards, secretariat cycle/project pages, and secretariat backoffice forms
+- secretariat and admin users can edit organizations, committee representatives, role assignments, and subcommittees through the backoffice instead of changing seed-only data
 
 In the current MVP, secretariat users choose the responsible subcommittee directly on the draft-standard form. Once a cycle is created from that draft standard, the same link is visible to participants and secretariat users in the workflow UI.
 
@@ -128,6 +129,7 @@ The current seed demonstrates the first real draft standard review slice:
 - persistent in-portal notifications for participant-facing workflow events
 - local version-file storage with DB metadata and role-based download access
 - secretariat backoffice flow for creating draft standards, versions, cycles, and assignments
+- committee structure backoffice for updating leadership, secretariat assignments, organizations, and subcommittees
 - public TK 182 structure with named leadership, secretariat, subcommittees, and organizations
 
 Core persisted entities now include:
@@ -231,6 +233,23 @@ New cycles created in the backoffice are connected to the existing participant w
 - opening a cycle also creates participant notifications for the assignment
 - the participant sees the same responsible subcommittee that was selected by secretariat for the draft standard
 
+### Committee structure backoffice
+
+1. Sign in as `secretariat@tk182.local` or `admin@tk182.local`
+2. Open `http://127.0.0.1:3000/secretariat/committee`
+3. In `Организации`, create or update the public organization cards used by TK 182 pages
+4. In `Руководство и секретариат: представители`, create or update committee people and link them to organizations
+5. In `Руководство ТК и секретариат`, assign committee roles such as `Сопредседатель`, `Заместитель сопредседателя`, `Ответственный секретарь`
+6. In `Подкомитеты`, create or update subcommittees and choose their host organization
+7. Open public pages such as `/about` and `/organizations` to verify that the edited structure is reflected immediately
+8. Check `Журнал изменений структуры` to review recorded backoffice actions
+
+Current MVP constraints for committee structure management:
+
+- committee roles themselves remain seeded and are not edited through the UI
+- create/update is supported for organizations, people, role assignments, and subcommittees
+- delete/archive is intentionally out of scope for now to keep public structure changes safe
+
 ### File upload and download checks
 
 1. Sign in as `secretariat@tk182.local`
@@ -263,6 +282,7 @@ The MVP now includes integration/e2e coverage for the current core flows:
 - participant notification creation and read/unread state updates
 - secretariat backoffice creation of draft standards, versions, cycles, assignments, and cycle activation
 - seeded TK 182 leadership, secretariat, subcommittee, and standard-to-subcommittee API coverage
+- committee structure backoffice CRUD, audit creation, and public-structure reflection
 - production-like `next start` checks for the current Russian UI
 - browser-level Playwright scenarios for the current Russian UI
 
@@ -313,6 +333,7 @@ The Playwright suite covers:
 - secretariat file upload through the browser UI
 - secretariat audit-trail visibility in `Журнал изменений`
 - secretariat backoffice creation of a new project, version, cycle, assignment, and participant visibility
+- secretariat committee-structure management through the real Russian UI
 - unauthenticated redirects to `/login`
 - wrong-role access to the secretariat area for a participant
 
@@ -421,6 +442,7 @@ Audit history is visible in the secretariat cycle detail page under `Журна�
 
 - `GET /audit/review-cycles/:cycleId/events`
 - `GET /audit/draft-standards/:draftStandardId/events`
+- `GET /audit/committee/events`
 
 Still intentionally not covered yet:
 
@@ -454,6 +476,7 @@ Implemented now:
 - participant review endpoints and UI
 - secretariat review management endpoints and UI
 - secretariat backoffice endpoints and UI for projects, versions, cycles, and assignments
+- secretariat backoffice endpoints and UI for organizations, committee representatives, role assignments, and subcommittees
 - responsible subcommittee selection in secretariat backoffice and visibility across public and private flows
 - local upload/download pipeline for draft standard version files
 - persistent audit trail for the current review workflow actions

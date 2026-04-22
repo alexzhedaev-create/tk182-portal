@@ -118,6 +118,11 @@ test(
     );
     assert.equal(participantAuditForbidden.response.status, 403);
 
+    const participantCommitteeBackofficeForbidden = await participant.requestJson(
+      "/committee/backoffice"
+    );
+    assert.equal(participantCommitteeBackofficeForbidden.response.status, 403);
+
     const secretariatCycles = await secretariat.requestJson("/approval/secretariat/cycles");
     assert.equal(secretariatCycles.response.status, 200);
     assert.ok(Array.isArray(secretariatCycles.data));
@@ -174,6 +179,233 @@ test(
     assert.match(
       fireSensors.responsibleSubcommittee.title,
       /Неразрушающий контроль/u
+    );
+  }
+);
+
+test(
+  "secretariat can manage committee structure and public committee data reflects changes",
+  { timeout: 120000 },
+  async () => {
+    const secretariat = new SessionClient(apiBaseUrl);
+    await loginAs(secretariat, secretariatCredentials);
+
+    const marker = `${Date.now()}`;
+    const organizationName = `Автотестовая организация ТК 182 ${marker}`;
+    const updatedOrganizationName = `${organizationName} (обновлено)`;
+    const shortName = `АТК-${marker}`;
+    const updatedShortName = `АТКО-${marker}`;
+    const personName = `Автотестов Андрей ${marker}`;
+    const updatedJobTitle = "Руководитель направления стандартизации автотестов";
+    const createdSubcommitteeCode = `ПК AUTO ${marker}`;
+    const updatedSubcommitteeTitle = `Автотестовый подкомитет ${marker} (обновлено)`;
+
+    const backofficeBefore = await secretariat.requestJson("/committee/backoffice");
+    assert.equal(backofficeBefore.response.status, 200);
+    assert.ok(Array.isArray(backofficeBefore.data.roles));
+    assert.ok(Array.isArray(backofficeBefore.data.subcommittees));
+
+    const createdOrganization = await secretariat.requestJson(
+      "/committee/backoffice/organizations",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          name: organizationName,
+          shortName,
+          countryCode: "RU"
+        })
+      }
+    );
+    assertCreatedOrOk(createdOrganization.response.status, createdOrganization.text);
+    assert.equal(createdOrganization.data.name, organizationName);
+
+    const updatedOrganization = await secretariat.requestJson(
+      `/committee/backoffice/organizations/${createdOrganization.data.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          name: updatedOrganizationName,
+          shortName: updatedShortName,
+          countryCode: "RU"
+        })
+      }
+    );
+    assert.equal(updatedOrganization.response.status, 200);
+    assert.equal(updatedOrganization.data.name, updatedOrganizationName);
+    assert.equal(updatedOrganization.data.shortName, updatedShortName);
+
+    const createdPerson = await secretariat.requestJson("/committee/backoffice/people", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        fullName: personName,
+        jobTitle: "Главный эксперт по автотестам",
+        organizationId: createdOrganization.data.id
+      })
+    });
+    assertCreatedOrOk(createdPerson.response.status, createdPerson.text);
+    assert.equal(createdPerson.data.fullName, personName);
+    assert.equal(createdPerson.data.organizationId, createdOrganization.data.id);
+
+    const updatedPerson = await secretariat.requestJson(
+      `/committee/backoffice/people/${createdPerson.data.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          fullName: personName,
+          jobTitle: updatedJobTitle,
+          organizationId: createdOrganization.data.id
+        })
+      }
+    );
+    assert.equal(updatedPerson.response.status, 200);
+    assert.equal(updatedPerson.data.jobTitle, updatedJobTitle);
+
+    const roles = await secretariat.requestJson("/committee/backoffice/roles");
+    assert.equal(roles.response.status, 200);
+    const deputyRole = roles.data.find((role) => role.code === "DEPUTY_CO_CHAIR");
+    assert.ok(deputyRole);
+
+    const createdRoleAssignment = await secretariat.requestJson(
+      "/committee/backoffice/role-assignments",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          personId: createdPerson.data.id,
+          roleId: deputyRole.id,
+          sortOrder: 90
+        })
+      }
+    );
+    assertCreatedOrOk(
+      createdRoleAssignment.response.status,
+      createdRoleAssignment.text
+    );
+    assert.equal(createdRoleAssignment.data.person.fullName, personName);
+    assert.equal(createdRoleAssignment.data.role.code, "DEPUTY_CO_CHAIR");
+
+    const createdSubcommittee = await secretariat.requestJson(
+      "/committee/backoffice/subcommittees",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          code: createdSubcommitteeCode,
+          title: `Автотестовый подкомитет ${marker}`,
+          hostOrganizationId: createdOrganization.data.id
+        })
+      }
+    );
+    assertCreatedOrOk(createdSubcommittee.response.status, createdSubcommittee.text);
+    assert.equal(createdSubcommittee.data.code, createdSubcommitteeCode);
+
+    const updatedSubcommittee = await secretariat.requestJson(
+      `/committee/backoffice/subcommittees/${createdSubcommittee.data.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          code: createdSubcommitteeCode,
+          title: updatedSubcommitteeTitle,
+          hostOrganizationId: createdOrganization.data.id
+        })
+      }
+    );
+    assert.equal(updatedSubcommittee.response.status, 200);
+    assert.equal(updatedSubcommittee.data.title, updatedSubcommitteeTitle);
+
+    const backofficeAfter = await secretariat.requestJson("/committee/backoffice");
+    assert.equal(backofficeAfter.response.status, 200);
+    assert.ok(
+      backofficeAfter.data.organizations.some(
+        (organization) => organization.id === createdOrganization.data.id
+      )
+    );
+    assert.ok(
+      backofficeAfter.data.people.some((person) => person.id === createdPerson.data.id)
+    );
+    assert.ok(
+      backofficeAfter.data.roleAssignments.some(
+        (assignment) => assignment.id === createdRoleAssignment.data.id
+      )
+    );
+    assert.ok(
+      backofficeAfter.data.subcommittees.some(
+        (subcommittee) => subcommittee.id === createdSubcommittee.data.id
+      )
+    );
+
+    const publicStructure = await secretariat.requestJson("/committee");
+    assert.equal(publicStructure.response.status, 200);
+    assert.ok(
+      publicStructure.data.deputyCoChairs.some(
+        (item) => item.person.fullName === personName && item.person.jobTitle === updatedJobTitle
+      )
+    );
+    assert.ok(
+      publicStructure.data.organizations.some(
+        (organization) =>
+          organization.name === updatedOrganizationName &&
+          organization.hostedSubcommittees.some(
+            (subcommittee) => subcommittee.id === createdSubcommittee.data.id
+          )
+      )
+    );
+    assert.ok(
+      publicStructure.data.subcommittees.some(
+        (subcommittee) =>
+          subcommittee.id === createdSubcommittee.data.id &&
+          subcommittee.title === updatedSubcommitteeTitle
+      )
+    );
+
+    const committeeAudit = await secretariat.requestJson("/audit/committee/events");
+    assert.equal(committeeAudit.response.status, 200);
+    assert.ok(
+      committeeAudit.data.some(
+        (event) =>
+          event.actionType === "COMMITTEE_ORGANIZATION_CREATED" &&
+          event.entityId === createdOrganization.data.id
+      )
+    );
+    assert.ok(
+      committeeAudit.data.some(
+        (event) =>
+          event.actionType === "COMMITTEE_PERSON_UPDATED" &&
+          event.entityId === createdPerson.data.id
+      )
+    );
+    assert.ok(
+      committeeAudit.data.some(
+        (event) =>
+          event.actionType === "COMMITTEE_ROLE_ASSIGNMENT_CREATED" &&
+          event.entityId === createdRoleAssignment.data.id
+      )
+    );
+    assert.ok(
+      committeeAudit.data.some(
+        (event) =>
+          event.actionType === "SUBCOMMITTEE_UPDATED" &&
+          event.entityId === createdSubcommittee.data.id
+      )
     );
   }
 );

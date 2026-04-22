@@ -136,9 +136,24 @@ export class AuditService {
     return this.listEvents("related_draft_standard_id = $1", [draftStandardId], filters);
   }
 
+  listCommitteeEvents(
+    filters: AuditEventFilters = {}
+  ): Promise<ApprovalAuditEvent[]> {
+    return this.listEvents(
+      "entity_type = ANY($1::text[])",
+      [[
+        "COMMITTEE_ORGANIZATION",
+        "COMMITTEE_PERSON",
+        "COMMITTEE_ROLE_ASSIGNMENT",
+        "SUBCOMMITTEE"
+      ]],
+      filters
+    );
+  }
+
   private async listEvents(
     baseCondition: string,
-    baseValues: string[],
+    baseValues: readonly unknown[],
     filters: AuditEventFilters
   ): Promise<ApprovalAuditEvent[]> {
     const conditions = [baseCondition];

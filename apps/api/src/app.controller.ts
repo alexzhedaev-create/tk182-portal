@@ -59,6 +59,12 @@ const apiEndpoints: ApiIndexResponse["endpoints"] = [
   },
   {
     method: "GET",
+    path: "/committee/backoffice",
+    areas: ["secretariat"],
+    description: "Protected TK 182 committee-structure backoffice data for organizations, people, roles, and subcommittees."
+  },
+  {
+    method: "GET",
     path: "/pages",
     areas: ["public"],
     description: "Managed public-page scaffold."

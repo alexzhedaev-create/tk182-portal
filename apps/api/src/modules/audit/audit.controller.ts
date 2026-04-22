@@ -47,4 +47,19 @@ export class AuditController {
       actorUserId
     });
   }
+
+  @Get("committee/events")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  listCommitteeEvents(
+    @Query("actionType") actionType?: string,
+    @Query("entityType") entityType?: string,
+    @Query("actorUserId") actorUserId?: string
+  ): Promise<ApprovalAuditEvent[]> {
+    return this.auditService.listCommitteeEvents({
+      actionType,
+      entityType,
+      actorUserId
+    });
+  }
 }

@@ -57,6 +57,7 @@ export default async function SecretariatWorkspacePage() {
             <li>Просмотреть прогресс по каждому циклу согласования.</li>
             <li>Проверить замечания и итоговые позиции участников.</li>
             <li>Обновить статус замечания и добавить ответ секретариата.</li>
+            <li>Поддерживать в актуальном состоянии структуру ТК 182 и подкомитетов.</li>
           </ul>
 
           <div className="pill-row">
@@ -66,6 +67,13 @@ export default async function SecretariatWorkspacePage() {
               href="/secretariat/projects"
             >
               Открыть проекты стандартов
+            </Link>
+            <Link
+              className="pill"
+              data-testid="secretariat-committee-link"
+              href="/secretariat/committee"
+            >
+              Открыть структуру ТК 182
             </Link>
           </div>
         </article>

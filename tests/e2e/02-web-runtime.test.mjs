@@ -123,5 +123,16 @@ test(
     assert.match(secretariatHtml, /Загрузить файл/u);
     assert.match(secretariatHtml, /Видимость/u);
     assert.match(secretariatHtml, /Ответственный подкомитет/u);
+
+    const committeeBackofficePage = await fetch(`${webBaseUrl}/secretariat/committee`, {
+      headers: {
+        cookie: secretariat.getCookieHeader()
+      }
+    });
+    const committeeBackofficeHtml = await committeeBackofficePage.text();
+    assert.equal(committeeBackofficePage.status, 200);
+    assert.match(committeeBackofficeHtml, /Структура ТК 182/u);
+    assert.match(committeeBackofficeHtml, /Руководство ТК и секретариат/u);
+    assert.match(committeeBackofficeHtml, /Журнал изменений структуры/u);
   }
 );

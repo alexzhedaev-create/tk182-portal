@@ -4,7 +4,9 @@ import { formatRole } from "../lib/auth";
 import { formatDateTime } from "../lib/review";
 
 interface SecretariatAuditTrailProps {
+  emptyText?: string;
   events: ApprovalAuditEvent[];
+  title?: string;
 }
 
 function pickTextValue(
@@ -82,17 +84,59 @@ function formatRelatedObject(event: ApprovalAuditEvent): string {
         ? `Назначение: ${userDisplayName}`
         : "Назначение участника";
     }
+    case "COMMITTEE_ORGANIZATION": {
+      const name = pickTextValue(event.metadata, "name");
+      const shortName = pickTextValue(event.metadata, "shortName");
+
+      if (name && shortName) {
+        return `Организация: ${name} • ${shortName}`;
+      }
+
+      return name ? `Организация: ${name}` : "Организация ТК 182";
+    }
+    case "COMMITTEE_PERSON": {
+      const fullName = pickTextValue(event.metadata, "fullName");
+      const jobTitle = pickTextValue(event.metadata, "jobTitle");
+
+      if (fullName && jobTitle) {
+        return `Представитель: ${fullName} • ${jobTitle}`;
+      }
+
+      return fullName ? `Представитель: ${fullName}` : "Представитель комитета";
+    }
+    case "COMMITTEE_ROLE_ASSIGNMENT": {
+      const personFullName = pickTextValue(event.metadata, "personFullName");
+      const roleTitle = pickTextValue(event.metadata, "roleTitle");
+
+      if (personFullName && roleTitle) {
+        return `Роль: ${roleTitle} • ${personFullName}`;
+      }
+
+      return roleTitle ? `Роль: ${roleTitle}` : "Назначение комитетной роли";
+    }
+    case "SUBCOMMITTEE": {
+      const code = pickTextValue(event.metadata, "code");
+      const title = pickTextValue(event.metadata, "title");
+
+      if (code && title) {
+        return `Подкомитет: ${code} • ${title}`;
+      }
+
+      return title ? `Подкомитет: ${title}` : "Подкомитет";
+    }
     default:
       return event.entityId;
   }
 }
 
 export function SecretariatAuditTrail({
-  events
+  emptyText = "История действий по этому циклу пока пуста.",
+  events,
+  title = "Журнал изменений"
 }: SecretariatAuditTrailProps) {
   return (
     <article className="content-card" data-testid="secretariat-audit-panel">
-      <h2>Журнал изменений</h2>
+      <h2>{title}</h2>
       <div className="content-stack">
         {events.length > 0 ? (
           events.map((event) => (
@@ -115,7 +159,7 @@ export function SecretariatAuditTrail({
             </div>
           ))
         ) : (
-          <p>История действий по этому циклу пока пуста.</p>
+          <p>{emptyText}</p>
         )}
       </div>
     </article>
