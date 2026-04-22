@@ -210,6 +210,7 @@ The MVP now includes integration/e2e coverage for the current core flows:
 - participant file visibility
 - forbidden participant download of secretariat-only files
 - production-like `next start` checks for the current Russian UI
+- browser-level Playwright scenarios for the current Russian UI
 
 Run the full verification suite:
 
@@ -222,6 +223,7 @@ Run the suites separately when needed:
 ```bash
 pnpm test:e2e:api
 pnpm test:e2e:web
+pnpm test:e2e:browser
 ```
 
 The full `pnpm test` command performs:
@@ -229,6 +231,40 @@ The full `pnpm test` command performs:
 1. `pnpm db:setup`
 2. `pnpm build`
 3. the e2e test suite
+
+### Playwright browser tests
+
+Install the local Chromium browser once:
+
+```bash
+pnpm playwright:install
+```
+
+Run the browser suite:
+
+```bash
+pnpm test:e2e:browser
+```
+
+The Playwright suite covers:
+
+- participant login through the real Russian login form
+- participant redirect into `На согласовании`
+- participant comment creation through the browser UI
+- participant final position submission through the browser UI
+- secretariat login through the real Russian login form
+- secretariat cycle detail flow
+- secretariat comment status update and response editing through the browser UI
+- secretariat file upload through the browser UI
+- unauthenticated redirects to `/login`
+- wrong-role access to the secretariat area for a participant
+
+Browser e2e uses dedicated ports by default:
+
+- web: `127.0.0.1:3200`
+- api: `127.0.0.1:3201`
+
+This keeps Playwright isolated from the usual local dev ports.
 
 ## GitHub Actions CI
 
@@ -241,6 +277,7 @@ CI runs:
 - `pnpm build`
 - `pnpm test:e2e:api`
 - `pnpm test:e2e:web`
+- `pnpm test:e2e:browser`
 
 CI assumptions:
 
@@ -249,6 +286,8 @@ CI assumptions:
 - pnpm `10.8.0`
 - PostgreSQL `16` as a workflow service on `127.0.0.1:5432`
 - the same local-style env values used by the repository for API, web, cookies, and file storage
+- Playwright Chromium installed in CI before browser tests
+- browser e2e uses dedicated ports `3200/3201`
 
 The closest local equivalents are:
 
@@ -258,6 +297,8 @@ pnpm typecheck
 pnpm build
 pnpm test:e2e:api
 pnpm test:e2e:web
+pnpm playwright:install
+pnpm test:e2e:browser
 ```
 
 If you want the same sequence in one command locally, run:
@@ -285,6 +326,8 @@ pnpm build
 pnpm test
 pnpm test:e2e:api
 pnpm test:e2e:web
+pnpm playwright:install
+pnpm test:e2e:browser
 pnpm check
 ```
 
@@ -298,6 +341,7 @@ Implemented now:
 - secretariat review management endpoints and UI
 - local upload/download pipeline for draft standard version files
 - automated API and production-like web e2e coverage for the current MVP flows
+- Playwright browser coverage for participant, secretariat, and access-control flows
 - Russian-only visible UI for current MVP surfaces
 
 Still intentionally minimal:

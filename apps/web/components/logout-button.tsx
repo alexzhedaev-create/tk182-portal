@@ -33,6 +33,7 @@ export function LogoutButton() {
     <div className="content-stack">
       <button
         className="pill pill-button"
+        data-testid="logout-button"
         type="button"
         onClick={() => {
           void handleLogout();

@@ -70,7 +70,11 @@ function SecretariatCommentStatusItem({
   }
 
   return (
-    <form className="review-card content-stack" onSubmit={handleSave}>
+    <form
+      className="review-card content-stack"
+      data-testid={`secretariat-comment-card-${comment.id}`}
+      onSubmit={handleSave}
+    >
       <div className="review-card-header">
         <div>
           <strong>
@@ -106,6 +110,7 @@ function SecretariatCommentStatusItem({
         <span>Статус рассмотрения</span>
         <select
           className="text-input"
+          data-testid={`secretariat-comment-status-${comment.id}`}
           value={status}
           onChange={(event) => {
             setStatus(event.target.value as ReviewCommentStatus);
@@ -123,6 +128,7 @@ function SecretariatCommentStatusItem({
         <span>Ответ секретариата</span>
         <textarea
           className="text-area"
+          data-testid={`secretariat-comment-response-${comment.id}`}
           value={responseText}
           onChange={(event) => {
             setResponseText(event.target.value);
@@ -132,7 +138,12 @@ function SecretariatCommentStatusItem({
       </label>
 
       <div className="stack-actions">
-        <button className="pill pill-button" type="submit" disabled={isPending}>
+        <button
+          className="pill pill-button"
+          data-testid={`secretariat-comment-submit-${comment.id}`}
+          type="submit"
+          disabled={isPending}
+        >
           {isPending ? "Сохранение..." : "Сохранить статус и ответ"}
         </button>
       </div>
@@ -150,7 +161,7 @@ export function SecretariatCommentsPanel({
   comments
 }: SecretariatCommentsPanelProps) {
   return (
-    <article className="content-card">
+    <article className="content-card" data-testid="secretariat-comments-panel">
       <h2>Замечания участников</h2>
       <div className="content-stack">
         {comments.length > 0 ? (

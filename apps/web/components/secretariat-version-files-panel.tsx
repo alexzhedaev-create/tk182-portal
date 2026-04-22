@@ -105,7 +105,11 @@ function SecretariatVersionFileItem({ file }: VersionFileItemProps) {
   }
 
   return (
-    <form className="review-card content-stack" onSubmit={handleSave}>
+    <form
+      className="review-card content-stack"
+      data-testid={`secretariat-version-file-${file.id}`}
+      onSubmit={handleSave}
+    >
       <div className="review-card-header">
         <div>
           <strong>{file.originalName}</strong>
@@ -134,6 +138,7 @@ function SecretariatVersionFileItem({ file }: VersionFileItemProps) {
           <span>Видимость</span>
           <select
             className="text-input"
+            data-testid={`secretariat-version-file-visibility-${file.id}`}
             value={visibility}
             onChange={(event) => {
               setVisibility(event.target.value as ReviewFileVisibility);
@@ -157,6 +162,7 @@ function SecretariatVersionFileItem({ file }: VersionFileItemProps) {
         <span>Описание</span>
         <textarea
           className="text-area file-description-area"
+          data-testid={`secretariat-version-file-description-${file.id}`}
           value={description}
           onChange={(event) => {
             setDescription(event.target.value);
@@ -166,11 +172,17 @@ function SecretariatVersionFileItem({ file }: VersionFileItemProps) {
       </label>
 
       <div className="stack-actions">
-        <button className="pill pill-button" type="submit" disabled={isPending}>
+        <button
+          className="pill pill-button"
+          data-testid={`secretariat-version-file-save-${file.id}`}
+          type="submit"
+          disabled={isPending}
+        >
           {isPending ? "Сохранение..." : "Сохранить изменения"}
         </button>
         <button
           className="pill pill-button"
+          data-testid={`secretariat-version-file-delete-${file.id}`}
           type="button"
           disabled={isDeleting}
           onClick={() => {
@@ -251,12 +263,18 @@ export function SecretariatVersionFilesPanel({
     <article className="content-card">
       <h2>Файлы версии</h2>
 
-      <form key={formKey} className="form-card" onSubmit={handleUpload}>
+      <form
+        key={formKey}
+        className="form-card"
+        data-testid="secretariat-version-files-upload-form"
+        onSubmit={handleUpload}
+      >
         <div className="form-grid">
           <label className="field-label">
             <span>Файл</span>
             <input
               className="text-input file-input"
+              data-testid="secretariat-upload-file-input"
               type="file"
               accept=".pdf,.doc,.docx,.xlsx,.zip,.txt"
               onChange={(event) => {
@@ -269,6 +287,7 @@ export function SecretariatVersionFilesPanel({
             <span>Видимость</span>
             <select
               className="text-input"
+              data-testid="secretariat-upload-visibility"
               value={uploadVisibility}
               onChange={(event) => {
                 setUploadVisibility(event.target.value as ReviewFileVisibility);
@@ -287,6 +306,7 @@ export function SecretariatVersionFilesPanel({
           <span>Описание</span>
           <textarea
             className="text-area file-description-area"
+            data-testid="secretariat-upload-description"
             value={uploadDescription}
             onChange={(event) => {
               setUploadDescription(event.target.value);
@@ -296,7 +316,12 @@ export function SecretariatVersionFilesPanel({
         </label>
 
         <div className="stack-actions">
-          <button className="pill pill-button" type="submit" disabled={isUploading}>
+          <button
+            className="pill pill-button"
+            data-testid="secretariat-upload-submit"
+            type="submit"
+            disabled={isUploading}
+          >
             {isUploading ? "Загрузка..." : "Загрузить файл"}
           </button>
           <span className="status-note">

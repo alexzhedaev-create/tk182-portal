@@ -14,7 +14,7 @@ export function AccessDeniedCard({ area, user }: AccessDeniedCardProps) {
 
   return (
     <>
-      <section className="hero-card">
+      <section className="hero-card" data-testid="access-denied-card">
         <div>
           <div className="eyebrow">Доступ ограничен</div>
           <h1 className="page-title">{getWorkspaceLabel(area)}</h1>

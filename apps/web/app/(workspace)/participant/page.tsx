@@ -96,6 +96,7 @@ export default async function ParticipantWorkspacePage() {
               <div className="pill-row">
                 <Link
                   className="pill"
+                  data-testid={`participant-assignment-link-${item.assignmentId}`}
                   href={`/participant/reviews/${item.cycle.id}/${item.draftStandard.id}`}
                 >
                   Открыть карточку проекта

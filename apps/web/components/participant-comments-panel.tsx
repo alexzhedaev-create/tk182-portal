@@ -177,7 +177,7 @@ export function ParticipantCommentsPanel({
   }
 
   return (
-    <article className="content-card">
+    <article className="content-card" data-testid="participant-comments-panel">
       <h2>Замечания участника</h2>
 
       <div className="content-stack">
@@ -187,7 +187,11 @@ export function ParticipantCommentsPanel({
             const isDeleting = deletePendingId === comment.id;
 
             return (
-              <div key={comment.id} className="review-card">
+              <div
+                key={comment.id}
+                className="review-card"
+                data-testid={`participant-comment-${comment.id}`}
+              >
                 <div className="review-card-header">
                   <div>
                     <strong>
@@ -235,6 +239,7 @@ export function ParticipantCommentsPanel({
                 {isEditing ? (
                   <form
                     className="content-stack"
+                    data-testid={`participant-edit-comment-form-${comment.id}`}
                     onSubmit={(event) => {
                       event.preventDefault();
                       void handleUpdateComment(comment.id);
@@ -384,7 +389,11 @@ export function ParticipantCommentsPanel({
       ) : null}
 
       {canCreate ? (
-        <form className="content-stack review-card" onSubmit={handleCreateComment}>
+        <form
+          className="content-stack review-card"
+          data-testid="participant-create-comment-form"
+          onSubmit={handleCreateComment}
+        >
           <h3>Добавить замечание</h3>
 
           <div className="form-grid">
@@ -484,7 +493,12 @@ export function ParticipantCommentsPanel({
           </label>
 
           <div className="stack-actions">
-            <button className="pill pill-button" type="submit" disabled={createPending}>
+            <button
+              className="pill pill-button"
+              data-testid="participant-create-comment-submit"
+              type="submit"
+              disabled={createPending}
+            >
               {createPending ? "Сохранение..." : "Добавить замечание"}
             </button>
           </div>

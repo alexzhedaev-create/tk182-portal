@@ -66,7 +66,11 @@ export function LoginForm() {
   }
 
   return (
-    <form className="content-card form-card" onSubmit={handleSubmit}>
+    <form
+      className="content-card form-card"
+      data-testid="login-form"
+      onSubmit={handleSubmit}
+    >
       <h2>Вход в систему</h2>
       <p>
         Используйте один из локальных демо-аккаунтов, чтобы открыть кабинет
@@ -77,6 +81,7 @@ export function LoginForm() {
         <span>Электронная почта</span>
         <input
           className="text-input"
+          data-testid="login-email"
           type="email"
           name="email"
           autoComplete="email"
@@ -93,6 +98,7 @@ export function LoginForm() {
         <span>Пароль</span>
         <input
           className="text-input"
+          data-testid="login-password"
           type="password"
           name="password"
           autoComplete="current-password"
@@ -106,7 +112,12 @@ export function LoginForm() {
       </label>
 
       <div className="stack-actions">
-        <button className="pill pill-button" type="submit" disabled={isPending}>
+        <button
+          className="pill pill-button"
+          data-testid="login-submit"
+          type="submit"
+          disabled={isPending}
+        >
           {isPending ? "Вход..." : "Войти"}
         </button>
       </div>

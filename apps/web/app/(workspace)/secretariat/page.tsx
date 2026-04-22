@@ -99,7 +99,11 @@ export default async function SecretariatWorkspacePage() {
                   </div>
 
                   <div className="pill-row">
-                    <Link className="pill" href={`/secretariat/cycles/${item.cycle.id}`}>
+                    <Link
+                      className="pill"
+                      data-testid={`secretariat-cycle-link-${item.cycle.id}`}
+                      href={`/secretariat/cycles/${item.cycle.id}`}
+                    >
                       Открыть цикл
                     </Link>
                   </div>
@@ -134,7 +138,11 @@ export default async function SecretariatWorkspacePage() {
                   </div>
 
                   <div className="pill-row">
-                    <Link className="pill" href={`/secretariat/cycles/${item.cycle.id}`}>
+                    <Link
+                      className="pill"
+                      data-testid={`secretariat-cycle-link-${item.cycle.id}`}
+                      href={`/secretariat/cycles/${item.cycle.id}`}
+                    >
                       Открыть архивный цикл
                     </Link>
                   </div>

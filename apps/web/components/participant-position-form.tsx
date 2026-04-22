@@ -69,7 +69,7 @@ export function ParticipantPositionForm({
   }
 
   return (
-    <article className="content-card">
+    <article className="content-card" data-testid="participant-position-panel">
       <h2>Итоговая позиция</h2>
 
       {currentPosition ? (
@@ -86,7 +86,11 @@ export function ParticipantPositionForm({
       )}
 
       {canSubmit ? (
-        <form className="content-stack" onSubmit={handleSubmit}>
+        <form
+          className="content-stack"
+          data-testid="participant-position-form"
+          onSubmit={handleSubmit}
+        >
           <div className="radio-group">
             {positionOptions.map((option) => (
               <label key={option} className="radio-card">
@@ -117,7 +121,12 @@ export function ParticipantPositionForm({
           </label>
 
           <div className="stack-actions">
-            <button className="pill pill-button" type="submit" disabled={isPending}>
+            <button
+              className="pill pill-button"
+              data-testid="participant-position-submit"
+              type="submit"
+              disabled={isPending}
+            >
               {isPending
                 ? "Отправка..."
                 : currentPosition

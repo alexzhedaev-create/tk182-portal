@@ -21,6 +21,8 @@
     "test:e2e": "node --test --test-concurrency=1 tests/e2e/*.test.mjs",
     "test:e2e:api": "node --test --test-concurrency=1 tests/e2e/01-api-flows.test.mjs",
     "test:e2e:web": "node --test --test-concurrency=1 tests/e2e/02-web-runtime.test.mjs",
+    "test:e2e:browser": "node tests/playwright/run-playwright.mjs",
+    "playwright:install": "playwright install chromium",
     "compose:config": "docker compose -f infra/docker-compose.yml config > /dev/null",
     "compose:up": "docker compose -f infra/docker-compose.yml up --build",
     "compose:down": "docker compose -f infra/docker-compose.yml down",
@@ -28,6 +30,7 @@
     "check": "pnpm run typecheck && pnpm run compose:config"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "concurrently": "^9.1.2",
     "typescript": "^5.7.3"
   }

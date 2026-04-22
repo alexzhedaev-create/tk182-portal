@@ -13,7 +13,7 @@ export function WorkspaceSessionCard({
   user
 }: WorkspaceSessionCardProps) {
   return (
-    <article className="content-card">
+    <article className="content-card" data-testid="workspace-session-card">
       <h2>{heading}</h2>
       <p>
         Вы вошли как <strong>{user.displayName}</strong>.
