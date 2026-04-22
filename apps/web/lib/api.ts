@@ -1,6 +1,7 @@
 import "server-only";
 
 import type {
+  ApprovalAuditEvent,
   DocumentSummary,
   PaginatedResult,
   ParticipantAssignedReviewCycle,
@@ -113,5 +114,13 @@ export function getSecretariatCycleDetail(
 ): Promise<SecretariatCycleDetail> {
   return fetchFromApi<SecretariatCycleDetail>(
     `/approval/secretariat/cycles/${encodeURIComponent(cycleId)}`
+  );
+}
+
+export function getReviewCycleAuditEvents(
+  cycleId: string
+): Promise<ApprovalAuditEvent[]> {
+  return fetchFromApi<ApprovalAuditEvent[]>(
+    `/audit/review-cycles/${encodeURIComponent(cycleId)}/events`
   );
 }

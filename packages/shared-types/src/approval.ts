@@ -1,3 +1,5 @@
+import type { AuthRole } from "./auth";
+
 export type ReviewCycleStatus = "draft" | "open" | "closed";
 
 export type ReviewCommentStatus =
@@ -16,6 +18,23 @@ export type ParticipantPositionValue =
 export type ReviewFileVisibility =
   | "ASSIGNED_PARTICIPANTS"
   | "SECRETARIAT_ONLY";
+
+export type AuditActionType =
+  | "COMMENT_CREATED"
+  | "COMMENT_UPDATED"
+  | "COMMENT_DELETED"
+  | "POSITION_SUBMITTED"
+  | "POSITION_UPDATED"
+  | "COMMENT_STATUS_CHANGED"
+  | "SECRETARIAT_RESPONSE_UPDATED"
+  | "FILE_UPLOADED"
+  | "FILE_METADATA_CHANGED"
+  | "FILE_DELETED";
+
+export type AuditEntityType =
+  | "REVIEW_COMMENT"
+  | "PARTICIPANT_POSITION"
+  | "VERSION_FILE";
 
 export interface DraftStandardSummary {
   id: string;
@@ -124,6 +143,23 @@ export interface SecretariatCycleDetail {
   versionFiles: ReviewAttachmentSummary[];
 }
 
+export interface ApprovalAuditEvent {
+  id: string;
+  timestamp: string;
+  actorUserId: string;
+  actorRole: AuthRole;
+  actorDisplayName: string;
+  actionType: AuditActionType;
+  entityType: AuditEntityType;
+  entityId: string;
+  relatedCycleId: string | null;
+  relatedDraftStandardId: string | null;
+  relatedCommentId: string | null;
+  relatedFileId: string | null;
+  message: string;
+  metadata: Record<string, unknown> | null;
+}
+
 export interface CreateReviewCommentDto {
   sectionRef: string;
   pointRef?: string | null;
@@ -177,7 +213,7 @@ export interface NotificationSummary {
 
 export interface AuditEntrySummary {
   id: string;
-  action: string;
+  action: AuditActionType;
   actorId: string;
   createdAt: string;
 }

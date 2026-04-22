@@ -111,6 +111,7 @@ The current seed demonstrates the first real draft standard review slice:
 - participant comments in Russian
 - participant final positions in Russian
 - secretariat review statuses and responses
+- persistent audit trail for core review and file actions
 - local version-file storage with DB metadata and role-based download access
 
 Core persisted entities now include:
@@ -126,6 +127,7 @@ Core persisted entities now include:
 - `ReviewComment`
 - `ParticipantPosition`
 - `DraftStandardVersionFile`
+- `AuditEvent`
 
 ## Local file storage
 
@@ -180,6 +182,7 @@ The seed script recreates several demo text attachments for the active and archi
    - `Отклонено`
    - `Нужно уточнение`
 12. Add or update the secretariat response text
+13. Check `Журнал изменений` on the cycle page to review recorded actions
 
 ### File upload and download checks
 
@@ -209,6 +212,7 @@ The MVP now includes integration/e2e coverage for the current core flows:
 - secretariat file upload
 - participant file visibility
 - forbidden participant download of secretariat-only files
+- audit trail creation for participant and secretariat review actions
 - production-like `next start` checks for the current Russian UI
 - browser-level Playwright scenarios for the current Russian UI
 
@@ -256,6 +260,7 @@ The Playwright suite covers:
 - secretariat cycle detail flow
 - secretariat comment status update and response editing through the browser UI
 - secretariat file upload through the browser UI
+- secretariat audit-trail visibility in `Журнал изменений`
 - unauthenticated redirects to `/login`
 - wrong-role access to the secretariat area for a participant
 
@@ -314,6 +319,32 @@ pnpm test
 - `SECRETARIAT` can access the secretariat workflow
 - `ADMIN` can access the secretariat workflow
 - Wrong-role access shows a clear Russian access-denied page
+- Audit history is secretariat-only in the MVP UI and API
+
+## Audit trail
+
+The MVP audit trail covers persistent workflow events for:
+
+- participant comment creation
+- participant comment editing
+- participant comment deletion
+- participant final position submission or update
+- secretariat comment status changes
+- secretariat response updates
+- version file upload
+- version file metadata updates
+- version file deletion
+
+Audit history is visible in the secretariat cycle detail page under `Журнал изменений` and is also available through secretariat-only API endpoints:
+
+- `GET /audit/review-cycles/:cycleId/events`
+- `GET /audit/draft-standards/:draftStandardId/events`
+
+Still intentionally not covered yet:
+
+- full system-wide audit beyond the review workflow
+- auth/session lifecycle events
+- publication workflow and broader standards lifecycle events
 
 ## Useful commands
 
@@ -340,10 +371,12 @@ Implemented now:
 - participant review endpoints and UI
 - secretariat review management endpoints and UI
 - local upload/download pipeline for draft standard version files
+- persistent audit trail for the current review workflow actions
 - automated API and production-like web e2e coverage for the current MVP flows
 - Playwright browser coverage for participant, secretariat, and access-control flows
 - Russian-only visible UI for current MVP surfaces
 
 Still intentionally minimal:
 - public content pages remain mostly informational placeholders
-- notifications, audit, pages, news, meetings, and broader standards lifecycle remain MVP-level scaffolds
+- notifications, pages, news, meetings, and broader standards lifecycle remain MVP-level scaffolds
+- audit currently covers only the core review/file actions described above

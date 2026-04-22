@@ -1,0 +1,81 @@
+import type { ApprovalAuditEvent } from "@tk182/shared-types";
+
+import { formatRole } from "../lib/auth";
+import { formatDateTime } from "../lib/review";
+
+interface SecretariatAuditTrailProps {
+  events: ApprovalAuditEvent[];
+}
+
+function pickTextValue(
+  metadata: Record<string, unknown> | null,
+  key: string
+): string | null {
+  const value = metadata?.[key];
+
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
+function formatRelatedObject(event: ApprovalAuditEvent): string {
+  switch (event.entityType) {
+    case "REVIEW_COMMENT": {
+      const sectionRef = pickTextValue(event.metadata, "sectionRef");
+      const pointRef = pickTextValue(event.metadata, "pointRef");
+      const pageRef = pickTextValue(event.metadata, "pageRef");
+      const parts = [sectionRef, pointRef, pageRef ? `стр. ${pageRef}` : null].filter(
+        Boolean
+      );
+
+      return parts.length > 0 ? `Замечание: ${parts.join(", ")}` : "Замечание участника";
+    }
+    case "PARTICIPANT_POSITION": {
+      const positionLabel = pickTextValue(event.metadata, "positionLabel");
+
+      return positionLabel
+        ? `Итоговая позиция: ${positionLabel}`
+        : "Итоговая позиция участника";
+    }
+    case "VERSION_FILE": {
+      const originalName = pickTextValue(event.metadata, "originalName");
+
+      return originalName ? `Файл: ${originalName}` : "Файл версии";
+    }
+    default:
+      return event.entityId;
+  }
+}
+
+export function SecretariatAuditTrail({
+  events
+}: SecretariatAuditTrailProps) {
+  return (
+    <article className="content-card" data-testid="secretariat-audit-panel">
+      <h2>Журнал изменений</h2>
+      <div className="content-stack">
+        {events.length > 0 ? (
+          events.map((event) => (
+            <div
+              key={event.id}
+              className="review-card"
+              data-testid={`secretariat-audit-event-${event.id}`}
+            >
+              <div className="review-card-header">
+                <div>
+                  <strong>{event.message}</strong>
+                  <p className="status-note">{formatRelatedObject(event)}</p>
+                </div>
+                <span className="pill">{formatDateTime(event.timestamp)}</span>
+              </div>
+              <div className="pill-row">
+                <span className="pill">{event.actorDisplayName}</span>
+                <span className="pill">{formatRole(event.actorRole)}</span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p>История действий по этому циклу пока пуста.</p>
+        )}
+      </div>
+    </article>
+  );
+}

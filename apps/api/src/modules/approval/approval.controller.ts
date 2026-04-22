@@ -251,19 +251,28 @@ export class ApprovalController {
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
   updateSecretariatVersionFile(
+    @Req() request: AuthenticatedRequest,
     @Param("fileId") fileId: string,
     @Body() payload: UpdateVersionFileDto
   ): Promise<ReviewAttachmentSummary> {
-    return this.approvalService.updateSecretariatVersionFile(fileId, payload);
+    return this.approvalService.updateSecretariatVersionFile(
+      request.authSession!.user.id,
+      fileId,
+      payload
+    );
   }
 
   @Delete("secretariat/files/:fileId")
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
   deleteSecretariatVersionFile(
+    @Req() request: AuthenticatedRequest,
     @Param("fileId") fileId: string
   ): Promise<MutationResponseDto> {
-    return this.approvalService.deleteSecretariatVersionFile(fileId);
+    return this.approvalService.deleteSecretariatVersionFile(
+      request.authSession!.user.id,
+      fileId
+    );
   }
 
   @Get("secretariat/files/:fileId/download")
@@ -289,9 +298,14 @@ export class ApprovalController {
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
   updateSecretariatCommentStatus(
+    @Req() request: AuthenticatedRequest,
     @Param("commentId") commentId: string,
     @Body() payload: UpdateReviewCommentStatusDto
   ): Promise<ReviewCommentRecord> {
-    return this.approvalService.updateSecretariatCommentStatus(commentId, payload);
+    return this.approvalService.updateSecretariatCommentStatus(
+      request.authSession!.user.id,
+      commentId,
+      payload
+    );
   }
 }

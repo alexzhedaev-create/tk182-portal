@@ -34,6 +34,7 @@ import {
   ApprovalFileStorageService,
   type UploadedBinaryFile
 } from "./approval-file-storage.service";
+import { AuditService } from "../audit/audit.service";
 
 interface ParticipantCycleRow {
   assignment_id: string;
@@ -79,9 +80,17 @@ interface CommentMutationRow {
   cycle_deadline_at: string;
   cycle_status: "draft" | "open" | "closed";
   draft_standard_id: string;
+  page_ref: string | null;
+  point_ref: string | null;
   position_submitted: boolean;
+  proposed_text: string;
+  rationale: string;
+  remark: string;
   review_assignment_id: string;
+  review_cycle_id: string;
   review_status: ReviewCommentStatus;
+  secretariat_response: string | null;
+  section_ref: string;
 }
 
 interface ParticipantPositionRow {
@@ -155,6 +164,21 @@ interface DraftStandardVersionLookupRow {
   id: string;
 }
 
+interface VersionAuditContextRow {
+  draft_standard_id: string;
+  review_cycle_id: string | null;
+}
+
+interface SecretariatCommentMutationRow {
+  draft_standard_id: string;
+  page_ref: string | null;
+  point_ref: string | null;
+  review_cycle_id: string;
+  review_status: ReviewCommentStatus;
+  secretariat_response: string | null;
+  section_ref: string;
+}
+
 interface VersionFileDownloadPayload {
   contentDisposition: string;
   fileName: string;
@@ -187,7 +211,8 @@ const REVIEW_FILE_VISIBILITIES: readonly ReviewFileVisibility[] = [
 export class ApprovalService {
   constructor(
     private readonly databaseService: DatabaseService,
-    private readonly approvalFileStorageService: ApprovalFileStorageService
+    private readonly approvalFileStorageService: ApprovalFileStorageService,
+    private readonly auditService: AuditService
   ) {}
 
   getSummary() {
@@ -361,7 +386,25 @@ export class ApprovalService {
       ]
     );
 
-    return this.getParticipantCommentById(userId, commentId);
+    const createdComment = await this.getParticipantCommentById(userId, commentId);
+
+    await this.auditService.recordEvent({
+      actorUserId: userId,
+      actionType: "COMMENT_CREATED",
+      entityType: "REVIEW_COMMENT",
+      entityId: commentId,
+      relatedCycleId: cycleId,
+      relatedDraftStandardId: draftStandardId,
+      relatedCommentId: commentId,
+      message: `Создано замечание участника по ${this.formatCommentLocation(
+        createdComment.sectionRef,
+        createdComment.pointRef,
+        createdComment.pageRef
+      )}.`,
+      metadata: this.buildCommentAuditMetadata(createdComment)
+    });
+
+    return createdComment;
   }
 
   async updateParticipantComment(
@@ -410,7 +453,39 @@ export class ApprovalService {
       ]
     );
 
-    return this.getParticipantCommentById(userId, commentId);
+    const updatedComment = await this.getParticipantCommentById(userId, commentId);
+
+    if (
+      comment.section_ref !== updatedComment.sectionRef ||
+      comment.point_ref !== updatedComment.pointRef ||
+      comment.page_ref !== updatedComment.pageRef ||
+      comment.remark !== updatedComment.remark ||
+      comment.proposed_text !== updatedComment.proposedText ||
+      comment.rationale !== updatedComment.rationale
+    ) {
+      await this.auditService.recordEvent({
+        actorUserId: userId,
+        actionType: "COMMENT_UPDATED",
+        entityType: "REVIEW_COMMENT",
+        entityId: commentId,
+        relatedCycleId: comment.review_cycle_id,
+        relatedDraftStandardId: comment.draft_standard_id,
+        relatedCommentId: commentId,
+        message: `Обновлено замечание участника по ${this.formatCommentLocation(
+          updatedComment.sectionRef,
+          updatedComment.pointRef,
+          updatedComment.pageRef
+        )}.`,
+        metadata: {
+          ...this.buildCommentAuditMetadata(updatedComment),
+          previousSectionRef: comment.section_ref,
+          previousPointRef: comment.point_ref,
+          previousPageRef: comment.page_ref
+        }
+      });
+    }
+
+    return updatedComment;
   }
 
   async deleteParticipantComment(
@@ -435,6 +510,29 @@ export class ApprovalService {
 
     await this.databaseService.query(`DELETE FROM review_comments WHERE id = $1`, [commentId]);
 
+    await this.auditService.recordEvent({
+      actorUserId: userId,
+      actionType: "COMMENT_DELETED",
+      entityType: "REVIEW_COMMENT",
+      entityId: commentId,
+      relatedCycleId: comment.review_cycle_id,
+      relatedDraftStandardId: comment.draft_standard_id,
+      relatedCommentId: commentId,
+      message: `Удалено замечание участника по ${this.formatCommentLocation(
+        comment.section_ref,
+        comment.point_ref,
+        comment.page_ref
+      )}.`,
+      metadata: this.buildCommentAuditMetadata({
+        sectionRef: comment.section_ref,
+        pointRef: comment.point_ref,
+        pageRef: comment.page_ref,
+        remark: comment.remark,
+        proposedText: comment.proposed_text,
+        rationale: comment.rationale
+      })
+    });
+
     return {
       status: "success",
       message: "Замечание удалено."
@@ -448,6 +546,7 @@ export class ApprovalService {
   ): Promise<ParticipantPositionRecord> {
     const context = await this.getParticipantContext(userId, cycleId);
     this.assertCycleIsEditable(context.cycleStatus, context.cycleDeadlineAt);
+    const existingPosition = await this.getParticipantPosition(userId, cycleId);
 
     const position = this.normalizeParticipantPosition(payload);
     const positionId = randomUUID();
@@ -500,6 +599,36 @@ export class ApprovalService {
 
     if (!savedPosition) {
       throw new NotFoundException("Не удалось сохранить итоговую позицию.");
+    }
+
+    if (
+      !existingPosition ||
+      existingPosition.position !== savedPosition.position ||
+      existingPosition.note !== savedPosition.note
+    ) {
+      const actionType = existingPosition ? "POSITION_UPDATED" : "POSITION_SUBMITTED";
+      const actionMessage = existingPosition
+        ? "Обновлена итоговая позиция участника"
+        : "Зафиксирована итоговая позиция участника";
+
+      await this.auditService.recordEvent({
+        actorUserId: userId,
+        actionType,
+        entityType: "PARTICIPANT_POSITION",
+        entityId: savedPosition.id,
+        relatedCycleId: context.cycleId,
+        relatedDraftStandardId: context.draftStandardId,
+        message: `${actionMessage}: «${this.formatParticipantPositionLabel(
+          savedPosition.position
+        )}».`,
+        metadata: {
+          position: savedPosition.position,
+          positionLabel: this.formatParticipantPositionLabel(savedPosition.position),
+          note: savedPosition.note,
+          previousPosition: existingPosition?.position ?? null,
+          previousNote: existingPosition?.note ?? null
+        }
+      });
     }
 
     return savedPosition;
@@ -567,7 +696,7 @@ export class ApprovalService {
     file: UploadedBinaryFile | undefined,
     payload: CreateVersionFileDto
   ): Promise<ReviewAttachmentSummary> {
-    await this.getDraftStandardVersionById(versionId);
+    const versionContext = await this.getVersionAuditContext(versionId);
 
     const normalized = this.normalizeVersionFilePayload(payload);
     const savedFile = await this.approvalFileStorageService.saveUploadedFile(file);
@@ -608,6 +737,18 @@ export class ApprovalService {
 
     const createdFile = await this.getVersionFileById(fileId, versionId);
 
+    await this.auditService.recordEvent({
+      actorUserId: userId,
+      actionType: "FILE_UPLOADED",
+      entityType: "VERSION_FILE",
+      entityId: fileId,
+      relatedCycleId: versionContext.review_cycle_id,
+      relatedDraftStandardId: versionContext.draft_standard_id,
+      relatedFileId: fileId,
+      message: `Загружен файл версии «${createdFile.originalName}».`,
+      metadata: this.buildVersionFileAuditMetadata(createdFile)
+    });
+
     return this.pickVersionFileSummary(createdFile);
   }
 
@@ -620,10 +761,12 @@ export class ApprovalService {
   }
 
   async updateSecretariatVersionFile(
+    userId: string,
     fileId: string,
     payload: UpdateVersionFileDto
   ): Promise<ReviewAttachmentSummary> {
     const file = await this.getVersionFileById(fileId);
+    const versionContext = await this.getVersionAuditContext(file.versionId);
     const normalized = this.normalizeVersionFilePayload(payload, file.visibility);
 
     await this.databaseService.query(
@@ -640,19 +783,56 @@ export class ApprovalService {
 
     const updatedFile = await this.getVersionFileById(fileId, file.versionId);
 
+    if (
+      file.description !== updatedFile.description ||
+      file.visibility !== updatedFile.visibility
+    ) {
+      await this.auditService.recordEvent({
+        actorUserId: userId,
+        actionType: "FILE_METADATA_CHANGED",
+        entityType: "VERSION_FILE",
+        entityId: fileId,
+        relatedCycleId: versionContext.review_cycle_id,
+        relatedDraftStandardId: versionContext.draft_standard_id,
+        relatedFileId: fileId,
+        message: `Обновлены сведения о файле «${updatedFile.originalName}».`,
+        metadata: {
+          ...this.buildVersionFileAuditMetadata(updatedFile),
+          previousDescription: file.description,
+          previousVisibility: file.visibility,
+          visibilityLabel: this.formatFileVisibilityLabel(updatedFile.visibility),
+          previousVisibilityLabel: this.formatFileVisibilityLabel(file.visibility)
+        }
+      });
+    }
+
     return this.pickVersionFileSummary(updatedFile);
   }
 
   async deleteSecretariatVersionFile(
+    userId: string,
     fileId: string
   ): Promise<MutationResponseDto> {
     const file = await this.getVersionFileById(fileId);
+    const versionContext = await this.getVersionAuditContext(file.versionId);
 
     await this.databaseService.query(
       `DELETE FROM draft_standard_version_files WHERE id = $1`,
       [fileId]
     );
     await this.approvalFileStorageService.deleteStoredFile(file.storedName);
+
+    await this.auditService.recordEvent({
+      actorUserId: userId,
+      actionType: "FILE_DELETED",
+      entityType: "VERSION_FILE",
+      entityId: fileId,
+      relatedCycleId: versionContext.review_cycle_id,
+      relatedDraftStandardId: versionContext.draft_standard_id,
+      relatedFileId: fileId,
+      message: `Удален файл версии «${file.originalName}».`,
+      metadata: this.buildVersionFileAuditMetadata(file)
+    });
 
     return {
       status: "success",
@@ -728,24 +908,12 @@ export class ApprovalService {
   }
 
   async updateSecretariatCommentStatus(
+    userId: string,
     commentId: string,
     payload: UpdateReviewCommentStatusDto
   ): Promise<ReviewCommentRecord> {
     const normalized = this.normalizeReviewStatusPayload(payload);
-    const commentResult = await this.databaseService.query<{ review_cycle_id: string }>(
-      `
-        SELECT review_cycle_id
-        FROM review_comments
-        WHERE id = $1
-        LIMIT 1
-      `,
-      [commentId]
-    );
-    const comment = commentResult.rows[0];
-
-    if (!comment) {
-      throw new NotFoundException("Замечание не найдено.");
-    }
+    const comment = await this.getSecretariatCommentMutationRow(commentId);
 
     await this.databaseService.query(
       `
@@ -764,6 +932,50 @@ export class ApprovalService {
 
     if (!updatedComment) {
       throw new NotFoundException("Обновленное замечание не найдено.");
+    }
+
+    if (comment.review_status !== updatedComment.reviewStatus) {
+      await this.auditService.recordEvent({
+        actorUserId: userId,
+        actionType: "COMMENT_STATUS_CHANGED",
+        entityType: "REVIEW_COMMENT",
+        entityId: commentId,
+        relatedCycleId: comment.review_cycle_id,
+        relatedDraftStandardId: comment.draft_standard_id,
+        relatedCommentId: commentId,
+        message: `Изменен статус замечания на «${this.formatReviewCommentStatusLabel(
+          updatedComment.reviewStatus
+        )}».`,
+        metadata: {
+          ...this.buildCommentAuditMetadata(updatedComment),
+          previousReviewStatus: comment.review_status,
+          previousReviewStatusLabel: this.formatReviewCommentStatusLabel(
+            comment.review_status
+          ),
+          reviewStatus: updatedComment.reviewStatus,
+          reviewStatusLabel: this.formatReviewCommentStatusLabel(
+            updatedComment.reviewStatus
+          )
+        }
+      });
+    }
+
+    if (comment.secretariat_response !== updatedComment.secretariatResponse) {
+      await this.auditService.recordEvent({
+        actorUserId: userId,
+        actionType: "SECRETARIAT_RESPONSE_UPDATED",
+        entityType: "REVIEW_COMMENT",
+        entityId: commentId,
+        relatedCycleId: comment.review_cycle_id,
+        relatedDraftStandardId: comment.draft_standard_id,
+        relatedCommentId: commentId,
+        message: "Обновлен ответ секретариата по замечанию.",
+        metadata: {
+          ...this.buildCommentAuditMetadata(updatedComment),
+          previousSecretariatResponse: comment.secretariat_response,
+          secretariatResponse: updatedComment.secretariatResponse
+        }
+      });
     }
 
     return updatedComment;
@@ -915,8 +1127,16 @@ export class ApprovalService {
       `
         SELECT
           c.review_assignment_id,
+          c.review_cycle_id,
           c.review_status,
           c.draft_standard_id,
+          c.section_ref,
+          c.point_ref,
+          c.page_ref,
+          c.remark,
+          c.proposed_text,
+          c.rationale,
+          c.secretariat_response,
           rc.status AS cycle_status,
           rc.deadline_at AS cycle_deadline_at,
           EXISTS (
@@ -933,6 +1153,34 @@ export class ApprovalService {
       [commentId, userId]
     );
 
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new NotFoundException("Замечание не найдено.");
+    }
+
+    return row;
+  }
+
+  private async getSecretariatCommentMutationRow(
+    commentId: string
+  ): Promise<SecretariatCommentMutationRow> {
+    const result = await this.databaseService.query<SecretariatCommentMutationRow>(
+      `
+        SELECT
+          review_cycle_id,
+          draft_standard_id,
+          section_ref,
+          point_ref,
+          page_ref,
+          review_status,
+          secretariat_response
+        FROM review_comments
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [commentId]
+    );
     const row = result.rows[0];
 
     if (!row) {
@@ -1099,6 +1347,39 @@ export class ApprovalService {
       [versionId]
     );
 
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new NotFoundException("Версия проекта стандарта не найдена.");
+    }
+
+    return row;
+  }
+
+  private async getVersionAuditContext(versionId: string): Promise<VersionAuditContextRow> {
+    const result = await this.databaseService.query<VersionAuditContextRow>(
+      `
+        SELECT
+          dsv.draft_standard_id,
+          (
+            SELECT rc.id
+            FROM review_cycles rc
+            WHERE rc.draft_standard_version_id = dsv.id
+            ORDER BY
+              CASE rc.status
+                WHEN 'open' THEN 0
+                WHEN 'draft' THEN 1
+                ELSE 2
+              END,
+              rc.deadline_at DESC
+            LIMIT 1
+          ) AS review_cycle_id
+        FROM draft_standard_versions dsv
+        WHERE dsv.id = $1
+        LIMIT 1
+      `,
+      [versionId]
+    );
     const row = result.rows[0];
 
     if (!row) {
@@ -1455,6 +1736,104 @@ export class ApprovalService {
     const trimmed = value?.trim();
 
     return trimmed ? trimmed : null;
+  }
+
+  private buildCommentAuditMetadata(comment: {
+    pageRef?: string | null;
+    pointRef?: string | null;
+    proposedText?: string;
+    rationale?: string;
+    remark?: string;
+    sectionRef: string;
+  }): Record<string, unknown> {
+    return {
+      sectionRef: comment.sectionRef,
+      pointRef: comment.pointRef ?? null,
+      pageRef: comment.pageRef ?? null,
+      remark: comment.remark ?? null,
+      proposedText: comment.proposedText ?? null,
+      rationale: comment.rationale ?? null
+    };
+  }
+
+  private buildVersionFileAuditMetadata(file: {
+    description: string | null;
+    mimeType: string;
+    originalName: string;
+    sizeBytes: number;
+    versionId: string;
+    visibility: ReviewFileVisibility;
+  }): Record<string, unknown> {
+    return {
+      originalName: file.originalName,
+      mimeType: file.mimeType,
+      sizeBytes: file.sizeBytes,
+      description: file.description,
+      versionId: file.versionId,
+      visibility: file.visibility,
+      visibilityLabel: this.formatFileVisibilityLabel(file.visibility)
+    };
+  }
+
+  private formatCommentLocation(
+    sectionRef: string,
+    pointRef: string | null,
+    pageRef: string | null
+  ): string {
+    const segments = [`разделу «${sectionRef}»`];
+
+    if (pointRef) {
+      segments.push(pointRef);
+    }
+
+    if (pageRef) {
+      segments.push(`стр. ${pageRef}`);
+    }
+
+    return segments.join(", ");
+  }
+
+  private formatReviewCommentStatusLabel(status: ReviewCommentStatus): string {
+    switch (status) {
+      case "RECEIVED":
+        return "Получено";
+      case "IN_REVIEW":
+        return "На рассмотрении";
+      case "ACCEPTED":
+        return "Принято";
+      case "PARTIALLY_ACCEPTED":
+        return "Принято частично";
+      case "REJECTED":
+        return "Отклонено";
+      case "NEEDS_CLARIFICATION":
+        return "Нужно уточнение";
+      default:
+        return status;
+    }
+  }
+
+  private formatParticipantPositionLabel(position: ParticipantPositionValue): string {
+    switch (position) {
+      case "AGREED":
+        return "Согласовано";
+      case "AGREED_WITH_COMMENTS":
+        return "Согласовано с замечаниями";
+      case "NOT_AGREED":
+        return "Не согласовано";
+      default:
+        return position;
+    }
+  }
+
+  private formatFileVisibilityLabel(visibility: ReviewFileVisibility): string {
+    switch (visibility) {
+      case "ASSIGNED_PARTICIPANTS":
+        return "Доступно участникам";
+      case "SECRETARIAT_ONLY":
+        return "Только секретариат";
+      default:
+        return visibility;
+    }
   }
 
   private assertCycleIsEditable(

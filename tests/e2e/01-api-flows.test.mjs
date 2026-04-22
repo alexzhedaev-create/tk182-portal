@@ -105,10 +105,21 @@ test(
     );
     assert.equal(participantForbidden.response.status, 403);
 
+    const participantAuditForbidden = await participant.requestJson(
+      "/audit/review-cycles/review-cycle-fire-sensors-apr/events"
+    );
+    assert.equal(participantAuditForbidden.response.status, 403);
+
     const secretariatCycles = await secretariat.requestJson("/approval/secretariat/cycles");
     assert.equal(secretariatCycles.response.status, 200);
     assert.ok(Array.isArray(secretariatCycles.data));
     assert.ok(secretariatCycles.data.length > 0);
+
+    const secretariatAudit = await secretariat.requestJson(
+      "/audit/review-cycles/review-cycle-fire-sensors-apr/events"
+    );
+    assert.equal(secretariatAudit.response.status, 200);
+    assert.ok(Array.isArray(secretariatAudit.data));
 
     const secretariatForbidden = await secretariat.requestJson(
       "/approval/participant/cycles"
@@ -122,7 +133,9 @@ test(
   { timeout: 120000 },
   async () => {
     const participant = new SessionClient(apiBaseUrl);
+    const secretariat = new SessionClient(apiBaseUrl);
     await loginAs(participant, participantCredentials);
+    await loginAs(secretariat, secretariatCredentials);
 
     const cyclesResult = await participant.requestJson("/approval/participant/cycles");
     const activeCycle = cyclesResult.data.find(
@@ -187,6 +200,27 @@ test(
     assert.equal(savedPosition.response.status, 200);
     assert.equal(savedPosition.data.position, "AGREED_WITH_COMMENTS");
     assert.match(savedPosition.data.note, /Автотест/u);
+
+    const auditEvents = await secretariat.requestJson(
+      "/audit/review-cycles/review-cycle-fire-sensors-apr/events"
+    );
+    assert.equal(auditEvents.response.status, 200);
+    assert.ok(
+      auditEvents.data.some(
+        (event) =>
+          event.actionType === "COMMENT_CREATED" &&
+          event.actorUserId === "user-participant" &&
+          event.relatedCommentId === createdComment.data.id
+      )
+    );
+    assert.ok(
+      auditEvents.data.some(
+        (event) =>
+          event.actionType === "POSITION_SUBMITTED" &&
+          event.actorUserId === "user-participant" &&
+          event.entityType === "PARTICIPANT_POSITION"
+      )
+    );
   }
 );
 
@@ -294,5 +328,34 @@ test(
       `/approval/participant/cycles/review-cycle-fire-sensors-apr/drafts/draft-standard-fire-sensors/files/${uploadedSecretariatFile.data.id}/download`
     );
     assert.equal(forbiddenDownload.response.status, 404);
+
+    const auditEvents = await secretariat.requestJson(
+      "/audit/review-cycles/review-cycle-fire-sensors-apr/events"
+    );
+    assert.equal(auditEvents.response.status, 200);
+    assert.ok(
+      auditEvents.data.some(
+        (event) =>
+          event.actionType === "COMMENT_STATUS_CHANGED" &&
+          event.actorUserId === "user-secretariat" &&
+          event.relatedCommentId === "comment-fire-sensors-ural-1"
+      )
+    );
+    assert.ok(
+      auditEvents.data.some(
+        (event) =>
+          event.actionType === "SECRETARIAT_RESPONSE_UPDATED" &&
+          event.actorUserId === "user-secretariat" &&
+          event.relatedCommentId === "comment-fire-sensors-ural-1"
+      )
+    );
+    assert.ok(
+      auditEvents.data.some(
+        (event) =>
+          event.actionType === "FILE_UPLOADED" &&
+          event.actorUserId === "user-secretariat" &&
+          event.relatedFileId === uploadedParticipantFile.data.id
+      )
+    );
   }
 );

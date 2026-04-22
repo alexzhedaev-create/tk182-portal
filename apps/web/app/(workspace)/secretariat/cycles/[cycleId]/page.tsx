@@ -1,10 +1,15 @@
 import { redirect } from "next/navigation";
 
 import { AccessDeniedCard } from "../../../../../components/access-denied-card";
+import { SecretariatAuditTrail } from "../../../../../components/secretariat-audit-trail";
 import { SecretariatCommentsPanel } from "../../../../../components/secretariat-comments-panel";
 import { SecretariatVersionFilesPanel } from "../../../../../components/secretariat-version-files-panel";
 import { WorkspaceSessionCard } from "../../../../../components/workspace-session-card";
-import { getSecretariatCycleDetail, getServerSession } from "../../../../../lib/api";
+import {
+  getReviewCycleAuditEvents,
+  getSecretariatCycleDetail,
+  getServerSession
+} from "../../../../../lib/api";
 import { canAccessWorkspace } from "../../../../../lib/auth";
 import {
   formatDate,
@@ -38,7 +43,10 @@ export default async function SecretariatCycleDetailPage({
     );
   }
 
-  const detail = await getSecretariatCycleDetail(params.cycleId);
+  const [detail, auditEvents] = await Promise.all([
+    getSecretariatCycleDetail(params.cycleId),
+    getReviewCycleAuditEvents(params.cycleId)
+  ]);
 
   return (
     <div className="page-frame">
@@ -158,6 +166,7 @@ export default async function SecretariatCycleDetailPage({
       </article>
 
       <SecretariatCommentsPanel comments={detail.comments} />
+      <SecretariatAuditTrail events={auditEvents} />
     </div>
   );
 }

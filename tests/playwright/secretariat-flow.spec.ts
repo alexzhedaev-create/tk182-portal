@@ -53,7 +53,22 @@ test("секретариат может обновить статус замеч
   await page.waitForTimeout(1000);
   await page.reload();
 
+  const uploadedFileCard = page
+    .locator('[data-testid^="secretariat-version-file-"]')
+    .filter({ hasText: uploadFileName })
+    .first();
+
   await expect(page.getByTestId("secretariat-version-files-upload-form")).toBeVisible();
-  await expect(page.getByText(uploadFileName)).toBeVisible();
-  await expect(page.getByText(`${marker}: файл, загруженный через Playwright.`)).toBeVisible();
+  await expect(uploadedFileCard).toBeVisible();
+  await expect(uploadedFileCard).toContainText(uploadFileName);
+  await expect(uploadedFileCard).toContainText(
+    `${marker}: файл, загруженный через Playwright.`
+  );
+  await expect(page.getByTestId("secretariat-audit-panel")).toContainText(
+    "Журнал изменений"
+  );
+  await expect(page.getByTestId("secretariat-audit-panel")).toContainText(
+    "Изменен статус замечания"
+  );
+  await expect(page.getByTestId("secretariat-audit-panel")).toContainText(uploadFileName);
 });
