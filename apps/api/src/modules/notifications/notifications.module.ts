@@ -1,33 +1,11 @@
-import { Controller, Get, Injectable, Module } from "@nestjs/common";
+import { Module } from "@nestjs/common";
 
-import type { ModuleStubResponse } from "@tk182/shared-types";
-
-import { createModuleStubResponse } from "../../common/stub-response";
-
-@Injectable()
-class NotificationsService {
-  getSummary(): ModuleStubResponse {
-    return createModuleStubResponse(
-      "notifications",
-      ["participant", "secretariat"],
-      "Notification preferences and delivery rules will be managed here.",
-      "Add delivery preferences, event triggers, and queued notifications."
-    );
-  }
-}
-
-@Controller("notifications")
-class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
-
-  @Get()
-  getSummary(): ModuleStubResponse {
-    return this.notificationsService.getSummary();
-  }
-}
+import { NotificationsController } from "./notifications.controller";
+import { NotificationsService } from "./notifications.service";
 
 @Module({
   controllers: [NotificationsController],
-  providers: [NotificationsService]
+  providers: [NotificationsService],
+  exports: [NotificationsService]
 })
 export class NotificationsModule {}

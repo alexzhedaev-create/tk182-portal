@@ -6,6 +6,7 @@ The repository now includes a real first review workflow on top of the existing 
 - public website in Russian
 - participant workspace for reviewing assigned draft standards
 - secretariat workspace for tracking cycle progress, participant responses, comment statuses, and version files
+- participant notification center for important workflow events
 
 The MVP remains local-only. There are no cloud integrations, no external auth providers, and no multilingual infrastructure yet. User-facing UI is Russian only in this phase.
 
@@ -112,6 +113,7 @@ The current seed demonstrates the first real draft standard review slice:
 - participant final positions in Russian
 - secretariat review statuses and responses
 - persistent audit trail for core review and file actions
+- persistent in-portal notifications for participant-facing workflow events
 - local version-file storage with DB metadata and role-based download access
 
 Core persisted entities now include:
@@ -128,6 +130,7 @@ Core persisted entities now include:
 - `ParticipantPosition`
 - `DraftStandardVersionFile`
 - `AuditEvent`
+- `Notification`
 
 ## Local file storage
 
@@ -157,7 +160,9 @@ The seed script recreates several demo text attachments for the active and archi
    - `Согласовано с замечаниями`
    - `Не согласовано`
 9. Download an available file from `Файлы версии`
-10. Refresh the page and verify that the session and submitted position persist
+10. Вернитесь в `На согласовании` и проверьте блок `Уведомления`
+11. При необходимости отметьте уведомление как прочитанное или нажмите `Прочитать все`
+12. Refresh the page and verify that the session and submitted position persist
 
 ### Secretariat flow
 
@@ -213,6 +218,7 @@ The MVP now includes integration/e2e coverage for the current core flows:
 - participant file visibility
 - forbidden participant download of secretariat-only files
 - audit trail creation for participant and secretariat review actions
+- participant notification creation and read/unread state updates
 - production-like `next start` checks for the current Russian UI
 - browser-level Playwright scenarios for the current Russian UI
 
@@ -254,6 +260,7 @@ The Playwright suite covers:
 
 - participant login through the real Russian login form
 - participant redirect into `На согласовании`
+- participant notification block visibility on the real Russian workspace page
 - participant comment creation through the browser UI
 - participant final position submission through the browser UI
 - secretariat login through the real Russian login form
@@ -321,6 +328,32 @@ pnpm test
 - Wrong-role access shows a clear Russian access-denied page
 - Audit history is secretariat-only in the MVP UI and API
 
+## Notifications
+
+The MVP notification center is participant-focused and lives inside the participant workspace.
+
+Current notification events:
+
+- assignment to an active review cycle
+- comment status changed by secretariat
+- secretariat response added or updated on a participant comment
+- participant final position submitted or updated
+- participant-visible file uploaded to the current version
+
+Available API endpoints:
+
+- `GET /notifications`
+- `GET /notifications/unread-count`
+- `POST /notifications/:notificationId/read`
+- `POST /notifications/read-all`
+
+What is intentionally out of scope for now:
+
+- email, SMS, push, or external delivery channels
+- a separate secretariat notification center in the web UI
+- notifications for every audit event or every administrative action
+- automatic notifications for opening new cycles or publishing new versions outside the currently implemented workflow actions
+
 ## Audit trail
 
 The MVP audit trail covers persistent workflow events for:
@@ -372,11 +405,13 @@ Implemented now:
 - secretariat review management endpoints and UI
 - local upload/download pipeline for draft standard version files
 - persistent audit trail for the current review workflow actions
+- persistent participant notifications with unread/read flow inside the portal
 - automated API and production-like web e2e coverage for the current MVP flows
 - Playwright browser coverage for participant, secretariat, and access-control flows
 - Russian-only visible UI for current MVP surfaces
 
 Still intentionally minimal:
 - public content pages remain mostly informational placeholders
-- notifications, pages, news, meetings, and broader standards lifecycle remain MVP-level scaffolds
+- pages, news, meetings, and broader standards lifecycle remain MVP-level scaffolds
 - audit currently covers only the core review/file actions described above
+- notifications currently cover only the participant-facing workflow events described above

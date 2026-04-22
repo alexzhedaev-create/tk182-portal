@@ -95,10 +95,18 @@ test(
     );
     assert.equal(anonymousRestricted.response.status, 401);
 
+    const anonymousNotifications = await anonymous.requestJson("/notifications");
+    assert.equal(anonymousNotifications.response.status, 401);
+
     const participantCycles = await participant.requestJson("/approval/participant/cycles");
     assert.equal(participantCycles.response.status, 200);
     assert.ok(Array.isArray(participantCycles.data));
     assert.ok(participantCycles.data.length > 0);
+
+    const participantNotifications = await participant.requestJson("/notifications");
+    assert.equal(participantNotifications.response.status, 200);
+    assert.ok(Array.isArray(participantNotifications.data));
+    assert.ok(participantNotifications.data.length > 0);
 
     const participantForbidden = await participant.requestJson(
       "/approval/secretariat/cycles"
@@ -200,6 +208,16 @@ test(
     assert.equal(savedPosition.response.status, 200);
     assert.equal(savedPosition.data.position, "AGREED_WITH_COMMENTS");
     assert.match(savedPosition.data.note, /Автотест/u);
+
+    const participantNotifications = await participant.requestJson("/notifications");
+    assert.equal(participantNotifications.response.status, 200);
+    assert.ok(
+      participantNotifications.data.some(
+        (notification) =>
+          notification.type === "FINAL_POSITION_SUBMITTED" &&
+          notification.relatedCycleId === "review-cycle-fire-sensors-apr"
+      )
+    );
 
     const auditEvents = await secretariat.requestJson(
       "/audit/review-cycles/review-cycle-fire-sensors-apr/events"
@@ -328,6 +346,64 @@ test(
       `/approval/participant/cycles/review-cycle-fire-sensors-apr/drafts/draft-standard-fire-sensors/files/${uploadedSecretariatFile.data.id}/download`
     );
     assert.equal(forbiddenDownload.response.status, 404);
+
+    const unreadBeforeRead = await participant.requestJson("/notifications/unread-count");
+    assert.equal(unreadBeforeRead.response.status, 200);
+    assert.ok(unreadBeforeRead.data.unreadCount >= 3);
+
+    const participantNotifications = await participant.requestJson("/notifications");
+    assert.equal(participantNotifications.response.status, 200);
+
+    const statusNotification = participantNotifications.data.find(
+      (notification) =>
+        notification.type === "COMMENT_STATUS_CHANGED" &&
+        notification.relatedCommentId === "comment-fire-sensors-ural-1"
+    );
+    const responseNotification = participantNotifications.data.find(
+      (notification) =>
+        notification.type === "SECRETARIAT_RESPONSE_UPDATED" &&
+        notification.relatedCommentId === "comment-fire-sensors-ural-1"
+    );
+    const fileNotification = participantNotifications.data.find(
+      (notification) =>
+        notification.type === "VERSION_FILE_UPLOADED" &&
+        notification.relatedFileId === uploadedParticipantFile.data.id
+    );
+
+    assert.ok(statusNotification);
+    assert.match(statusNotification.message, /Нужно уточнение/u);
+    assert.ok(responseNotification);
+    assert.ok(fileNotification);
+    assert.match(fileNotification.message, /participant-visible-autotest\.txt/u);
+
+    const markedRead = await participant.requestJson(
+      `/notifications/${statusNotification.id}/read`,
+      {
+        method: "POST"
+      }
+    );
+    assertCreatedOrOk(markedRead.response.status, markedRead.text);
+    assert.ok(markedRead.data.readAt);
+
+    const unreadAfterSingleRead = await participant.requestJson(
+      "/notifications/unread-count"
+    );
+    assert.equal(unreadAfterSingleRead.response.status, 200);
+    assert.equal(
+      unreadAfterSingleRead.data.unreadCount,
+      unreadBeforeRead.data.unreadCount - 1
+    );
+
+    const markedAllRead = await participant.requestJson("/notifications/read-all", {
+      method: "POST"
+    });
+    assertCreatedOrOk(markedAllRead.response.status, markedAllRead.text);
+    assert.equal(markedAllRead.data.status, "success");
+    assert.ok(markedAllRead.data.updatedCount >= 1);
+
+    const unreadAfterAll = await participant.requestJson("/notifications/unread-count");
+    assert.equal(unreadAfterAll.response.status, 200);
+    assert.equal(unreadAfterAll.data.unreadCount, 0);
 
     const auditEvents = await secretariat.requestJson(
       "/audit/review-cycles/review-cycle-fire-sensors-apr/events"

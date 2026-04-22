@@ -3,6 +3,8 @@ import "server-only";
 import type {
   ApprovalAuditEvent,
   DocumentSummary,
+  NotificationRecord,
+  NotificationUnreadCountDto,
   PaginatedResult,
   ParticipantAssignedReviewCycle,
   ParticipantDraftStandardCard,
@@ -123,4 +125,12 @@ export function getReviewCycleAuditEvents(
   return fetchFromApi<ApprovalAuditEvent[]>(
     `/audit/review-cycles/${encodeURIComponent(cycleId)}/events`
   );
+}
+
+export function getMyNotifications(): Promise<NotificationRecord[]> {
+  return fetchFromApi<NotificationRecord[]>("/notifications");
+}
+
+export function getMyUnreadNotificationCount(): Promise<NotificationUnreadCountDto> {
+  return fetchFromApi<NotificationUnreadCountDto>("/notifications/unread-count");
 }

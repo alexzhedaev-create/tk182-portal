@@ -2,8 +2,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccessDeniedCard } from "../../../components/access-denied-card";
+import { ParticipantNotificationsPanel } from "../../../components/participant-notifications-panel";
 import { WorkspaceSessionCard } from "../../../components/workspace-session-card";
-import { getParticipantAssignedCycles, getServerSession } from "../../../lib/api";
+import {
+  getMyNotifications,
+  getMyUnreadNotificationCount,
+  getParticipantAssignedCycles,
+  getServerSession
+} from "../../../lib/api";
 import { canAccessWorkspace } from "../../../lib/auth";
 import { formatDate, formatReviewCycleStatus } from "../../../lib/review";
 
@@ -24,7 +30,11 @@ export default async function ParticipantWorkspacePage() {
     );
   }
 
-  const assignedCycles = await getParticipantAssignedCycles();
+  const [assignedCycles, notifications, unreadCount] = await Promise.all([
+    getParticipantAssignedCycles(),
+    getMyNotifications(),
+    getMyUnreadNotificationCount()
+  ]);
 
   return (
     <div className="page-frame">
@@ -41,6 +51,7 @@ export default async function ParticipantWorkspacePage() {
         <div className="pill-row">
           <span className="pill">Назначено циклов: {assignedCycles.length}</span>
           <span className="pill">Роль: Участник</span>
+          <span className="pill">Непрочитанных уведомлений: {unreadCount.unreadCount}</span>
           <span className="pill">Локальная сессия активна</span>
         </div>
       </section>
@@ -56,6 +67,11 @@ export default async function ParticipantWorkspacePage() {
             <li>После подготовки комментариев отправьте итоговую позицию организации.</li>
           </ul>
         </article>
+
+        <ParticipantNotificationsPanel
+          notifications={notifications}
+          unreadCount={unreadCount.unreadCount}
+        />
       </section>
 
       <section className="content-stack">

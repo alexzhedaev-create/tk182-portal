@@ -97,7 +97,7 @@ const apiEndpoints: ApiIndexResponse["endpoints"] = [
     method: "GET",
     path: "/notifications",
     areas: ["participant", "secretariat"],
-    description: "Notification preferences and delivery scaffold."
+    description: "In-portal notification center for review workflow events and unread counts."
   },
   {
     method: "GET",

@@ -10,6 +10,7 @@ import type {
   CreateVersionFileDto,
   CreateReviewCommentDto,
   MutationResponseDto,
+  NotificationType,
   ParticipantAssignedReviewCycle,
   ParticipantDraftStandardCard,
   ParticipantPositionRecord,
@@ -35,6 +36,7 @@ import {
   type UploadedBinaryFile
 } from "./approval-file-storage.service";
 import { AuditService } from "../audit/audit.service";
+import { NotificationsService } from "../notifications/notifications.service";
 
 interface ParticipantCycleRow {
   assignment_id: string;
@@ -170,6 +172,7 @@ interface VersionAuditContextRow {
 }
 
 interface SecretariatCommentMutationRow {
+  author_user_id: string;
   draft_standard_id: string;
   page_ref: string | null;
   point_ref: string | null;
@@ -177,6 +180,12 @@ interface SecretariatCommentMutationRow {
   review_status: ReviewCommentStatus;
   secretariat_response: string | null;
   section_ref: string;
+}
+
+interface VersionNotificationRecipientRow {
+  draft_standard_id: string;
+  review_cycle_id: string;
+  user_id: string;
 }
 
 interface VersionFileDownloadPayload {
@@ -212,7 +221,8 @@ export class ApprovalService {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly approvalFileStorageService: ApprovalFileStorageService,
-    private readonly auditService: AuditService
+    private readonly auditService: AuditService,
+    private readonly notificationsService: NotificationsService
   ) {}
 
   getSummary() {
@@ -610,6 +620,9 @@ export class ApprovalService {
       const actionMessage = existingPosition
         ? "Обновлена итоговая позиция участника"
         : "Зафиксирована итоговая позиция участника";
+      const notificationType: NotificationType = existingPosition
+        ? "FINAL_POSITION_UPDATED"
+        : "FINAL_POSITION_SUBMITTED";
 
       await this.auditService.recordEvent({
         actorUserId: userId,
@@ -628,6 +641,23 @@ export class ApprovalService {
           previousPosition: existingPosition?.position ?? null,
           previousNote: existingPosition?.note ?? null
         }
+      });
+
+      await this.notificationsService.createNotification({
+        recipientUserId: userId,
+        type: notificationType,
+        title: existingPosition
+          ? "Итоговая позиция обновлена"
+          : "Итоговая позиция отправлена",
+        message: `По вашему проекту согласования зафиксирована позиция «${this.formatParticipantPositionLabel(
+          savedPosition.position
+        )}».`,
+        relatedCycleId: context.cycleId,
+        relatedDraftStandardId: context.draftStandardId,
+        targetRoute: this.buildParticipantCycleRoute(
+          context.cycleId,
+          context.draftStandardId
+        )
       });
     }
 
@@ -748,6 +778,26 @@ export class ApprovalService {
       message: `Загружен файл версии «${createdFile.originalName}».`,
       metadata: this.buildVersionFileAuditMetadata(createdFile)
     });
+
+    if (createdFile.visibility === "ASSIGNED_PARTICIPANTS") {
+      const recipients = await this.listNotificationRecipientsForVersion(versionId);
+
+      await this.notificationsService.createNotifications(
+        recipients.map((recipient) => ({
+          recipientUserId: recipient.user_id,
+          type: "VERSION_FILE_UPLOADED" as const,
+          title: "Добавлен новый файл версии",
+          message: `По назначенному вам проекту стандарта опубликован файл «${createdFile.originalName}».`,
+          relatedCycleId: recipient.review_cycle_id,
+          relatedDraftStandardId: recipient.draft_standard_id,
+          relatedFileId: fileId,
+          targetRoute: this.buildParticipantCycleRoute(
+            recipient.review_cycle_id,
+            recipient.draft_standard_id
+          )
+        }))
+      );
+    }
 
     return this.pickVersionFileSummary(createdFile);
   }
@@ -958,9 +1008,28 @@ export class ApprovalService {
           )
         }
       });
+
+      await this.notificationsService.createNotification({
+        recipientUserId: comment.author_user_id,
+        type: "COMMENT_STATUS_CHANGED",
+        title: "Изменен статус замечания",
+        message: `Секретариат изменил статус вашего замечания на «${this.formatReviewCommentStatusLabel(
+          updatedComment.reviewStatus
+        )}».`,
+        relatedCycleId: comment.review_cycle_id,
+        relatedDraftStandardId: comment.draft_standard_id,
+        relatedCommentId: commentId,
+        targetRoute: this.buildParticipantCycleRoute(
+          comment.review_cycle_id,
+          comment.draft_standard_id
+        )
+      });
     }
 
-    if (comment.secretariat_response !== updatedComment.secretariatResponse) {
+    if (
+      comment.secretariat_response !== updatedComment.secretariatResponse &&
+      updatedComment.secretariatResponse
+    ) {
       await this.auditService.recordEvent({
         actorUserId: userId,
         actionType: "SECRETARIAT_RESPONSE_UPDATED",
@@ -975,6 +1044,20 @@ export class ApprovalService {
           previousSecretariatResponse: comment.secretariat_response,
           secretariatResponse: updatedComment.secretariatResponse
         }
+      });
+
+      await this.notificationsService.createNotification({
+        recipientUserId: comment.author_user_id,
+        type: "SECRETARIAT_RESPONSE_UPDATED",
+        title: "Добавлен ответ секретариата",
+        message: "По вашему замечанию опубликован новый ответ секретариата.",
+        relatedCycleId: comment.review_cycle_id,
+        relatedDraftStandardId: comment.draft_standard_id,
+        relatedCommentId: commentId,
+        targetRoute: this.buildParticipantCycleRoute(
+          comment.review_cycle_id,
+          comment.draft_standard_id
+        )
       });
     }
 
@@ -1168,6 +1251,7 @@ export class ApprovalService {
     const result = await this.databaseService.query<SecretariatCommentMutationRow>(
       `
         SELECT
+          author_user_id,
           review_cycle_id,
           draft_standard_id,
           section_ref,
@@ -1387,6 +1471,26 @@ export class ApprovalService {
     }
 
     return row;
+  }
+
+  private async listNotificationRecipientsForVersion(
+    versionId: string
+  ): Promise<VersionNotificationRecipientRow[]> {
+    const result = await this.databaseService.query<VersionNotificationRecipientRow>(
+      `
+        SELECT DISTINCT
+          ra.user_id,
+          rc.id AS review_cycle_id,
+          rc.draft_standard_id
+        FROM review_assignments ra
+        INNER JOIN review_cycles rc ON rc.id = ra.review_cycle_id
+        WHERE rc.draft_standard_version_id = $1
+          AND rc.status = 'open'
+      `,
+      [versionId]
+    );
+
+    return result.rows;
   }
 
   private async listVersionFilesByVersionId(
@@ -1834,6 +1938,13 @@ export class ApprovalService {
       default:
         return visibility;
     }
+  }
+
+  private buildParticipantCycleRoute(
+    cycleId: string,
+    draftStandardId: string
+  ): string {
+    return `/participant/reviews/${cycleId}/${draftStandardId}`;
   }
 
   private assertCycleIsEditable(

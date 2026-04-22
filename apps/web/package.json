@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "node ./scripts/prepare-runtime.mjs && NEXT_DIST_DIR=.next-dev next dev --hostname ${WEB_HOST:-127.0.0.1} --port ${WEB_PORT:-3000}",
-    "build": "node ./scripts/prepare-runtime.mjs && NEXT_DIST_DIR=.next next build",
+    "build": "NEXT_DIST_DIR=.next node ./scripts/clean-dist.mjs && node ./scripts/prepare-runtime.mjs && NEXT_DIST_DIR=.next next build",
     "start": "node ./scripts/prepare-runtime.mjs && NEXT_DIST_DIR=.next next start --hostname ${WEB_HOST:-127.0.0.1} --port ${WEB_PORT:-3000}",
     "typecheck": "tsc --noEmit"
   },

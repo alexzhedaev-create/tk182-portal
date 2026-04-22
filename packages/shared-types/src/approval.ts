@@ -19,6 +19,14 @@ export type ReviewFileVisibility =
   | "ASSIGNED_PARTICIPANTS"
   | "SECRETARIAT_ONLY";
 
+export type NotificationType =
+  | "ASSIGNED_TO_ACTIVE_CYCLE"
+  | "COMMENT_STATUS_CHANGED"
+  | "SECRETARIAT_RESPONSE_UPDATED"
+  | "FINAL_POSITION_SUBMITTED"
+  | "FINAL_POSITION_UPDATED"
+  | "VERSION_FILE_UPLOADED";
+
 export type AuditActionType =
   | "COMMENT_CREATED"
   | "COMMENT_UPDATED"
@@ -204,11 +212,27 @@ export interface MutationResponseDto {
   message: string;
 }
 
-export interface NotificationSummary {
+export interface NotificationRecord {
   id: string;
-  channel: "email" | "in-app";
-  topic: string;
-  enabled: boolean;
+  recipientUserId: string;
+  createdAt: string;
+  readAt: string | null;
+  type: NotificationType;
+  title: string;
+  message: string;
+  relatedCycleId: string | null;
+  relatedDraftStandardId: string | null;
+  relatedCommentId: string | null;
+  relatedFileId: string | null;
+  targetRoute: string | null;
+}
+
+export interface NotificationUnreadCountDto {
+  unreadCount: number;
+}
+
+export interface MarkAllNotificationsReadResponse extends MutationResponseDto {
+  updatedCount: number;
 }
 
 export interface AuditEntrySummary {

@@ -123,6 +123,27 @@ interface SeedVersionFile {
   visibility: "ASSIGNED_PARTICIPANTS" | "SECRETARIAT_ONLY";
 }
 
+interface SeedNotification {
+  createdAt: string;
+  id: string;
+  message: string;
+  readAt?: string | null;
+  recipientUserId: string;
+  relatedCommentId?: string | null;
+  relatedCycleId?: string | null;
+  relatedDraftStandardId?: string | null;
+  relatedFileId?: string | null;
+  targetRoute?: string | null;
+  title: string;
+  type:
+    | "ASSIGNED_TO_ACTIVE_CYCLE"
+    | "COMMENT_STATUS_CHANGED"
+    | "SECRETARIAT_RESPONSE_UPDATED"
+    | "FINAL_POSITION_SUBMITTED"
+    | "FINAL_POSITION_UPDATED"
+    | "VERSION_FILE_UPLOADED";
+}
+
 const organizations: SeedOrganization[] = [
   {
     id: "org-tk182-secretariat",
@@ -525,6 +546,36 @@ const versionFiles: SeedVersionFile[] = [
   }
 ];
 
+const notifications: SeedNotification[] = [
+  {
+    id: "notification-assignment-user-participant",
+    recipientUserId: "user-participant",
+    type: "ASSIGNED_TO_ACTIVE_CYCLE",
+    title: "Назначен новый цикл согласования",
+    message:
+      "Вам назначен активный цикл согласования по проекту ТК182-01-2026. Проверьте карточку проекта и подготовьте замечания.",
+    createdAt: "2026-04-15T09:15:00.000Z",
+    relatedCycleId: "review-cycle-fire-sensors-apr",
+    relatedDraftStandardId: "draft-standard-fire-sensors",
+    targetRoute:
+      "/participant/reviews/review-cycle-fire-sensors-apr/draft-standard-fire-sensors"
+  },
+  {
+    id: "notification-assignment-user-participant-2",
+    recipientUserId: "user-participant-2",
+    type: "ASSIGNED_TO_ACTIVE_CYCLE",
+    title: "Назначен новый цикл согласования",
+    message:
+      "Вам назначен активный цикл согласования по проекту ТК182-01-2026. Ознакомьтесь с редакцией 1.1 и файлами версии.",
+    createdAt: "2026-04-15T09:16:00.000Z",
+    readAt: "2026-04-16T11:00:00.000Z",
+    relatedCycleId: "review-cycle-fire-sensors-apr",
+    relatedDraftStandardId: "draft-standard-fire-sensors",
+    targetRoute:
+      "/participant/reviews/review-cycle-fire-sensors-apr/draft-standard-fire-sensors"
+  }
+];
+
 async function main(): Promise<void> {
   const pool = createDatabasePool();
   const storageRootDirectory = getApplicationConfig().storage.rootDir;
@@ -654,6 +705,7 @@ async function main(): Promise<void> {
       }
 
       await client.query(`DELETE FROM sessions`);
+      await client.query(`DELETE FROM notifications`);
       await client.query(`DELETE FROM participant_positions`);
       await client.query(`DELETE FROM review_comments`);
       await client.query(`DELETE FROM review_assignments`);
@@ -868,6 +920,44 @@ async function main(): Promise<void> {
             file.uploadedByUserId,
             file.visibility,
             file.description ?? null
+          ]
+        );
+      }
+
+      for (const notification of notifications) {
+        await client.query(
+          `
+            INSERT INTO notifications (
+              id,
+              recipient_user_id,
+              created_at,
+              read_at,
+              type,
+              title,
+              message,
+              related_cycle_id,
+              related_draft_standard_id,
+              related_comment_id,
+              related_file_id,
+              target_route
+            )
+            VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+            )
+          `,
+          [
+            notification.id,
+            notification.recipientUserId,
+            notification.createdAt,
+            notification.readAt ?? null,
+            notification.type,
+            notification.title,
+            notification.message,
+            notification.relatedCycleId ?? null,
+            notification.relatedDraftStandardId ?? null,
+            notification.relatedCommentId ?? null,
+            notification.relatedFileId ?? null,
+            notification.targetRoute ?? null
           ]
         );
       }
