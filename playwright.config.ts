@@ -27,7 +27,7 @@ export default defineConfig({
   },
   outputDir: "test-results/playwright",
   reporter: process.env.CI
-    ? [["github"], ["html", { open: "never" }]]
+    ? [["github"]]
     : [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: webBaseUrl,

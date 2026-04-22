@@ -63,6 +63,16 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Upload runtime artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-builds
+          path: |
+            apps/api/dist
+            apps/web/.next
+            packages/shared-types/dist
+          if-no-files-found: error
+
   e2e-api:
     name: API integration tests
     needs: quality
@@ -103,8 +113,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build runtime artifacts
-        run: pnpm build
+      - name: Download runtime artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: runtime-builds
+          path: .
 
       - name: Prepare database
         run: pnpm db:setup
@@ -152,8 +165,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build runtime artifacts
-        run: pnpm build
+      - name: Download runtime artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: runtime-builds
+          path: .
 
       - name: Prepare database
         run: pnpm db:setup
@@ -201,11 +217,35 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install Playwright Chromium
+      - name: Download runtime artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: runtime-builds
+          path: .
+
+      - name: Cache Playwright Chromium
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-chromium-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Playwright Chromium and Linux deps
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Ensure cached Playwright Chromium is available
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install chromium
+
+      - name: Prepare database
+        run: pnpm db:setup
+
       - name: Run browser e2e suite
-        run: pnpm test:e2e:browser
+        env:
+          PLAYWRIGHT_API_PORT: "3001"
+          PLAYWRIGHT_WEB_PORT: "3000"
+        run: pnpm test:e2e:browser:ci
 
       - name: Upload Playwright artifacts
         if: failure()

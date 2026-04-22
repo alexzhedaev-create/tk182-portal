@@ -22,6 +22,7 @@
     "test:e2e:api": "node --test --test-concurrency=1 tests/e2e/01-api-flows.test.mjs",
     "test:e2e:web": "node --test --test-concurrency=1 tests/e2e/02-web-runtime.test.mjs",
     "test:e2e:browser": "node tests/playwright/run-playwright.mjs",
+    "test:e2e:browser:ci": "playwright test",
     "playwright:install": "playwright install chromium",
     "compose:config": "docker compose -f infra/docker-compose.yml config > /dev/null",
     "compose:up": "docker compose -f infra/docker-compose.yml up --build",
