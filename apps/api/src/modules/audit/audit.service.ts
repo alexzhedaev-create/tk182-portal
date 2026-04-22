@@ -160,7 +160,8 @@ export class AuditService {
         "NEWS_ITEM",
         "PUBLIC_DOCUMENT",
         "MEETING_RECORD",
-        "APPROVED_STANDARD"
+        "APPROVED_STANDARD",
+        "LEGACY_CONTENT_INVENTORY"
       ]],
       filters
     );

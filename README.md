@@ -194,6 +194,24 @@ Manual migration from the old `viam.ru/tk182` site is intentionally supported th
 
 This keeps the target structure ready for staged migration while avoiding automatic import complexity in the MVP.
 
+The portal now distinguishes between two migration layers:
+
+- `Реестр материалов старого сайта`: the full inventory of legacy materials, including items that do not yet exist as portal content entries
+- portal content entries: the actual persisted `Новости`, `Документы`, `Заседания`, and `Утвержденные стандарты` shown on public pages
+
+Recommended end-to-end migration workflow for secretariat users:
+
+1. Add a material to `Реестр материалов старого сайта`
+2. Fill in `Источник на старом сайте`, section, optional date, and migration note
+3. Keep the inventory status as `Найдено` until a portal entry is created
+4. Create the real portal content entry and upload the local file if needed
+5. Link the inventory record to `Связанная запись портала`
+6. Change the inventory status to `Создано в портале`
+7. Verify the rendered public page and downloadable file
+8. Mark both the portal content entry and the inventory record as `Проверено`
+
+This makes the full migration scope traceable even before every legacy item has a destination record in the new portal.
+
 ## Local file storage
 
 The MVP file layer uses the local filesystem only.

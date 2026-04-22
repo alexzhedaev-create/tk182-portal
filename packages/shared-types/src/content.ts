@@ -8,6 +8,11 @@ export interface PageSummary {
 
 export type ContentPublicationStatus = "draft" | "published";
 export type ContentMigrationStatus = "NOT_IMPORTED" | "IMPORTED" | "VERIFIED";
+export type LegacyContentInventoryStatus =
+  | "FOUND"
+  | "CREATED_IN_PORTAL"
+  | "VERIFIED"
+  | "SKIPPED";
 
 export type LegacyContentSection =
   | "NEWS"
@@ -18,6 +23,12 @@ export type LegacyContentSection =
   | "MEETING_MINUTES"
   | "MEETING_AGENDA"
   | "APPROVED_STANDARDS";
+
+export type LinkedPortalEntityType =
+  | "NEWS_ITEM"
+  | "PUBLIC_DOCUMENT"
+  | "MEETING_RECORD"
+  | "APPROVED_STANDARD";
 
 export type PublicDocumentCategory =
   | "MAIN_DOCUMENTS"
@@ -46,6 +57,29 @@ export interface ContentMigrationInfo {
 export interface BackofficeContentListFilters {
   legacySection?: LegacyContentSection;
   migrationStatus?: ContentMigrationStatus;
+}
+
+export interface LegacyContentInventoryFilters {
+  legacySection?: LegacyContentSection;
+  migrationStatus?: LegacyContentInventoryStatus;
+}
+
+export interface LinkedPortalEntityReference {
+  entityId: string;
+  entityType: LinkedPortalEntityType;
+  title: string;
+}
+
+export interface LegacyContentInventoryRecord {
+  id: string;
+  legacySection: LegacyContentSection;
+  legacyTitle: string;
+  legacyUrl: string | null;
+  legacyDate: string | null;
+  legacyType: string | null;
+  migrationStatus: LegacyContentInventoryStatus;
+  migrationNote: string | null;
+  linkedPortalRecord: LinkedPortalEntityReference | null;
 }
 
 export interface NewsArticleSummary {
@@ -175,6 +209,30 @@ export interface ContentMigrationChecklistEntry {
   notImportedCount: number;
   pendingTitles: string[];
   verifiedCount: number;
+}
+
+export interface CreateLegacyContentInventoryDto {
+  legacyDate?: string | null;
+  legacySection: LegacyContentSection;
+  legacyTitle: string;
+  legacyType?: string | null;
+  legacyUrl?: string | null;
+  linkedPortalEntityId?: string | null;
+  linkedPortalEntityType?: LinkedPortalEntityType | null;
+  migrationNote?: string | null;
+  migrationStatus: LegacyContentInventoryStatus;
+}
+
+export interface UpdateLegacyContentInventoryDto {
+  legacyDate?: string | null;
+  legacySection: LegacyContentSection;
+  legacyTitle: string;
+  legacyType?: string | null;
+  legacyUrl?: string | null;
+  linkedPortalEntityId?: string | null;
+  linkedPortalEntityType?: LinkedPortalEntityType | null;
+  migrationNote?: string | null;
+  migrationStatus: LegacyContentInventoryStatus;
 }
 
 export interface CreateNewsItemDto {

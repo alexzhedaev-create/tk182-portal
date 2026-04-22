@@ -158,6 +158,18 @@ function formatRelatedObject(event: ApprovalAuditEvent): string {
 
       return code ? `Утвержденный стандарт: ${code}` : "Утвержденный стандарт";
     }
+    case "LEGACY_CONTENT_INVENTORY": {
+      const legacyTitle = pickTextValue(event.metadata, "legacyTitle");
+      const linkedPortalTitle = pickTextValue(event.metadata, "linkedPortalTitle");
+
+      if (legacyTitle && linkedPortalTitle) {
+        return `Реестр старого сайта: ${legacyTitle} • ${linkedPortalTitle}`;
+      }
+
+      return legacyTitle
+        ? `Реестр старого сайта: ${legacyTitle}`
+        : "Запись реестра старого сайта";
+    }
     default:
       return event.entityId;
   }

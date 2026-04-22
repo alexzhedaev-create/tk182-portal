@@ -5,6 +5,7 @@ import { rm, writeFile } from "node:fs/promises";
 import type {
   AuthRole,
   ContentMigrationStatus,
+  LegacyContentInventoryStatus,
   LegacyContentSection,
   ParticipantPositionValue,
   ReviewCommentStatus
@@ -259,6 +260,25 @@ interface SeedApprovedStandard {
   status: "draft" | "published";
   summary: string;
   title: string;
+}
+
+interface SeedLegacyContentInventory {
+  id: string;
+  legacyDate?: string | null;
+  legacySection: LegacyContentSection;
+  legacyTitle: string;
+  legacyType?: string | null;
+  legacyUrl?: string | null;
+  linkedPortalEntityId?: string | null;
+  linkedPortalEntityType?:
+    | "NEWS_ITEM"
+    | "PUBLIC_DOCUMENT"
+    | "MEETING_RECORD"
+    | "APPROVED_STANDARD"
+    | null;
+  migrationNote?: string | null;
+  migrationStatus: LegacyContentInventoryStatus;
+  updatedByUserId: string;
 }
 
 const organizations: SeedOrganization[] = [
@@ -1185,6 +1205,68 @@ const approvedStandards: SeedApprovedStandard[] = [
   }
 ];
 
+const legacyContentInventory: SeedLegacyContentInventory[] = [
+  {
+    id: "legacy-inventory-news-launch",
+    legacySection: "NEWS",
+    legacyTitle: "Открыт новый публичный контур публикаций",
+    legacyUrl: `${legacyBaseUrl}/news/otkryt-novyj-publichnyj-kontur-publikacij`,
+    legacyDate: "2026-04-18T09:00:00.000Z",
+    legacyType: "Новость",
+    migrationStatus: "VERIFIED",
+    migrationNote: "Новость создана в портале и полностью сверена.",
+    linkedPortalEntityType: "NEWS_ITEM",
+    linkedPortalEntityId: "news-portal-content-launch",
+    updatedByUserId: "user-secretariat"
+  },
+  {
+    id: "legacy-inventory-work-report-2025",
+    legacySection: "WORK_REPORTS",
+    legacyTitle: "Отчет о работе ТК 182 за 2025 год",
+    legacyUrl: `${legacyBaseUrl}/reports/otchet-o-rabote-tk-182-za-2025-god`,
+    legacyDate: "2026-02-05T12:00:00.000Z",
+    legacyType: "Публичный документ",
+    migrationStatus: "CREATED_IN_PORTAL",
+    migrationNote: "Запись и файл созданы, осталось финально проверить реквизиты.",
+    linkedPortalEntityType: "PUBLIC_DOCUMENT",
+    linkedPortalEntityId: "public-document-work-report-2025",
+    updatedByUserId: "user-secretariat"
+  },
+  {
+    id: "legacy-inventory-minutes-2025-12",
+    legacySection: "MEETING_MINUTES",
+    legacyTitle: "Протокол заседания ТК 182 от 18 декабря 2025 года",
+    legacyUrl: `${legacyBaseUrl}/meetings/protokol-18-12-2025`,
+    legacyDate: "2025-12-18T11:00:00.000Z",
+    legacyType: "Протокол заседания",
+    migrationStatus: "FOUND",
+    migrationNote: "Материал найден на старом сайте, запись в портале еще не создана.",
+    updatedByUserId: "user-secretariat"
+  },
+  {
+    id: "legacy-inventory-agenda-archive-2024",
+    legacySection: "MEETING_AGENDA",
+    legacyTitle: "Уведомление о заседании ТК 182 от 15 ноября 2024 года",
+    legacyUrl: `${legacyBaseUrl}/meetings/uvedomlenie-15-11-2024`,
+    legacyDate: "2024-11-15T09:00:00.000Z",
+    legacyType: "Повестка заседания",
+    migrationStatus: "SKIPPED",
+    migrationNote: "Материал не переносится в MVP из-за архивного характера и отсутствия вложений.",
+    updatedByUserId: "user-secretariat"
+  },
+  {
+    id: "legacy-inventory-approved-standard-medical",
+    legacySection: "APPROVED_STANDARDS",
+    legacyTitle: "ГОСТ Р 70527-2025 Материалы и аддитивные технологии в медицине. Общие положения",
+    legacyUrl: `${legacyBaseUrl}/standards/gost-r-70527-2025`,
+    legacyDate: "2026-02-14T09:30:00.000Z",
+    legacyType: "Утвержденный стандарт",
+    migrationStatus: "FOUND",
+    migrationNote: "Нужно завести отдельную запись стандарта и загрузить файл.",
+    updatedByUserId: "user-secretariat"
+  }
+];
+
 async function main(): Promise<void> {
   const pool = createDatabasePool();
   const storageRootDirectory = getApplicationConfig().storage.rootDir;
@@ -1385,6 +1467,7 @@ async function main(): Promise<void> {
 
       await client.query(`DELETE FROM sessions`);
       await client.query(`DELETE FROM notifications`);
+      await client.query(`DELETE FROM legacy_content_inventory`);
       await client.query(`DELETE FROM news_items`);
       await client.query(`DELETE FROM public_documents`);
       await client.query(`DELETE FROM meeting_records`);
@@ -1931,6 +2014,44 @@ async function main(): Promise<void> {
             file.uploadedByUserId,
             file.visibility,
             file.description ?? null
+          ]
+        );
+      }
+
+      for (const inventoryRecord of legacyContentInventory) {
+        await client.query(
+          `
+            INSERT INTO legacy_content_inventory (
+              id,
+              legacy_section,
+              legacy_title,
+              legacy_url,
+              legacy_date,
+              legacy_type,
+              migration_status,
+              migration_note,
+              linked_portal_entity_type,
+              linked_portal_entity_id,
+              created_by_user_id,
+              updated_by_user_id,
+              updated_at
+            )
+            VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11, NOW()
+            )
+          `,
+          [
+            inventoryRecord.id,
+            inventoryRecord.legacySection,
+            inventoryRecord.legacyTitle,
+            inventoryRecord.legacyUrl ?? null,
+            inventoryRecord.legacyDate ?? null,
+            inventoryRecord.legacyType ?? null,
+            inventoryRecord.migrationStatus,
+            inventoryRecord.migrationNote ?? null,
+            inventoryRecord.linkedPortalEntityType ?? null,
+            inventoryRecord.linkedPortalEntityId ?? null,
+            inventoryRecord.updatedByUserId
           ]
         );
       }

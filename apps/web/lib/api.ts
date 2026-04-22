@@ -11,6 +11,8 @@ import type {
   AuthenticatedUser,
   CommitteeBackofficeData,
   CommitteeStructureResponse,
+  LegacyContentInventoryFilters,
+  LegacyContentInventoryRecord,
   MeetingRecord,
   MeetingsPageData,
   NewsItemRecord,
@@ -210,6 +212,23 @@ export function getContentAuditEvents(): Promise<ApprovalAuditEvent[]> {
   return fetchFromApi<ApprovalAuditEvent[]>("/audit/content/events");
 }
 
+function buildLegacyInventoryFilterQuery(
+  filters: LegacyContentInventoryFilters = {}
+): string {
+  const searchParams = new URLSearchParams();
+
+  if (filters.migrationStatus) {
+    searchParams.set("migrationStatus", filters.migrationStatus);
+  }
+
+  if (filters.legacySection) {
+    searchParams.set("legacySection", filters.legacySection);
+  }
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
 function buildContentFilterQuery(filters: BackofficeContentListFilters = {}): string {
   const searchParams = new URLSearchParams();
 
@@ -254,6 +273,14 @@ export function getBackofficeApprovedStandards(
 ): Promise<BackofficeApprovedStandardRecord[]> {
   return fetchFromApi<BackofficeApprovedStandardRecord[]>(
     `/standards/backoffice/approved${buildContentFilterQuery(filters)}`
+  );
+}
+
+export function getLegacyContentInventory(
+  filters: LegacyContentInventoryFilters = {}
+): Promise<LegacyContentInventoryRecord[]> {
+  return fetchFromApi<LegacyContentInventoryRecord[]>(
+    `/content/backoffice/inventory${buildLegacyInventoryFilterQuery(filters)}`
   );
 }
 

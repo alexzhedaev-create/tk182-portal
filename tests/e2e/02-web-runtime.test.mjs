@@ -167,6 +167,8 @@ test(
     assert.match(contentBackofficeHtml, /Контент портала/u);
     assert.match(contentBackofficeHtml, /Публичные документы/u);
     assert.match(contentBackofficeHtml, /Утвержденные стандарты/u);
+    assert.match(contentBackofficeHtml, /Реестр материалов старого сайта/u);
+    assert.match(contentBackofficeHtml, /Создано в портале/u);
     assert.match(contentBackofficeHtml, /Журнал изменений контента/u);
   }
 );

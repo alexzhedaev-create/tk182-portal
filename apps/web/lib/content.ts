@@ -1,7 +1,9 @@
 import type {
   ContentMigrationStatus,
   ContentPublicationStatus,
+  LegacyContentInventoryStatus,
   LegacyContentSection,
+  LinkedPortalEntityType,
   MeetingRecordCategory,
   PublicDocumentCategory
 } from "@tk182/shared-types";
@@ -30,6 +32,23 @@ export function formatMigrationStatus(status: ContentMigrationStatus): string {
   }
 }
 
+export function formatLegacyContentInventoryStatus(
+  status: LegacyContentInventoryStatus
+): string {
+  switch (status) {
+    case "FOUND":
+      return "Найдено";
+    case "CREATED_IN_PORTAL":
+      return "Создано в портале";
+    case "VERIFIED":
+      return "Проверено";
+    case "SKIPPED":
+      return "Не переносить";
+    default:
+      return status;
+  }
+}
+
 export function formatLegacyContentSection(section: LegacyContentSection): string {
   switch (section) {
     case "NEWS":
@@ -50,6 +69,21 @@ export function formatLegacyContentSection(section: LegacyContentSection): strin
       return "Утвержденные стандарты";
     default:
       return section;
+  }
+}
+
+export function formatLinkedPortalEntityType(entityType: LinkedPortalEntityType): string {
+  switch (entityType) {
+    case "NEWS_ITEM":
+      return "Новость";
+    case "PUBLIC_DOCUMENT":
+      return "Публичный документ";
+    case "MEETING_RECORD":
+      return "Запись заседания";
+    case "APPROVED_STANDARD":
+      return "Утвержденный стандарт";
+    default:
+      return entityType;
   }
 }
 

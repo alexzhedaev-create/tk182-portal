@@ -123,6 +123,11 @@ test(
     );
     assert.equal(participantCommitteeBackofficeForbidden.response.status, 403);
 
+    const participantLegacyInventoryForbidden = await participant.requestJson(
+      "/content/backoffice/inventory"
+    );
+    assert.equal(participantLegacyInventoryForbidden.response.status, 403);
+
     const secretariatCycles = await secretariat.requestJson("/approval/secretariat/cycles");
     assert.equal(secretariatCycles.response.status, 200);
     assert.ok(Array.isArray(secretariatCycles.data));
@@ -497,6 +502,100 @@ test(
     );
     assert.equal(filteredDocuments.response.status, 200);
     assert.ok(filteredDocuments.data.some((item) => item.id === createdDocument.data.id));
+  }
+);
+
+test(
+  "secretariat can manage legacy inventory records before portal content exists",
+  { timeout: 120000 },
+  async () => {
+    const secretariat = new SessionClient(apiBaseUrl);
+    await loginAs(secretariat, secretariatCredentials);
+
+    const marker = `${Date.now()}`;
+
+    const createdInventoryRecord = await secretariat.requestJson("/content/backoffice/inventory", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        legacySection: "WORK_REPORTS",
+        legacyTitle: `Наследный отчет ${marker}`,
+        legacyUrl: `https://viam.ru/tk182/reports/legacy-${marker}`,
+        legacyDate: "2026-04-22T09:00:00.000Z",
+        legacyType: "PDF",
+        migrationStatus: "FOUND",
+        migrationNote: `Найдено для ручного переноса ${marker}`
+      })
+    });
+    assertCreatedOrOk(createdInventoryRecord.response.status, createdInventoryRecord.text);
+    assert.equal(createdInventoryRecord.data.legacySection, "WORK_REPORTS");
+    assert.equal(createdInventoryRecord.data.migrationStatus, "FOUND");
+    assert.equal(createdInventoryRecord.data.linkedPortalRecord, null);
+
+    const foundInventory = await secretariat.requestJson(
+      "/content/backoffice/inventory?migrationStatus=FOUND&legacySection=WORK_REPORTS"
+    );
+    assert.equal(foundInventory.response.status, 200);
+    assert.ok(foundInventory.data.some((item) => item.id === createdInventoryRecord.data.id));
+
+    const updatedInventoryRecord = await secretariat.requestJson(
+      `/content/backoffice/inventory/${createdInventoryRecord.data.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          legacySection: "WORK_REPORTS",
+          legacyTitle: `Наследный отчет ${marker}`,
+          legacyUrl: `https://viam.ru/tk182/reports/legacy-${marker}`,
+          legacyDate: "2026-04-22T09:00:00.000Z",
+          legacyType: "PDF",
+          migrationStatus: "CREATED_IN_PORTAL",
+          migrationNote: `Связано с записью портала ${marker}`,
+          linkedPortalEntityType: "PUBLIC_DOCUMENT",
+          linkedPortalEntityId: "public-document-work-report-2025"
+        })
+      }
+    );
+    assert.equal(updatedInventoryRecord.response.status, 200);
+    assert.equal(updatedInventoryRecord.data.migrationStatus, "CREATED_IN_PORTAL");
+    assert.equal(updatedInventoryRecord.data.linkedPortalRecord?.entityType, "PUBLIC_DOCUMENT");
+    assert.equal(
+      updatedInventoryRecord.data.linkedPortalRecord?.entityId,
+      "public-document-work-report-2025"
+    );
+    assert.match(
+      updatedInventoryRecord.data.linkedPortalRecord?.title ?? "",
+      /Отчет о работе ТК 182/u
+    );
+
+    const linkedInventory = await secretariat.requestJson(
+      "/content/backoffice/inventory?migrationStatus=CREATED_IN_PORTAL&legacySection=WORK_REPORTS"
+    );
+    assert.equal(linkedInventory.response.status, 200);
+    assert.ok(linkedInventory.data.some((item) => item.id === createdInventoryRecord.data.id));
+
+    const contentAudit = await secretariat.requestJson("/audit/content/events");
+    assert.equal(contentAudit.response.status, 200);
+    assert.ok(
+      contentAudit.data.some(
+        (event) =>
+          event.entityType === "LEGACY_CONTENT_INVENTORY" &&
+          event.entityId === createdInventoryRecord.data.id &&
+          event.actionType === "LEGACY_CONTENT_INVENTORY_CREATED"
+      )
+    );
+    assert.ok(
+      contentAudit.data.some(
+        (event) =>
+          event.entityType === "LEGACY_CONTENT_INVENTORY" &&
+          event.entityId === createdInventoryRecord.data.id &&
+          event.actionType === "LEGACY_CONTENT_INVENTORY_UPDATED"
+      )
+    );
   }
 );
 

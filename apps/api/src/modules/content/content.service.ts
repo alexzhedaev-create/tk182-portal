@@ -12,10 +12,16 @@ import type {
   ContentMigrationInfo,
   ContentMigrationStatus,
   CreateApprovedStandardDto,
+  CreateLegacyContentInventoryDto,
   CreateMeetingRecordDto,
   CreateNewsItemDto,
   CreatePublicDocumentDto,
+  LegacyContentInventoryFilters,
+  LegacyContentInventoryRecord,
+  LegacyContentInventoryStatus,
   LegacyContentSection,
+  LinkedPortalEntityReference,
+  LinkedPortalEntityType,
   MeetingRecord,
   MeetingsPageData,
   MeetingRecordCategory,
@@ -25,6 +31,7 @@ import type {
   PublicDocumentsPageData,
   StandardsPageData,
   UpdateApprovedStandardDto,
+  UpdateLegacyContentInventoryDto,
   UpdateMeetingRecordDto,
   UpdateNewsItemDto,
   UpdatePublicDocumentDto
@@ -56,6 +63,20 @@ const MIGRATION_STATUSES: readonly ContentMigrationStatus[] = [
   "NOT_IMPORTED",
   "IMPORTED",
   "VERIFIED"
+];
+
+const LEGACY_CONTENT_INVENTORY_STATUSES: readonly LegacyContentInventoryStatus[] = [
+  "FOUND",
+  "CREATED_IN_PORTAL",
+  "VERIFIED",
+  "SKIPPED"
+];
+
+const LINKED_PORTAL_ENTITY_TYPES: readonly LinkedPortalEntityType[] = [
+  "NEWS_ITEM",
+  "PUBLIC_DOCUMENT",
+  "MEETING_RECORD",
+  "APPROVED_STANDARD"
 ];
 
 const LEGACY_CONTENT_SECTIONS: readonly LegacyContentSection[] = [
@@ -156,6 +177,31 @@ interface ApprovedStandardRow extends FileColumns, MigrationColumns {
 interface StoredAttachmentInfo extends ContentFileAttachment {
   storedName: string;
   uploadedByUserId: string | null;
+}
+
+interface LegacyContentInventoryRow {
+  id: string;
+  legacy_section: LegacyContentSection;
+  legacy_title: string;
+  legacy_url: string | null;
+  legacy_date: string | null;
+  legacy_type: string | null;
+  migration_status: LegacyContentInventoryStatus;
+  migration_note: string | null;
+  linked_portal_entity_type: LinkedPortalEntityType | null;
+  linked_portal_entity_id: string | null;
+  linked_portal_title: string | null;
+}
+
+interface NormalizedLegacyContentInventoryPayload {
+  legacyDate: string | null;
+  legacySection: LegacyContentSection;
+  legacyTitle: string;
+  legacyType: string | null;
+  legacyUrl: string | null;
+  linkedPortalRecord: LinkedPortalEntityReference | null;
+  migrationNote: string | null;
+  migrationStatus: LegacyContentInventoryStatus;
 }
 
 export interface ContentDownload {
@@ -1124,6 +1170,337 @@ export class ContentService {
       draftStandards,
       approvedStandards,
       nationalStandardsProgramDocuments
+    };
+  }
+
+  async listLegacyContentInventory(
+    filters: LegacyContentInventoryFilters = {}
+  ): Promise<LegacyContentInventoryRecord[]> {
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+
+    this.appendLegacyInventoryFilters(conditions, values, filters, "lci");
+
+    const result = await this.databaseService.query<LegacyContentInventoryRow>(
+      `
+        SELECT
+          lci.id,
+          lci.legacy_section,
+          lci.legacy_title,
+          lci.legacy_url,
+          lci.legacy_date,
+          lci.legacy_type,
+          lci.migration_status,
+          lci.migration_note,
+          lci.linked_portal_entity_type,
+          lci.linked_portal_entity_id,
+          CASE
+            WHEN lci.linked_portal_entity_type = 'NEWS_ITEM' THEN news.title
+            WHEN lci.linked_portal_entity_type = 'PUBLIC_DOCUMENT' THEN documents.title
+            WHEN lci.linked_portal_entity_type = 'MEETING_RECORD' THEN meetings.title
+            WHEN lci.linked_portal_entity_type = 'APPROVED_STANDARD'
+              THEN CONCAT(standards.code, ' — ', standards.title)
+            ELSE NULL
+          END AS linked_portal_title
+        FROM legacy_content_inventory lci
+        LEFT JOIN news_items news
+          ON lci.linked_portal_entity_type = 'NEWS_ITEM'
+          AND news.id = lci.linked_portal_entity_id
+        LEFT JOIN public_documents documents
+          ON lci.linked_portal_entity_type = 'PUBLIC_DOCUMENT'
+          AND documents.id = lci.linked_portal_entity_id
+        LEFT JOIN meeting_records meetings
+          ON lci.linked_portal_entity_type = 'MEETING_RECORD'
+          AND meetings.id = lci.linked_portal_entity_id
+        LEFT JOIN approved_standards standards
+          ON lci.linked_portal_entity_type = 'APPROVED_STANDARD'
+          AND standards.id = lci.linked_portal_entity_id
+        ${conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""}
+        ORDER BY
+          CASE lci.legacy_section
+            WHEN 'NEWS' THEN 0
+            WHEN 'MAIN_DOCUMENTS' THEN 1
+            WHEN 'WORK_REPORTS' THEN 2
+            WHEN 'WORK_PLANS' THEN 3
+            WHEN 'NATIONAL_STANDARDS_PROGRAM' THEN 4
+            WHEN 'MEETING_AGENDA' THEN 5
+            WHEN 'MEETING_MINUTES' THEN 6
+            ELSE 7
+          END,
+          COALESCE(lci.legacy_date, lci.updated_at) DESC,
+          lci.legacy_title ASC
+      `,
+      values
+    );
+
+    return result.rows.map((row) => this.mapLegacyContentInventoryRecord(row));
+  }
+
+  async createLegacyContentInventory(
+    userId: string,
+    payload: CreateLegacyContentInventoryDto
+  ): Promise<LegacyContentInventoryRecord> {
+    const normalized = await this.normalizeLegacyContentInventoryPayload(payload);
+    const inventoryId = `legacy-content-inventory-${randomUUID()}`;
+
+    await this.databaseService.query(
+      `
+        INSERT INTO legacy_content_inventory (
+          id,
+          legacy_section,
+          legacy_title,
+          legacy_url,
+          legacy_date,
+          legacy_type,
+          migration_status,
+          migration_note,
+          linked_portal_entity_type,
+          linked_portal_entity_id,
+          created_by_user_id,
+          updated_by_user_id,
+          updated_at
+        )
+        VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $11, NOW()
+        )
+      `,
+      [
+        inventoryId,
+        normalized.legacySection,
+        normalized.legacyTitle,
+        normalized.legacyUrl,
+        normalized.legacyDate,
+        normalized.legacyType,
+        normalized.migrationStatus,
+        normalized.migrationNote,
+        normalized.linkedPortalRecord?.entityType ?? null,
+        normalized.linkedPortalRecord?.entityId ?? null,
+        userId
+      ]
+    );
+
+    const item = await this.getLegacyContentInventoryById(inventoryId);
+
+    await this.auditService.recordEvent({
+      actorUserId: userId,
+      actionType: "LEGACY_CONTENT_INVENTORY_CREATED",
+      entityType: "LEGACY_CONTENT_INVENTORY",
+      entityId: inventoryId,
+      message: `Добавлена запись в реестр старого сайта «${item.legacyTitle}».`,
+      metadata: this.buildLegacyContentInventoryAuditMetadata(item)
+    });
+
+    return item;
+  }
+
+  async updateLegacyContentInventory(
+    userId: string,
+    inventoryId: string,
+    payload: UpdateLegacyContentInventoryDto
+  ): Promise<LegacyContentInventoryRecord> {
+    const normalized = await this.normalizeLegacyContentInventoryPayload(payload);
+    await this.getLegacyContentInventoryById(inventoryId);
+
+    await this.databaseService.query(
+      `
+        UPDATE legacy_content_inventory
+        SET
+          legacy_section = $2,
+          legacy_title = $3,
+          legacy_url = $4,
+          legacy_date = $5,
+          legacy_type = $6,
+          migration_status = $7,
+          migration_note = $8,
+          linked_portal_entity_type = $9,
+          linked_portal_entity_id = $10,
+          updated_by_user_id = $11,
+          updated_at = NOW()
+        WHERE id = $1
+      `,
+      [
+        inventoryId,
+        normalized.legacySection,
+        normalized.legacyTitle,
+        normalized.legacyUrl,
+        normalized.legacyDate,
+        normalized.legacyType,
+        normalized.migrationStatus,
+        normalized.migrationNote,
+        normalized.linkedPortalRecord?.entityType ?? null,
+        normalized.linkedPortalRecord?.entityId ?? null,
+        userId
+      ]
+    );
+
+    const item = await this.getLegacyContentInventoryById(inventoryId);
+
+    await this.auditService.recordEvent({
+      actorUserId: userId,
+      actionType: "LEGACY_CONTENT_INVENTORY_UPDATED",
+      entityType: "LEGACY_CONTENT_INVENTORY",
+      entityId: inventoryId,
+      message: `Обновлена запись реестра старого сайта «${item.legacyTitle}».`,
+      metadata: this.buildLegacyContentInventoryAuditMetadata(item)
+    });
+
+    return item;
+  }
+
+  private async getLegacyContentInventoryById(
+    inventoryId: string
+  ): Promise<LegacyContentInventoryRecord> {
+    const result = await this.databaseService.query<LegacyContentInventoryRow>(
+      `
+        SELECT
+          lci.id,
+          lci.legacy_section,
+          lci.legacy_title,
+          lci.legacy_url,
+          lci.legacy_date,
+          lci.legacy_type,
+          lci.migration_status,
+          lci.migration_note,
+          lci.linked_portal_entity_type,
+          lci.linked_portal_entity_id,
+          CASE
+            WHEN lci.linked_portal_entity_type = 'NEWS_ITEM' THEN news.title
+            WHEN lci.linked_portal_entity_type = 'PUBLIC_DOCUMENT' THEN documents.title
+            WHEN lci.linked_portal_entity_type = 'MEETING_RECORD' THEN meetings.title
+            WHEN lci.linked_portal_entity_type = 'APPROVED_STANDARD'
+              THEN CONCAT(standards.code, ' — ', standards.title)
+            ELSE NULL
+          END AS linked_portal_title
+        FROM legacy_content_inventory lci
+        LEFT JOIN news_items news
+          ON lci.linked_portal_entity_type = 'NEWS_ITEM'
+          AND news.id = lci.linked_portal_entity_id
+        LEFT JOIN public_documents documents
+          ON lci.linked_portal_entity_type = 'PUBLIC_DOCUMENT'
+          AND documents.id = lci.linked_portal_entity_id
+        LEFT JOIN meeting_records meetings
+          ON lci.linked_portal_entity_type = 'MEETING_RECORD'
+          AND meetings.id = lci.linked_portal_entity_id
+        LEFT JOIN approved_standards standards
+          ON lci.linked_portal_entity_type = 'APPROVED_STANDARD'
+          AND standards.id = lci.linked_portal_entity_id
+        WHERE lci.id = $1
+        LIMIT 1
+      `,
+      [inventoryId]
+    );
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new NotFoundException("Запись реестра старого сайта не найдена.");
+    }
+
+    return this.mapLegacyContentInventoryRecord(row);
+  }
+
+  private mapLegacyContentInventoryRecord(
+    row: LegacyContentInventoryRow
+  ): LegacyContentInventoryRecord {
+    return {
+      id: row.id,
+      legacySection: row.legacy_section,
+      legacyTitle: row.legacy_title,
+      legacyUrl: row.legacy_url,
+      legacyDate: row.legacy_date ? new Date(row.legacy_date).toISOString() : null,
+      legacyType: row.legacy_type,
+      migrationStatus: row.migration_status,
+      migrationNote: row.migration_note,
+      linkedPortalRecord:
+        row.linked_portal_entity_type &&
+        row.linked_portal_entity_id &&
+        row.linked_portal_title
+          ? {
+              entityType: row.linked_portal_entity_type,
+              entityId: row.linked_portal_entity_id,
+              title: row.linked_portal_title
+            }
+          : null
+    };
+  }
+
+  private buildLegacyContentInventoryAuditMetadata(
+    item: LegacyContentInventoryRecord
+  ): Record<string, unknown> {
+    return {
+      legacySection: item.legacySection,
+      legacyTitle: item.legacyTitle,
+      legacyUrl: item.legacyUrl,
+      legacyDate: item.legacyDate,
+      legacyType: item.legacyType,
+      migrationStatus: item.migrationStatus,
+      linkedPortalEntityType: item.linkedPortalRecord?.entityType ?? null,
+      linkedPortalEntityId: item.linkedPortalRecord?.entityId ?? null,
+      linkedPortalTitle: item.linkedPortalRecord?.title ?? null
+    };
+  }
+
+  private async normalizeLegacyContentInventoryPayload(
+    payload: CreateLegacyContentInventoryDto | UpdateLegacyContentInventoryDto
+  ): Promise<NormalizedLegacyContentInventoryPayload> {
+    const legacyTitle = payload.legacyTitle.trim();
+    const legacySection = this.parseLegacySection(payload.legacySection);
+    const legacyUrl = this.normalizeLegacySourceUrl(payload.legacyUrl);
+    const legacyDate = this.parseOptionalDate(
+      payload.legacyDate,
+      "Укажите корректную дату материала старого сайта."
+    );
+    const legacyType = this.normalizeOptionalText(payload.legacyType);
+    const migrationStatus = this.parseLegacyInventoryStatus(payload.migrationStatus);
+    const migrationNote = this.normalizeOptionalText(payload.migrationNote);
+    const linkedPortalEntityType = this.normalizeOptionalText(payload.linkedPortalEntityType);
+    const linkedPortalEntityId = this.normalizeOptionalText(payload.linkedPortalEntityId);
+
+    if (!legacyTitle) {
+      throw new BadRequestException("Укажите название материала со старого сайта.");
+    }
+
+    if ((linkedPortalEntityType && !linkedPortalEntityId) || (!linkedPortalEntityType && linkedPortalEntityId)) {
+      throw new BadRequestException(
+        "Чтобы связать запись, выберите и тип, и идентификатор записи портала."
+      );
+    }
+
+    const linkedPortalRecord =
+      linkedPortalEntityType && linkedPortalEntityId
+        ? await this.getLinkedPortalEntityRecord(
+            this.parseLinkedPortalEntityType(linkedPortalEntityType),
+            linkedPortalEntityId
+          )
+        : null;
+
+    if (linkedPortalRecord) {
+      this.assertLegacySectionSupportsLinkedEntity(
+        legacySection,
+        linkedPortalRecord.entityType
+      );
+    }
+
+    if (!linkedPortalRecord && ["CREATED_IN_PORTAL", "VERIFIED"].includes(migrationStatus)) {
+      throw new BadRequestException(
+        "Для статусов «Создано в портале» и «Проверено» выберите связанную запись портала."
+      );
+    }
+
+    if (linkedPortalRecord && ["FOUND", "SKIPPED"].includes(migrationStatus)) {
+      throw new BadRequestException(
+        "Для связанной записи портала используйте статус «Создано в портале» или «Проверено»."
+      );
+    }
+
+    return {
+      legacyTitle,
+      legacySection,
+      legacyUrl,
+      legacyDate,
+      legacyType,
+      migrationStatus,
+      migrationNote,
+      linkedPortalRecord
     };
   }
 
@@ -2146,6 +2523,140 @@ export class ContentService {
     };
   }
 
+  private async getLinkedPortalEntityRecord(
+    entityType: LinkedPortalEntityType,
+    entityId: string
+  ): Promise<LinkedPortalEntityReference> {
+    switch (entityType) {
+      case "NEWS_ITEM": {
+        const result = await this.databaseService.query<{ id: string; title: string }>(
+          `
+            SELECT id, title
+            FROM news_items
+            WHERE id = $1
+            LIMIT 1
+          `,
+          [entityId]
+        );
+        const row = result.rows[0];
+
+        if (!row) {
+          break;
+        }
+
+        return {
+          entityType,
+          entityId: row.id,
+          title: row.title
+        };
+      }
+      case "PUBLIC_DOCUMENT": {
+        const result = await this.databaseService.query<{ id: string; title: string }>(
+          `
+            SELECT id, title
+            FROM public_documents
+            WHERE id = $1
+            LIMIT 1
+          `,
+          [entityId]
+        );
+        const row = result.rows[0];
+
+        if (!row) {
+          break;
+        }
+
+        return {
+          entityType,
+          entityId: row.id,
+          title: row.title
+        };
+      }
+      case "MEETING_RECORD": {
+        const result = await this.databaseService.query<{ id: string; title: string }>(
+          `
+            SELECT id, title
+            FROM meeting_records
+            WHERE id = $1
+            LIMIT 1
+          `,
+          [entityId]
+        );
+        const row = result.rows[0];
+
+        if (!row) {
+          break;
+        }
+
+        return {
+          entityType,
+          entityId: row.id,
+          title: row.title
+        };
+      }
+      case "APPROVED_STANDARD": {
+        const result = await this.databaseService.query<{
+          code: string;
+          id: string;
+          title: string;
+        }>(
+          `
+            SELECT id, code, title
+            FROM approved_standards
+            WHERE id = $1
+            LIMIT 1
+          `,
+          [entityId]
+        );
+        const row = result.rows[0];
+
+        if (!row) {
+          break;
+        }
+
+        return {
+          entityType,
+          entityId: row.id,
+          title: `${row.code} — ${row.title}`
+        };
+      }
+      default:
+        break;
+    }
+
+    throw new BadRequestException("Связанная запись портала не найдена.");
+  }
+
+  private assertLegacySectionSupportsLinkedEntity(
+    legacySection: LegacyContentSection,
+    entityType: LinkedPortalEntityType
+  ): void {
+    const allowedSections = this.getAllowedLegacySectionsForLinkedEntity(entityType);
+
+    if (!allowedSections.includes(legacySection)) {
+      throw new BadRequestException(
+        "Тип связанной записи портала не соответствует выбранному разделу старого сайта."
+      );
+    }
+  }
+
+  private getAllowedLegacySectionsForLinkedEntity(
+    entityType: LinkedPortalEntityType
+  ): readonly LegacyContentSection[] {
+    switch (entityType) {
+      case "NEWS_ITEM":
+        return NEWS_LEGACY_SECTIONS;
+      case "PUBLIC_DOCUMENT":
+        return DOCUMENT_LEGACY_SECTIONS;
+      case "MEETING_RECORD":
+        return MEETING_LEGACY_SECTIONS;
+      case "APPROVED_STANDARD":
+        return APPROVED_STANDARD_LEGACY_SECTIONS;
+      default:
+        return LEGACY_CONTENT_SECTIONS;
+    }
+  }
+
   private normalizeLegacySourceUrl(value: string | null | undefined): string | null {
     const normalized = this.normalizeOptionalText(value);
 
@@ -2188,6 +2699,22 @@ export class ContentService {
     throw new BadRequestException("Выберите корректный статус переноса.");
   }
 
+  private parseLegacyInventoryStatus(value: string): LegacyContentInventoryStatus {
+    if (LEGACY_CONTENT_INVENTORY_STATUSES.includes(value as LegacyContentInventoryStatus)) {
+      return value as LegacyContentInventoryStatus;
+    }
+
+    throw new BadRequestException("Выберите корректный статус реестра старого сайта.");
+  }
+
+  private parseLinkedPortalEntityType(value: string): LinkedPortalEntityType {
+    if (LINKED_PORTAL_ENTITY_TYPES.includes(value as LinkedPortalEntityType)) {
+      return value as LinkedPortalEntityType;
+    }
+
+    throw new BadRequestException("Выберите корректный тип связанной записи портала.");
+  }
+
   private buildMigrationWhereClause(
     filters: BackofficeContentListFilters,
     tableName: string
@@ -2211,6 +2738,23 @@ export class ContentService {
   ): void {
     if (filters.migrationStatus) {
       values.push(this.parseMigrationStatus(filters.migrationStatus));
+      conditions.push(`${tableAlias}.migration_status = $${values.length}`);
+    }
+
+    if (filters.legacySection) {
+      values.push(this.parseLegacySection(filters.legacySection));
+      conditions.push(`${tableAlias}.legacy_section = $${values.length}`);
+    }
+  }
+
+  private appendLegacyInventoryFilters(
+    conditions: string[],
+    values: unknown[],
+    filters: LegacyContentInventoryFilters,
+    tableAlias: string
+  ): void {
+    if (filters.migrationStatus) {
+      values.push(this.parseLegacyInventoryStatus(filters.migrationStatus));
       conditions.push(`${tableAlias}.migration_status = $${values.length}`);
     }
 
@@ -2244,6 +2788,15 @@ export class ContentService {
     }
 
     return parsed.toISOString();
+  }
+
+  private parseOptionalDate(
+    value: string | null | undefined,
+    errorMessage: string
+  ): string | null {
+    const normalized = this.normalizeOptionalText(value);
+
+    return normalized ? this.parseDate(normalized, errorMessage) : null;
   }
 
   private normalizeOptionalText(value: string | null | undefined): string | null {

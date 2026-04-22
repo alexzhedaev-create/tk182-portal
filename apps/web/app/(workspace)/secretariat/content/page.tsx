@@ -5,6 +5,7 @@ import { AccessDeniedCard } from "../../../../components/access-denied-card";
 import { SecretariatApprovedStandardsPanel } from "../../../../components/secretariat-approved-standards-panel";
 import { SecretariatAuditTrail } from "../../../../components/secretariat-audit-trail";
 import { SecretariatContentMigrationChecklist } from "../../../../components/secretariat-content-migration-checklist";
+import { SecretariatLegacyContentInventoryPanel } from "../../../../components/secretariat-legacy-content-inventory-panel";
 import { SecretariatMeetingsPanel } from "../../../../components/secretariat-meetings-panel";
 import { SecretariatNewsPanel } from "../../../../components/secretariat-news-panel";
 import { SecretariatPublicDocumentsPanel } from "../../../../components/secretariat-public-documents-panel";
@@ -16,6 +17,7 @@ import {
   getBackofficePublicDocuments,
   getCommitteeSubcommittees,
   getContentAuditEvents,
+  getLegacyContentInventory,
   getServerSession
 } from "../../../../lib/api";
 import { canAccessWorkspace } from "../../../../lib/auth";
@@ -37,15 +39,23 @@ export default async function SecretariatContentPage() {
     );
   }
 
-  const [newsItems, documents, meetings, approvedStandards, subcommittees, auditEvents] =
-    await Promise.all([
-      getBackofficeNewsItems(),
-      getBackofficePublicDocuments(),
-      getBackofficeMeetingRecords(),
-      getBackofficeApprovedStandards(),
-      getCommitteeSubcommittees(),
-      getContentAuditEvents()
-    ]);
+  const [
+    newsItems,
+    documents,
+    meetings,
+    approvedStandards,
+    subcommittees,
+    inventoryRecords,
+    auditEvents
+  ] = await Promise.all([
+    getBackofficeNewsItems(),
+    getBackofficePublicDocuments(),
+    getBackofficeMeetingRecords(),
+    getBackofficeApprovedStandards(),
+    getCommitteeSubcommittees(),
+    getLegacyContentInventory(),
+    getContentAuditEvents()
+  ]);
   const migrationChecklistItems = [
     ...newsItems.map((item) => ({ title: item.title, migration: item.migration })),
     ...documents.map((item) => ({ title: item.title, migration: item.migration })),
@@ -53,6 +63,28 @@ export default async function SecretariatContentPage() {
     ...approvedStandards.map((item) => ({
       title: `${item.code} — ${item.title}`,
       migration: item.migration
+    }))
+  ];
+  const portalOptions = [
+    ...newsItems.map((item) => ({
+      entityId: item.id,
+      entityType: "NEWS_ITEM" as const,
+      title: item.title
+    })),
+    ...documents.map((item) => ({
+      entityId: item.id,
+      entityType: "PUBLIC_DOCUMENT" as const,
+      title: item.title
+    })),
+    ...meetings.map((item) => ({
+      entityId: item.id,
+      entityType: "MEETING_RECORD" as const,
+      title: item.title
+    })),
+    ...approvedStandards.map((item) => ({
+      entityId: item.id,
+      entityType: "APPROVED_STANDARD" as const,
+      title: `${item.code} — ${item.title}`
     }))
   ];
 
@@ -73,6 +105,7 @@ export default async function SecretariatContentPage() {
           <span className="pill">Документы: {documents.length}</span>
           <span className="pill">Заседания: {meetings.length}</span>
           <span className="pill">Утвержденные стандарты: {approvedStandards.length}</span>
+          <span className="pill">Legacy-реестр: {inventoryRecords.length}</span>
           <Link className="pill" href="/secretariat">
             Вернуться к циклам
           </Link>
@@ -93,6 +126,7 @@ export default async function SecretariatContentPage() {
             <li>Протоколы заседаний и повестки.</li>
             <li>Утвержденные стандарты и программа разработки национальных стандартов.</li>
             <li>Контроль ручного переноса со старого сайта по источнику, статусу и комментарию.</li>
+            <li>Отдельный реестр legacy-материалов, которые еще не созданы как записи портала.</li>
           </ul>
           <p className="status-note">
             Все записи создаются как реальные persisted-сущности и могут быть
@@ -103,6 +137,10 @@ export default async function SecretariatContentPage() {
 
       <section className="content-stack">
         <SecretariatContentMigrationChecklist items={migrationChecklistItems} />
+        <SecretariatLegacyContentInventoryPanel
+          inventoryRecords={inventoryRecords}
+          portalOptions={portalOptions}
+        />
         <SecretariatNewsPanel newsItems={newsItems} />
         <SecretariatPublicDocumentsPanel documents={documents} />
         <SecretariatMeetingsPanel meetings={meetings} />
