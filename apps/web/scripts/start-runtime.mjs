@@ -11,8 +11,25 @@ const port = process.env.WEB_PORT ?? "3000";
 function hasCompleteProductionBuild() {
   return (
     existsSync(resolve(process.cwd(), productionDistDirectory, "BUILD_ID")) &&
-    existsSync(resolve(process.cwd(), productionDistDirectory, "server")) &&
-    existsSync(resolve(process.cwd(), productionDistDirectory, "static"))
+    existsSync(resolve(process.cwd(), productionDistDirectory, "static")) &&
+    existsSync(
+      resolve(process.cwd(), productionDistDirectory, "server", "pages-manifest.json")
+    ) &&
+    existsSync(
+      resolve(process.cwd(), productionDistDirectory, "server", "app-paths-manifest.json")
+    ) &&
+    existsSync(
+      resolve(process.cwd(), productionDistDirectory, "server", "pages", "_app.js")
+    ) &&
+    existsSync(
+      resolve(process.cwd(), productionDistDirectory, "server", "pages", "_document.js")
+    ) &&
+    existsSync(
+      resolve(process.cwd(), productionDistDirectory, "server", "pages", "_error.js")
+    ) &&
+    existsSync(
+      resolve(process.cwd(), productionDistDirectory, "server", "pages", "404.js")
+    )
   );
 }
 

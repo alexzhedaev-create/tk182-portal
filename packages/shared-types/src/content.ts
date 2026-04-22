@@ -6,11 +6,40 @@ export interface PageSummary {
   visibility: "public" | "participant" | "secretariat";
 }
 
+export type ContentPublicationStatus = "draft" | "published";
+
+export type PublicDocumentCategory =
+  | "MAIN_DOCUMENTS"
+  | "WORK_REPORTS"
+  | "WORK_PLANS"
+  | "NATIONAL_STANDARDS_PROGRAM";
+
+export type MeetingRecordCategory = "MEETING_MINUTES" | "MEETING_AGENDA";
+
+export interface ContentFileAttachment {
+  description: string | null;
+  mimeType: string;
+  originalName: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  uploadedByDisplayName: string | null;
+}
+
 export interface NewsArticleSummary {
   id: string;
   title: string;
   publishedAt: string;
   excerpt: string;
+}
+
+export interface NewsItemRecord {
+  id: string;
+  title: string;
+  excerpt: string;
+  body: string;
+  status: ContentPublicationStatus;
+  publicationDate: string;
+  publishedAt: string | null;
 }
 
 export interface DocumentSummary {
@@ -22,6 +51,26 @@ export interface DocumentSummary {
   publishedAt: string;
 }
 
+export interface PublicDocumentRecord {
+  id: string;
+  title: string;
+  category: PublicDocumentCategory;
+  summary: string;
+  status: ContentPublicationStatus;
+  publicationDate: string;
+  publishedAt: string | null;
+  attachment: ContentFileAttachment | null;
+}
+
+export interface PublicDocumentSection {
+  category: PublicDocumentCategory;
+  documents: PublicDocumentRecord[];
+}
+
+export interface PublicDocumentsPageData {
+  sections: PublicDocumentSection[];
+}
+
 export interface StandardSummary {
   id: string;
   code: string;
@@ -31,9 +80,123 @@ export interface StandardSummary {
   responsibleSubcommittee: SubcommitteeSummary | null;
 }
 
+export interface ApprovedStandardRecord {
+  id: string;
+  code: string;
+  title: string;
+  summary: string;
+  status: ContentPublicationStatus;
+  approvalDate: string;
+  publicationDate: string;
+  publishedAt: string | null;
+  attachment: ContentFileAttachment | null;
+  responsibleSubcommittee: SubcommitteeSummary | null;
+}
+
+export interface StandardsPageData {
+  approvedStandards: ApprovedStandardRecord[];
+  draftStandards: StandardSummary[];
+  nationalStandardsProgramDocuments: PublicDocumentRecord[];
+}
+
 export interface MeetingSummary {
   id: string;
   title: string;
   scheduledAt: string;
   location: string;
+}
+
+export interface MeetingRecord {
+  id: string;
+  title: string;
+  category: MeetingRecordCategory;
+  summary: string;
+  body: string;
+  location: string | null;
+  meetingDate: string;
+  status: ContentPublicationStatus;
+  publicationDate: string;
+  publishedAt: string | null;
+  attachment: ContentFileAttachment | null;
+}
+
+export interface MeetingRecordSection {
+  category: MeetingRecordCategory;
+  meetings: MeetingRecord[];
+}
+
+export interface MeetingsPageData {
+  sections: MeetingRecordSection[];
+}
+
+export interface CreateNewsItemDto {
+  body: string;
+  excerpt: string;
+  publicationDate: string;
+  title: string;
+}
+
+export interface UpdateNewsItemDto {
+  body: string;
+  excerpt: string;
+  publicationDate: string;
+  title: string;
+}
+
+export interface CreatePublicDocumentDto {
+  category: PublicDocumentCategory;
+  fileDescription?: string | null;
+  publicationDate: string;
+  summary: string;
+  title: string;
+}
+
+export interface UpdatePublicDocumentDto {
+  category: PublicDocumentCategory;
+  fileDescription?: string | null;
+  publicationDate: string;
+  summary: string;
+  title: string;
+}
+
+export interface CreateMeetingRecordDto {
+  body: string;
+  category: MeetingRecordCategory;
+  fileDescription?: string | null;
+  location?: string | null;
+  meetingDate: string;
+  publicationDate: string;
+  summary: string;
+  title: string;
+}
+
+export interface UpdateMeetingRecordDto {
+  body: string;
+  category: MeetingRecordCategory;
+  fileDescription?: string | null;
+  location?: string | null;
+  meetingDate: string;
+  publicationDate: string;
+  summary: string;
+  title: string;
+}
+
+export interface CreateApprovedStandardDto {
+  approvalDate: string;
+  code: string;
+  fileDescription?: string | null;
+  publicationDate: string;
+  responsibleSubcommitteeId?: string | null;
+  summary: string;
+  title: string;
+}
+
+export interface UpdateApprovedStandardDto {
+  approvalDate: string;
+  code: string;
+  fileDescription?: string | null;
+  publicationDate: string;
+  responsibleSubcommitteeId?: string | null;
+  summary: string;
+  title: string;
 }

@@ -62,4 +62,19 @@ export class AuditController {
       actorUserId
     });
   }
+
+  @Get("content/events")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  listContentEvents(
+    @Query("actionType") actionType?: string,
+    @Query("entityType") entityType?: string,
+    @Query("actorUserId") actorUserId?: string
+  ): Promise<ApprovalAuditEvent[]> {
+    return this.auditService.listContentEvents({
+      actionType,
+      entityType,
+      actorUserId
+    });
+  }
 }

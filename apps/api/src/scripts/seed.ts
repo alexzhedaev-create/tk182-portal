@@ -174,6 +174,71 @@ interface SeedNotification {
     | "VERSION_FILE_UPLOADED";
 }
 
+interface SeedContentAttachment {
+  content: string;
+  description?: string | null;
+  mimeType: string;
+  originalName: string;
+  uploadedAt: string;
+  uploadedByUserId: string;
+}
+
+interface SeedNewsItem {
+  body: string;
+  createdByUserId: string;
+  excerpt: string;
+  id: string;
+  publicationDate: string;
+  publishedAt: string;
+  status: "draft" | "published";
+  title: string;
+}
+
+interface SeedPublicDocument {
+  attachment?: SeedContentAttachment | null;
+  category:
+    | "MAIN_DOCUMENTS"
+    | "WORK_REPORTS"
+    | "WORK_PLANS"
+    | "NATIONAL_STANDARDS_PROGRAM";
+  createdByUserId: string;
+  id: string;
+  publicationDate: string;
+  publishedAt: string;
+  status: "draft" | "published";
+  summary: string;
+  title: string;
+}
+
+interface SeedMeetingRecord {
+  attachment?: SeedContentAttachment | null;
+  body: string;
+  category: "MEETING_MINUTES" | "MEETING_AGENDA";
+  createdByUserId: string;
+  id: string;
+  location?: string | null;
+  meetingDate: string;
+  publicationDate: string;
+  publishedAt: string;
+  status: "draft" | "published";
+  summary: string;
+  title: string;
+}
+
+interface SeedApprovedStandard {
+  approvalDate: string;
+  attachment?: SeedContentAttachment | null;
+  code: string;
+  createdByUserId: string;
+  id: string;
+  publicationDate: string;
+  publishedAt: string;
+  responsibleSubcommitteeId?: string | null;
+  status: "draft" | "published";
+  summary: string;
+  title: string;
+}
+
 const organizations: SeedOrganization[] = [
   {
     id: "org-tk182-secretariat",
@@ -790,6 +855,272 @@ const notifications: SeedNotification[] = [
   }
 ];
 
+const newsItems: SeedNewsItem[] = [
+  {
+    id: "news-portal-content-launch",
+    title: "На портале ТК 182 открыт новый публичный контур публикаций",
+    excerpt:
+      "Секретариат ТК 182 начал перенос новостей, документов и материалов заседаний в новый портал.",
+    body: [
+      "Секретариат ТК 182 открыл в новом портале реальные разделы для новостей, документов, заседаний и утвержденных стандартов.",
+      "",
+      "Контент наполняется вручную в backoffice и подготавливается для поэтапной миграции материалов со старого сайта.",
+      "",
+      "Все опубликованные материалы доступны на публичной части портала."
+    ].join("\n"),
+    status: "published",
+    publicationDate: "2026-04-18T09:00:00.000Z",
+    publishedAt: "2026-04-18T09:00:00.000Z",
+    createdByUserId: "user-secretariat"
+  },
+  {
+    id: "news-national-standards-program-2026",
+    title: "Подготовлена программа разработки национальных стандартов ТК 182 на 2026 год",
+    excerpt:
+      "В публичном разделе опубликован актуальный комплект материалов по программе разработки национальных стандартов.",
+    body: [
+      "На портале размещены материалы по программе разработки национальных стандартов ТК 182 на 2026 год.",
+      "",
+      "В программе отражены приоритетные направления работ по подкомитетам, ожидаемые результаты и план публикации документов.",
+      "",
+      "Секретариат продолжит пополнять раздел по мере подготовки новых редакций."
+    ].join("\n"),
+    status: "published",
+    publicationDate: "2026-04-19T10:30:00.000Z",
+    publishedAt: "2026-04-19T10:30:00.000Z",
+    createdByUserId: "user-secretariat"
+  }
+];
+
+const publicDocuments: SeedPublicDocument[] = [
+  {
+    id: "public-document-main-regulation",
+    title: "Положение о ТК 182",
+    category: "MAIN_DOCUMENTS",
+    summary:
+      "Основной документ о задачах, составе и порядке работы технического комитета 182.",
+    status: "published",
+    publicationDate: "2026-01-20T09:00:00.000Z",
+    publishedAt: "2026-01-20T09:00:00.000Z",
+    createdByUserId: "user-secretariat",
+    attachment: {
+      originalName: "Polozhenie_o_TK_182.txt",
+      mimeType: "text/plain",
+      uploadedByUserId: "user-secretariat",
+      uploadedAt: "2026-01-20T09:00:00.000Z",
+      description: "Текстовая демонстрационная версия положения о ТК 182.",
+      content: [
+        "Положение о ТК 182",
+        "",
+        "1. ТК 182 ведет работы по стандартизации в области аддитивных технологий.",
+        "2. Структура комитета включает руководство, секретариат и подкомитеты ПК 1–ПК 7.",
+        "3. Портал используется как единый контур публикаций и согласования."
+      ].join("\n")
+    }
+  },
+  {
+    id: "public-document-work-report-2025",
+    title: "Отчет о работе ТК 182 за 2025 год",
+    category: "WORK_REPORTS",
+    summary:
+      "Сводный отчет по рассмотренным проектам, заседаниям и результатам работ за 2025 год.",
+    status: "published",
+    publicationDate: "2026-02-05T12:00:00.000Z",
+    publishedAt: "2026-02-05T12:00:00.000Z",
+    createdByUserId: "user-secretariat",
+    attachment: {
+      originalName: "Otchet_o_rabote_TK182_2025.txt",
+      mimeType: "text/plain",
+      uploadedByUserId: "user-secretariat",
+      uploadedAt: "2026-02-05T12:00:00.000Z",
+      description: "Демонстрационный файл годового отчета.",
+      content: [
+        "Отчет о работе ТК 182 за 2025 год",
+        "",
+        "1. Проведено 4 заседания комитета.",
+        "2. Подготовлены проекты документов по направлениям ПК 1, ПК 3 и ПК 5.",
+        "3. Сформирована программа работ на следующий период."
+      ].join("\n")
+    }
+  },
+  {
+    id: "public-document-work-plan-2026",
+    title: "План и перспективная программа работ ТК 182 на 2026 год",
+    category: "WORK_PLANS",
+    summary:
+      "План ключевых работ комитета, заседаний и публикаций по направлениям стандартизации.",
+    status: "published",
+    publicationDate: "2026-03-01T09:30:00.000Z",
+    publishedAt: "2026-03-01T09:30:00.000Z",
+    createdByUserId: "user-secretariat",
+    attachment: {
+      originalName: "Plan_rabot_TK182_2026.txt",
+      mimeType: "text/plain",
+      uploadedByUserId: "user-secretariat",
+      uploadedAt: "2026-03-01T09:30:00.000Z",
+      description: "Демонстрационный файл плана работ ТК 182.",
+      content: [
+        "План работ ТК 182 на 2026 год",
+        "",
+        "1. Подготовить новые редакции проектов по аддитивным материалам и контролю качества.",
+        "2. Провести два открытых заседания и одно установочное совещание секретариата.",
+        "3. Обновить программу разработки национальных стандартов."
+      ].join("\n")
+    }
+  },
+  {
+    id: "public-document-national-program-2026",
+    title: "Программа разработки национальных стандартов ТК 182 на 2026 год",
+    category: "NATIONAL_STANDARDS_PROGRAM",
+    summary:
+      "Сводный перечень планируемых к разработке и актуализации стандартов по направлениям ТК 182.",
+    status: "published",
+    publicationDate: "2026-03-10T10:00:00.000Z",
+    publishedAt: "2026-03-10T10:00:00.000Z",
+    createdByUserId: "user-secretariat",
+    attachment: {
+      originalName: "Programma_razrabotki_natsionalnykh_standartov_2026.txt",
+      mimeType: "text/plain",
+      uploadedByUserId: "user-secretariat",
+      uploadedAt: "2026-03-10T10:00:00.000Z",
+      description: "Демонстрационная текстовая версия программы разработки стандартов.",
+      content: [
+        "Программа разработки национальных стандартов на 2026 год",
+        "",
+        "ПК 1: материалы для аддитивных технологий.",
+        "ПК 3: управление жизненным циклом продукции аддитивного производства.",
+        "ПК 5: неразрушающий контроль изделий, выполненных по аддитивным технологиям."
+      ].join("\n")
+    }
+  }
+];
+
+const meetingRecords: SeedMeetingRecord[] = [
+  {
+    id: "meeting-agenda-q2-2026",
+    title: "Уведомление и повестка заседания ТК 182 от 24 апреля 2026 года",
+    category: "MEETING_AGENDA",
+    summary:
+      "Повестка очередного заседания ТК 182 по проектам стандартов, структуре комитета и плану работ.",
+    body: [
+      "Повестка заседания ТК 182",
+      "",
+      "1. Рассмотрение статуса действующих проектов стандартов.",
+      "2. Обсуждение программы разработки национальных стандартов.",
+      "3. Утверждение плана публикации материалов на портале."
+    ].join("\n"),
+    location: 'Москва, НИЦ "Курчатовский институт" - ВИАМ',
+    meetingDate: "2026-04-24T10:00:00.000Z",
+    status: "published",
+    publicationDate: "2026-04-16T09:00:00.000Z",
+    publishedAt: "2026-04-16T09:00:00.000Z",
+    createdByUserId: "user-secretariat",
+    attachment: {
+      originalName: "Povestka_zasedaniya_TK182_24_04_2026.txt",
+      mimeType: "text/plain",
+      uploadedByUserId: "user-secretariat",
+      uploadedAt: "2026-04-16T09:00:00.000Z",
+      description: "Текстовая версия уведомления и повестки заседания.",
+      content: [
+        "Уведомление и повестка заседания ТК 182",
+        "",
+        "Дата: 24.04.2026",
+        "Место: НИЦ \"Курчатовский институт\" - ВИАМ",
+        "Вопросы: проекты стандартов, программа работ, публикации на портале."
+      ].join("\n")
+    }
+  },
+  {
+    id: "meeting-minutes-q1-2026",
+    title: "Протокол заседания ТК 182 от 12 февраля 2026 года",
+    category: "MEETING_MINUTES",
+    summary:
+      "Протокол заседания по вопросам структуры ТК 182, распределения работ по ПК и подготовки программы стандартизации.",
+    body: [
+      "Протокол заседания ТК 182",
+      "",
+      "1. Утверждена актуализированная структура руководства и секретариата.",
+      "2. Подтверждены ответственные подкомитеты по действующим проектам.",
+      "3. Секретариату поручено подготовить материалы для нового портала."
+    ].join("\n"),
+    location: 'Москва, НИЦ "Курчатовский институт" - ВИАМ',
+    meetingDate: "2026-02-12T11:00:00.000Z",
+    status: "published",
+    publicationDate: "2026-02-20T12:00:00.000Z",
+    publishedAt: "2026-02-20T12:00:00.000Z",
+    createdByUserId: "user-secretariat",
+    attachment: {
+      originalName: "Protokol_zasedaniya_TK182_12_02_2026.txt",
+      mimeType: "text/plain",
+      uploadedByUserId: "user-secretariat",
+      uploadedAt: "2026-02-20T12:00:00.000Z",
+      description: "Текстовая версия протокола заседания ТК 182.",
+      content: [
+        "Протокол заседания ТК 182 от 12.02.2026",
+        "",
+        "Слушали: секретариат ТК 182.",
+        "Постановили: обновить структуру ТК, программу работ и перечень публичных материалов.",
+        "Контроль исполнения поручений возложен на секретариат."
+      ].join("\n")
+    }
+  }
+];
+
+const approvedStandards: SeedApprovedStandard[] = [
+  {
+    id: "approved-standard-powder-materials-2025",
+    code: "ГОСТ Р 70501-2025",
+    title: "Материалы порошковые для аддитивных технологий. Общие технические требования",
+    summary:
+      "Утвержденный стандарт по базовым требованиям к порошковым материалам для аддитивного производства.",
+    approvalDate: "2025-12-15T00:00:00.000Z",
+    status: "published",
+    publicationDate: "2026-01-15T09:00:00.000Z",
+    publishedAt: "2026-01-15T09:00:00.000Z",
+    createdByUserId: "user-secretariat",
+    responsibleSubcommitteeId: "subcommittee-pk1",
+    attachment: {
+      originalName: "GOST_R_70501_2025.txt",
+      mimeType: "text/plain",
+      uploadedByUserId: "user-secretariat",
+      uploadedAt: "2026-01-15T09:00:00.000Z",
+      description: "Демонстрационный файл утвержденного стандарта.",
+      content: [
+        "ГОСТ Р 70501-2025",
+        "",
+        "Материалы порошковые для аддитивных технологий.",
+        "Общие технические требования и методы контроля."
+      ].join("\n")
+    }
+  },
+  {
+    id: "approved-standard-ndt-2025",
+    code: "ГОСТ Р 70518-2025",
+    title: "Неразрушающий контроль изделий, выполненных по аддитивным технологиям. Общие положения",
+    summary:
+      "Утвержденный стандарт по общим положениям неразрушающего контроля аддитивных изделий.",
+    approvalDate: "2025-11-28T00:00:00.000Z",
+    status: "published",
+    publicationDate: "2026-02-01T09:00:00.000Z",
+    publishedAt: "2026-02-01T09:00:00.000Z",
+    createdByUserId: "user-secretariat",
+    responsibleSubcommitteeId: "subcommittee-pk5",
+    attachment: {
+      originalName: "GOST_R_70518_2025.txt",
+      mimeType: "text/plain",
+      uploadedByUserId: "user-secretariat",
+      uploadedAt: "2026-02-01T09:00:00.000Z",
+      description: "Демонстрационный файл утвержденного стандарта по НК.",
+      content: [
+        "ГОСТ Р 70518-2025",
+        "",
+        "Неразрушающий контроль изделий, выполненных по аддитивным технологиям.",
+        "Общие положения."
+      ].join("\n")
+    }
+  }
+];
+
 async function main(): Promise<void> {
   const pool = createDatabasePool();
   const storageRootDirectory = getApplicationConfig().storage.rootDir;
@@ -816,14 +1147,84 @@ async function main(): Promise<void> {
       };
     });
 
+    const storedPublicDocumentFiles = publicDocuments
+      .filter(
+        (
+          document
+        ): document is SeedPublicDocument & { attachment: SeedContentAttachment } =>
+          Boolean(document.attachment)
+      )
+      .map((document) => {
+        const storedName = `${document.id}${getFileExtension(document.attachment.originalName)}`;
+        const filePath = resolveStoredFilePath(storageRootDirectory, storedName);
+
+        return {
+          documentId: document.id,
+          storedName,
+          filePath: filePath.absolutePath,
+          attachment: document.attachment
+        };
+      });
+
+    const storedMeetingFiles = meetingRecords
+      .filter(
+        (
+          meeting
+        ): meeting is SeedMeetingRecord & { attachment: SeedContentAttachment } =>
+          Boolean(meeting.attachment)
+      )
+      .map((meeting) => {
+        const storedName = `${meeting.id}${getFileExtension(meeting.attachment.originalName)}`;
+        const filePath = resolveStoredFilePath(storageRootDirectory, storedName);
+
+        return {
+          meetingId: meeting.id,
+          storedName,
+          filePath: filePath.absolutePath,
+          attachment: meeting.attachment
+        };
+      });
+
+    const storedApprovedStandardFiles = approvedStandards
+      .filter(
+        (
+          standard
+        ): standard is SeedApprovedStandard & { attachment: SeedContentAttachment } =>
+          Boolean(standard.attachment)
+      )
+      .map((standard) => {
+        const storedName = `${standard.id}${getFileExtension(standard.attachment.originalName)}`;
+        const filePath = resolveStoredFilePath(storageRootDirectory, storedName);
+
+        return {
+          standardId: standard.id,
+          storedName,
+          filePath: filePath.absolutePath,
+          attachment: standard.attachment
+        };
+      });
+
     for (const file of storedVersionFiles) {
       await writeFile(file.filePath, file.content, "utf8");
+    }
+
+    for (const file of storedPublicDocumentFiles) {
+      await writeFile(file.filePath, file.attachment.content, "utf8");
+    }
+
+    for (const file of storedMeetingFiles) {
+      await writeFile(file.filePath, file.attachment.content, "utf8");
+    }
+
+    for (const file of storedApprovedStandardFiles) {
+      await writeFile(file.filePath, file.attachment.content, "utf8");
     }
 
     const client = await pool.connect();
 
     try {
       await client.query("BEGIN");
+      await client.query(`DELETE FROM audit_events`);
 
       for (const organization of organizations) {
         await client.query(
@@ -920,6 +1321,10 @@ async function main(): Promise<void> {
 
       await client.query(`DELETE FROM sessions`);
       await client.query(`DELETE FROM notifications`);
+      await client.query(`DELETE FROM news_items`);
+      await client.query(`DELETE FROM public_documents`);
+      await client.query(`DELETE FROM meeting_records`);
+      await client.query(`DELETE FROM approved_standards`);
       await client.query(`DELETE FROM committee_person_roles`);
       await client.query(`DELETE FROM committee_people`);
       await client.query(`DELETE FROM committee_roles`);
@@ -931,6 +1336,142 @@ async function main(): Promise<void> {
       await client.query(`DELETE FROM draft_standard_versions`);
       await client.query(`DELETE FROM draft_standards`);
       await client.query(`DELETE FROM subcommittees`);
+
+      for (const newsItem of newsItems) {
+        await client.query(
+          `
+            INSERT INTO news_items (
+              id,
+              title,
+              excerpt,
+              body,
+              status,
+              publication_date,
+              published_at,
+              created_by_user_id,
+              updated_by_user_id,
+              updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, NOW())
+          `,
+          [
+            newsItem.id,
+            newsItem.title,
+            newsItem.excerpt,
+            newsItem.body,
+            newsItem.status,
+            newsItem.publicationDate,
+            newsItem.publishedAt,
+            newsItem.createdByUserId
+          ]
+        );
+      }
+
+      for (const document of publicDocuments) {
+        const storedFile =
+          storedPublicDocumentFiles.find((item) => item.documentId === document.id) ?? null;
+
+        await client.query(
+          `
+            INSERT INTO public_documents (
+              id,
+              title,
+              category,
+              summary,
+              status,
+              publication_date,
+              published_at,
+              file_original_name,
+              file_stored_name,
+              file_mime_type,
+              file_size_bytes,
+              file_uploaded_at,
+              file_uploaded_by_user_id,
+              file_description,
+              created_by_user_id,
+              updated_by_user_id,
+              updated_at
+            )
+            VALUES (
+              $1, $2, $3, $4, $5, $6, $7,
+              $8, $9, $10, $11, $12, $13, $14, $15, $15, NOW()
+            )
+          `,
+          [
+            document.id,
+            document.title,
+            document.category,
+            document.summary,
+            document.status,
+            document.publicationDate,
+            document.publishedAt,
+            storedFile?.attachment.originalName ?? null,
+            storedFile?.storedName ?? null,
+            storedFile?.attachment.mimeType ?? null,
+            storedFile ? Buffer.byteLength(storedFile.attachment.content, "utf8") : null,
+            storedFile?.attachment.uploadedAt ?? null,
+            storedFile?.attachment.uploadedByUserId ?? null,
+            storedFile?.attachment.description ?? null,
+            document.createdByUserId
+          ]
+        );
+      }
+
+      for (const meeting of meetingRecords) {
+        const storedFile =
+          storedMeetingFiles.find((item) => item.meetingId === meeting.id) ?? null;
+
+        await client.query(
+          `
+            INSERT INTO meeting_records (
+              id,
+              title,
+              category,
+              summary,
+              body,
+              location,
+              meeting_date,
+              status,
+              publication_date,
+              published_at,
+              file_original_name,
+              file_stored_name,
+              file_mime_type,
+              file_size_bytes,
+              file_uploaded_at,
+              file_uploaded_by_user_id,
+              file_description,
+              created_by_user_id,
+              updated_by_user_id,
+              updated_at
+            )
+            VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+              $11, $12, $13, $14, $15, $16, $17, $18, $18, NOW()
+            )
+          `,
+          [
+            meeting.id,
+            meeting.title,
+            meeting.category,
+            meeting.summary,
+            meeting.body,
+            meeting.location ?? null,
+            meeting.meetingDate,
+            meeting.status,
+            meeting.publicationDate,
+            meeting.publishedAt,
+            storedFile?.attachment.originalName ?? null,
+            storedFile?.storedName ?? null,
+            storedFile?.attachment.mimeType ?? null,
+            storedFile ? Buffer.byteLength(storedFile.attachment.content, "utf8") : null,
+            storedFile?.attachment.uploadedAt ?? null,
+            storedFile?.attachment.uploadedByUserId ?? null,
+            storedFile?.attachment.description ?? null,
+            meeting.createdByUserId
+          ]
+        );
+      }
 
       for (const role of committeeRoles) {
         await client.query(
@@ -1018,6 +1559,60 @@ async function main(): Promise<void> {
             subcommittee.code,
             subcommittee.title,
             subcommittee.hostOrganizationId
+          ]
+        );
+      }
+
+      for (const standard of approvedStandards) {
+        const storedFile =
+          storedApprovedStandardFiles.find((item) => item.standardId === standard.id) ?? null;
+
+        await client.query(
+          `
+            INSERT INTO approved_standards (
+              id,
+              code,
+              title,
+              summary,
+              approval_date,
+              status,
+              publication_date,
+              published_at,
+              responsible_subcommittee_id,
+              file_original_name,
+              file_stored_name,
+              file_mime_type,
+              file_size_bytes,
+              file_uploaded_at,
+              file_uploaded_by_user_id,
+              file_description,
+              created_by_user_id,
+              updated_by_user_id,
+              updated_at
+            )
+            VALUES (
+              $1, $2, $3, $4, $5, $6, $7, $8, $9,
+              $10, $11, $12, $13, $14, $15, $16, $17, $17, NOW()
+            )
+          `,
+          [
+            standard.id,
+            standard.code,
+            standard.title,
+            standard.summary,
+            standard.approvalDate,
+            standard.status,
+            standard.publicationDate,
+            standard.publishedAt,
+            standard.responsibleSubcommitteeId ?? null,
+            storedFile?.attachment.originalName ?? null,
+            storedFile?.storedName ?? null,
+            storedFile?.attachment.mimeType ?? null,
+            storedFile ? Buffer.byteLength(storedFile.attachment.content, "utf8") : null,
+            storedFile?.attachment.uploadedAt ?? null,
+            storedFile?.attachment.uploadedByUserId ?? null,
+            storedFile?.attachment.description ?? null,
+            standard.createdByUserId
           ]
         );
       }

@@ -73,13 +73,13 @@ const apiEndpoints: ApiIndexResponse["endpoints"] = [
     method: "GET",
     path: "/news",
     areas: ["public"],
-    description: "Public committee news scaffold."
+    description: "Published public news feed for TK 182 announcements."
   },
   {
     method: "GET",
     path: "/documents",
     areas: ["public", "participant", "secretariat"],
-    description: "Public document catalogue backed by PostgreSQL."
+    description: "Published public documents grouped by TK 182 legacy site sections."
   },
   {
     method: "GET",
@@ -101,9 +101,16 @@ const apiEndpoints: ApiIndexResponse["endpoints"] = [
   },
   {
     method: "GET",
+    path: "/standards/public-content",
+    areas: ["public"],
+    description:
+      "Published public standards page data: draft standards, approved standards, and program documents."
+  },
+  {
+    method: "GET",
     path: "/meetings",
     areas: ["public", "participant", "secretariat"],
-    description: "Meeting and agenda scaffold."
+    description: "Published public meeting agendas and minutes."
   },
   {
     method: "GET",
@@ -121,7 +128,7 @@ const apiEndpoints: ApiIndexResponse["endpoints"] = [
     method: "GET",
     path: "/audit",
     areas: ["secretariat"],
-    description: "Internal audit trail scaffold."
+    description: "Internal audit trail for workflow, committee, and public-content actions."
   }
 ];
 
@@ -133,7 +140,7 @@ export class AppController {
       name: "TK182 Portal API",
       status: "active",
       summary:
-        "Local-first API foundation with persisted auth, role-aware access control, and seeded document data for the TK182 portal.",
+        "Local-first API foundation with persisted auth, role-aware access control, review workflow, committee structure, and published public content for the TK182 portal.",
       endpoints: apiEndpoints
     };
   }

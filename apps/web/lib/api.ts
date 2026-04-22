@@ -2,9 +2,13 @@ import "server-only";
 
 import type {
   ApprovalAuditEvent,
+  ApprovedStandardRecord,
   AuthenticatedUser,
   CommitteeBackofficeData,
   CommitteeStructureResponse,
+  MeetingRecord,
+  MeetingsPageData,
+  NewsItemRecord,
   DocumentSummary,
   NotificationRecord,
   NotificationUnreadCountDto,
@@ -14,7 +18,10 @@ import type {
   ParticipantDraftStandardCard,
   ParticipantPositionRecord,
   ReviewCommentRecord,
+  PublicDocumentRecord,
+  PublicDocumentsPageData,
   StandardSummary,
+  StandardsPageData,
   SubcommitteeSummary,
   SecretariatCycleDetail,
   SecretariatDraftStandardDetail,
@@ -98,6 +105,22 @@ export function getPublicStandards(): Promise<StandardSummary[]> {
   return fetchFromApi<StandardSummary[]>("/standards");
 }
 
+export function getPublicStandardsPageData(): Promise<StandardsPageData> {
+  return fetchFromApi<StandardsPageData>("/standards/public-content");
+}
+
+export function getPublicNewsItems(): Promise<NewsItemRecord[]> {
+  return fetchFromApi<NewsItemRecord[]>("/news");
+}
+
+export function getPublicDocumentsPageData(): Promise<PublicDocumentsPageData> {
+  return fetchFromApi<PublicDocumentsPageData>("/documents");
+}
+
+export function getPublicMeetingsPageData(): Promise<MeetingsPageData> {
+  return fetchFromApi<MeetingsPageData>("/meetings");
+}
+
 export function getParticipantAssignedCycles(): Promise<ParticipantAssignedReviewCycle[]> {
   return fetchFromApi<ParticipantAssignedReviewCycle[]>("/approval/participant/cycles");
 }
@@ -176,6 +199,26 @@ export function getReviewCycleAuditEvents(
 
 export function getCommitteeAuditEvents(): Promise<ApprovalAuditEvent[]> {
   return fetchFromApi<ApprovalAuditEvent[]>("/audit/committee/events");
+}
+
+export function getContentAuditEvents(): Promise<ApprovalAuditEvent[]> {
+  return fetchFromApi<ApprovalAuditEvent[]>("/audit/content/events");
+}
+
+export function getBackofficeNewsItems(): Promise<NewsItemRecord[]> {
+  return fetchFromApi<NewsItemRecord[]>("/news/backoffice");
+}
+
+export function getBackofficePublicDocuments(): Promise<PublicDocumentRecord[]> {
+  return fetchFromApi<PublicDocumentRecord[]>("/documents/backoffice");
+}
+
+export function getBackofficeMeetingRecords(): Promise<MeetingRecord[]> {
+  return fetchFromApi<MeetingRecord[]>("/meetings/backoffice");
+}
+
+export function getBackofficeApprovedStandards(): Promise<ApprovedStandardRecord[]> {
+  return fetchFromApi<ApprovedStandardRecord[]>("/standards/backoffice/approved");
 }
 
 export function getUsers(): Promise<AuthenticatedUser[]> {

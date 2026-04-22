@@ -1,7 +1,16 @@
 import { Injectable } from "@nestjs/common";
-import type { DocumentSummary, PaginatedResult } from "@tk182/shared-types";
+import type {
+  CreatePublicDocumentDto,
+  DocumentSummary,
+  PaginatedResult,
+  PublicDocumentRecord,
+  PublicDocumentsPageData,
+  UpdatePublicDocumentDto
+} from "@tk182/shared-types";
 
 import { DatabaseService } from "../../common/database/database.service";
+import { ContentService } from "../content/content.service";
+import type { UploadedBinaryFile } from "../content/content-file-storage.service";
 
 type DocumentVisibility = DocumentSummary["visibility"];
 
@@ -16,7 +25,51 @@ interface DocumentRow {
 
 @Injectable()
 export class DocumentsService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly contentService: ContentService
+  ) {}
+
+  getPublicDocumentsPageData(): Promise<PublicDocumentsPageData> {
+    return this.contentService.getPublicDocumentsPageData();
+  }
+
+  listBackofficePublicDocuments(): Promise<PublicDocumentRecord[]> {
+    return this.contentService.listBackofficePublicDocuments();
+  }
+
+  createPublicDocument(
+    userId: string,
+    payload: CreatePublicDocumentDto,
+    file?: UploadedBinaryFile
+  ): Promise<PublicDocumentRecord> {
+    return this.contentService.createPublicDocument(userId, payload, file);
+  }
+
+  updatePublicDocument(
+    userId: string,
+    documentId: string,
+    payload: UpdatePublicDocumentDto,
+    file?: UploadedBinaryFile
+  ): Promise<PublicDocumentRecord> {
+    return this.contentService.updatePublicDocument(userId, documentId, payload, file);
+  }
+
+  publishPublicDocument(userId: string, documentId: string): Promise<PublicDocumentRecord> {
+    return this.contentService.publishPublicDocument(userId, documentId);
+  }
+
+  unpublishPublicDocument(userId: string, documentId: string): Promise<PublicDocumentRecord> {
+    return this.contentService.unpublishPublicDocument(userId, documentId);
+  }
+
+  getPublicDocumentDownload(documentId: string) {
+    return this.contentService.getPublicDocumentDownload(documentId);
+  }
+
+  getBackofficePublicDocumentDownload(documentId: string) {
+    return this.contentService.getBackofficePublicDocumentDownload(documentId);
+  }
 
   listPublicDocuments(): Promise<PaginatedResult<DocumentSummary>> {
     return this.listDocumentsByVisibility(["public"]);

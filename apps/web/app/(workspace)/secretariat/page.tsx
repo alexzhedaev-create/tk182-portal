@@ -70,6 +70,13 @@ export default async function SecretariatWorkspacePage() {
             </Link>
             <Link
               className="pill"
+              data-testid="secretariat-content-link"
+              href="/secretariat/content"
+            >
+              Открыть контент портала
+            </Link>
+            <Link
+              className="pill"
               data-testid="secretariat-committee-link"
               href="/secretariat/committee"
             >

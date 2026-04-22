@@ -124,6 +124,40 @@ function formatRelatedObject(event: ApprovalAuditEvent): string {
 
       return title ? `Подкомитет: ${title}` : "Подкомитет";
     }
+    case "NEWS_ITEM": {
+      const title = pickTextValue(event.metadata, "title");
+      return title ? `Новость: ${title}` : "Новость";
+    }
+    case "PUBLIC_DOCUMENT": {
+      const title = pickTextValue(event.metadata, "title");
+      const category = pickTextValue(event.metadata, "category");
+
+      if (title && category) {
+        return `Публичный документ: ${title} • ${category}`;
+      }
+
+      return title ? `Публичный документ: ${title}` : "Публичный документ";
+    }
+    case "MEETING_RECORD": {
+      const title = pickTextValue(event.metadata, "title");
+      const category = pickTextValue(event.metadata, "category");
+
+      if (title && category) {
+        return `Заседание: ${title} • ${category}`;
+      }
+
+      return title ? `Заседание: ${title}` : "Запись заседания";
+    }
+    case "APPROVED_STANDARD": {
+      const code = pickTextValue(event.metadata, "code");
+      const title = pickTextValue(event.metadata, "title");
+
+      if (code && title) {
+        return `Утвержденный стандарт: ${code} • ${title}`;
+      }
+
+      return code ? `Утвержденный стандарт: ${code}` : "Утвержденный стандарт";
+    }
     default:
       return event.entityId;
   }

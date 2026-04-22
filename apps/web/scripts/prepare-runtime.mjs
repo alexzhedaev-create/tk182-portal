@@ -9,6 +9,12 @@ const pagesManifestPath = resolve(
   "server",
   "pages-manifest.json"
 );
+const appPathsManifestPath = resolve(
+  process.cwd(),
+  distDirectory,
+  "server",
+  "app-paths-manifest.json"
+);
 const pagesOutputDirectory = resolve(process.cwd(), distDirectory, "server", "pages");
 const legacyTracePlaceholder = `${JSON.stringify({ version: 1, files: [] })}\n`;
 
@@ -39,6 +45,12 @@ async function ensureLegacyPagesManifestPlaceholder() {
     await access(pagesManifestPath);
   } catch {
     await writeFile(pagesManifestPath, "{}\n", "utf8");
+  }
+
+  try {
+    await access(appPathsManifestPath);
+  } catch {
+    await writeFile(appPathsManifestPath, "{}\n", "utf8");
   }
 }
 

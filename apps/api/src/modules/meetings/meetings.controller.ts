@@ -16,12 +16,10 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type {
-  CreatePublicDocumentDto,
-  DocumentSummary,
-  PaginatedResult,
-  PublicDocumentRecord,
-  PublicDocumentsPageData,
-  UpdatePublicDocumentDto
+  CreateMeetingRecordDto,
+  MeetingRecord,
+  MeetingsPageData,
+  UpdateMeetingRecordDto
 } from "@tk182/shared-types";
 
 import type { AuthenticatedRequest, SetHeaderResponse } from "../auth/auth.types";
@@ -29,23 +27,23 @@ import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
 import { SessionAuthGuard } from "../auth/session-auth.guard";
 import type { UploadedBinaryFile } from "../content/content-file-storage.service";
-import { DocumentsService } from "./documents.service";
+import { MeetingsService } from "./meetings.service";
 
-@Controller("documents")
-export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) {}
+@Controller("meetings")
+export class MeetingsController {
+  constructor(private readonly meetingsService: MeetingsService) {}
 
   @Get()
-  getPublicDocuments(): Promise<PublicDocumentsPageData> {
-    return this.documentsService.getPublicDocumentsPageData();
+  getMeetingsPageData(): Promise<MeetingsPageData> {
+    return this.meetingsService.getMeetingsPageData();
   }
 
-  @Get("public/:documentId/download")
-  async downloadPublicDocument(
-    @Param("documentId") documentId: string,
+  @Get("public/:meetingId/download")
+  async downloadPublicMeeting(
+    @Param("meetingId") meetingId: string,
     @Res({ passthrough: true }) response: SetHeaderResponse
   ): Promise<StreamableFile> {
-    const download = await this.documentsService.getPublicDocumentDownload(documentId);
+    const download = await this.meetingsService.getPublicMeetingDownload(meetingId);
 
     response.setHeader("Content-Type", download.mimeType);
     response.setHeader("Content-Length", String(download.sizeBytes));
@@ -54,97 +52,81 @@ export class DocumentsController {
     return new StreamableFile(createReadStream(download.streamPath));
   }
 
-  @Get("participant")
-  @UseGuards(SessionAuthGuard, RolesGuard)
-  @Roles("PARTICIPANT")
-  getParticipantDocuments(): Promise<PaginatedResult<DocumentSummary>> {
-    return this.documentsService.listParticipantDocuments();
-  }
-
-  @Get("secretariat")
-  @UseGuards(SessionAuthGuard, RolesGuard)
-  @Roles("SECRETARIAT", "ADMIN")
-  getSecretariatDocuments(): Promise<PaginatedResult<DocumentSummary>> {
-    return this.documentsService.listSecretariatDocuments();
-  }
-
   @Get("backoffice")
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
-  listBackofficePublicDocuments(): Promise<PublicDocumentRecord[]> {
-    return this.documentsService.listBackofficePublicDocuments();
+  listBackofficeMeetingRecords(): Promise<MeetingRecord[]> {
+    return this.meetingsService.listBackofficeMeetingRecords();
   }
 
   @Post("backoffice")
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
   @UseInterceptors(FileInterceptor("file"))
-  createPublicDocument(
+  createMeetingRecord(
     @Req() request: AuthenticatedRequest,
-    @Body() payload: CreatePublicDocumentDto,
+    @Body() payload: CreateMeetingRecordDto,
     @UploadedFile() file: UploadedBinaryFile | undefined
-  ): Promise<PublicDocumentRecord> {
-    return this.documentsService.createPublicDocument(
+  ): Promise<MeetingRecord> {
+    return this.meetingsService.createMeetingRecord(
       request.authSession!.user.id,
       payload,
       file
     );
   }
 
-  @Patch("backoffice/:documentId")
+  @Patch("backoffice/:meetingId")
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
   @UseInterceptors(FileInterceptor("file"))
-  updatePublicDocument(
+  updateMeetingRecord(
     @Req() request: AuthenticatedRequest,
-    @Param("documentId") documentId: string,
-    @Body() payload: UpdatePublicDocumentDto,
+    @Param("meetingId") meetingId: string,
+    @Body() payload: UpdateMeetingRecordDto,
     @UploadedFile() file: UploadedBinaryFile | undefined
-  ): Promise<PublicDocumentRecord> {
-    return this.documentsService.updatePublicDocument(
+  ): Promise<MeetingRecord> {
+    return this.meetingsService.updateMeetingRecord(
       request.authSession!.user.id,
-      documentId,
+      meetingId,
       payload,
       file
     );
   }
 
-  @Post("backoffice/:documentId/publish")
+  @Post("backoffice/:meetingId/publish")
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
-  publishPublicDocument(
+  publishMeetingRecord(
     @Req() request: AuthenticatedRequest,
-    @Param("documentId") documentId: string
-  ): Promise<PublicDocumentRecord> {
-    return this.documentsService.publishPublicDocument(
+    @Param("meetingId") meetingId: string
+  ): Promise<MeetingRecord> {
+    return this.meetingsService.publishMeetingRecord(
       request.authSession!.user.id,
-      documentId
+      meetingId
     );
   }
 
-  @Post("backoffice/:documentId/unpublish")
+  @Post("backoffice/:meetingId/unpublish")
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
-  unpublishPublicDocument(
+  unpublishMeetingRecord(
     @Req() request: AuthenticatedRequest,
-    @Param("documentId") documentId: string
-  ): Promise<PublicDocumentRecord> {
-    return this.documentsService.unpublishPublicDocument(
+    @Param("meetingId") meetingId: string
+  ): Promise<MeetingRecord> {
+    return this.meetingsService.unpublishMeetingRecord(
       request.authSession!.user.id,
-      documentId
+      meetingId
     );
   }
 
-  @Get("backoffice/:documentId/download")
+  @Get("backoffice/:meetingId/download")
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
-  async downloadBackofficePublicDocument(
-    @Param("documentId") documentId: string,
+  async downloadBackofficeMeeting(
+    @Param("meetingId") meetingId: string,
     @Res({ passthrough: true }) response: SetHeaderResponse
   ): Promise<StreamableFile> {
-    const download = await this.documentsService.getBackofficePublicDocumentDownload(
-      documentId
-    );
+    const download = await this.meetingsService.getBackofficeMeetingDownload(meetingId);
 
     response.setHeader("Content-Type", download.mimeType);
     response.setHeader("Content-Length", String(download.sizeBytes));

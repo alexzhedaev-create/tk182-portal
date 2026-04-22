@@ -194,6 +194,7 @@ if (existsSync(workspaceEnvPath)) {
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   distDir: distDirectory,
+  outputFileTracing: false,
   transpilePackages: ["@tk182/shared-types"],
   webpack: (config, { isServer, webpack }) => {
     if (isServer) {

@@ -1,7 +1,15 @@
 import { Injectable } from "@nestjs/common";
-import type { StandardSummary } from "@tk182/shared-types";
+import type {
+  ApprovedStandardRecord,
+  CreateApprovedStandardDto,
+  StandardSummary,
+  StandardsPageData,
+  UpdateApprovedStandardDto
+} from "@tk182/shared-types";
 
 import { DatabaseService } from "../../common/database/database.service";
+import { ContentService } from "../content/content.service";
+import type { UploadedBinaryFile } from "../content/content-file-storage.service";
 
 interface StandardRow {
   code: string;
@@ -20,7 +28,10 @@ interface StandardRow {
 
 @Injectable()
 export class StandardsService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly contentService: ContentService
+  ) {}
 
   async listStandards(): Promise<StandardSummary[]> {
     const result = await this.databaseService.query<StandardRow>(
@@ -73,5 +84,50 @@ export class StandardsService {
           }
         : null
     }));
+  }
+
+  async getPublicStandardsPageData(): Promise<StandardsPageData> {
+    const draftStandards = await this.listStandards();
+    return this.contentService.getStandardsPageData(draftStandards);
+  }
+
+  listBackofficeApprovedStandards(): Promise<ApprovedStandardRecord[]> {
+    return this.contentService.listBackofficeApprovedStandards();
+  }
+
+  createApprovedStandard(
+    userId: string,
+    payload: CreateApprovedStandardDto,
+    file?: UploadedBinaryFile
+  ): Promise<ApprovedStandardRecord> {
+    return this.contentService.createApprovedStandard(userId, payload, file);
+  }
+
+  updateApprovedStandard(
+    userId: string,
+    standardId: string,
+    payload: UpdateApprovedStandardDto,
+    file?: UploadedBinaryFile
+  ): Promise<ApprovedStandardRecord> {
+    return this.contentService.updateApprovedStandard(userId, standardId, payload, file);
+  }
+
+  publishApprovedStandard(userId: string, standardId: string): Promise<ApprovedStandardRecord> {
+    return this.contentService.publishApprovedStandard(userId, standardId);
+  }
+
+  unpublishApprovedStandard(
+    userId: string,
+    standardId: string
+  ): Promise<ApprovedStandardRecord> {
+    return this.contentService.unpublishApprovedStandard(userId, standardId);
+  }
+
+  getPublicApprovedStandardDownload(standardId: string) {
+    return this.contentService.getPublicApprovedStandardDownload(standardId);
+  }
+
+  getBackofficeApprovedStandardDownload(standardId: string) {
+    return this.contentService.getBackofficeApprovedStandardDownload(standardId);
   }
 }

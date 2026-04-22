@@ -80,12 +80,34 @@ test(
     assert.match(aboutHtml, /Яковлев Сергей Викторович/u);
     assert.match(aboutHtml, /ПК 7/u);
 
+    const newsPage = await fetch(`${webBaseUrl}/news`);
+    const newsHtml = await newsPage.text();
+    assert.equal(newsPage.status, 200);
+    assert.match(newsHtml, /Новости/u);
+    assert.match(newsHtml, /новый публичный контур публикаций/u);
+
+    const documentsPage = await fetch(`${webBaseUrl}/documents`);
+    const documentsHtml = await documentsPage.text();
+    assert.equal(documentsPage.status, 200);
+    assert.match(documentsHtml, /Основные документы/u);
+    assert.match(documentsHtml, /Положение о ТК 182/u);
+    assert.match(documentsHtml, /Скачать/u);
+
+    const meetingsPage = await fetch(`${webBaseUrl}/meetings`);
+    const meetingsHtml = await meetingsPage.text();
+    assert.equal(meetingsPage.status, 200);
+    assert.match(meetingsHtml, /Заседания/u);
+    assert.match(meetingsHtml, /Уведомление и повестка заседания ТК 182/u);
+    assert.match(meetingsHtml, /Протокол заседания ТК 182/u);
+
     const standardsPage = await fetch(`${webBaseUrl}/standards`);
     const standardsHtml = await standardsPage.text();
     assert.equal(standardsPage.status, 200);
-    assert.match(standardsHtml, /Проекты стандартов/u);
+    assert.match(standardsHtml, /Утвержденные стандарты/u);
+    assert.match(standardsHtml, /Программа разработки национальных стандартов/u);
     assert.match(standardsHtml, /ПК 5/u);
     assert.match(standardsHtml, /ТК182-01-2026/u);
+    assert.match(standardsHtml, /ГОСТ Р 70518-2025/u);
 
     const organizationsPage = await fetch(`${webBaseUrl}/organizations`);
     const organizationsHtml = await organizationsPage.text();
@@ -134,5 +156,17 @@ test(
     assert.match(committeeBackofficeHtml, /Структура ТК 182/u);
     assert.match(committeeBackofficeHtml, /Руководство ТК и секретариат/u);
     assert.match(committeeBackofficeHtml, /Журнал изменений структуры/u);
+
+    const contentBackofficePage = await fetch(`${webBaseUrl}/secretariat/content`, {
+      headers: {
+        cookie: secretariat.getCookieHeader()
+      }
+    });
+    const contentBackofficeHtml = await contentBackofficePage.text();
+    assert.equal(contentBackofficePage.status, 200);
+    assert.match(contentBackofficeHtml, /Контент портала/u);
+    assert.match(contentBackofficeHtml, /Публичные документы/u);
+    assert.match(contentBackofficeHtml, /Утвержденные стандарты/u);
+    assert.match(contentBackofficeHtml, /Журнал изменений контента/u);
   }
 );

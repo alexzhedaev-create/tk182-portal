@@ -184,6 +184,209 @@ test(
 );
 
 test(
+  "secretariat can create public content and published items become visible on public endpoints",
+  { timeout: 120000 },
+  async () => {
+    const publicClient = new SessionClient(apiBaseUrl);
+    const secretariat = new SessionClient(apiBaseUrl);
+    await loginAs(secretariat, secretariatCredentials);
+
+    const marker = `${Date.now()}`;
+
+    const seededNews = await publicClient.requestJson("/news");
+    assert.equal(seededNews.response.status, 200);
+    assert.ok(Array.isArray(seededNews.data));
+    assert.ok(
+      seededNews.data.some((item) => item.id === "news-portal-content-launch")
+    );
+
+    const seededDocuments = await publicClient.requestJson("/documents");
+    assert.equal(seededDocuments.response.status, 200);
+    assert.ok(Array.isArray(seededDocuments.data.sections));
+    assert.ok(
+      seededDocuments.data.sections.some(
+        (section) =>
+          section.category === "MAIN_DOCUMENTS" &&
+          section.documents.some((document) => document.id === "public-document-main-regulation")
+      )
+    );
+
+    const seededMeetings = await publicClient.requestJson("/meetings");
+    assert.equal(seededMeetings.response.status, 200);
+    assert.ok(Array.isArray(seededMeetings.data.sections));
+    assert.ok(
+      seededMeetings.data.sections.some(
+        (section) =>
+          section.category === "MEETING_AGENDA" &&
+          section.meetings.some((meeting) => meeting.id === "meeting-agenda-q2-2026")
+      )
+    );
+
+    const seededStandards = await publicClient.requestJson("/standards/public-content");
+    assert.equal(seededStandards.response.status, 200);
+    assert.ok(
+      seededStandards.data.approvedStandards.some(
+        (item) => item.id === "approved-standard-ndt-2025"
+      )
+    );
+    assert.ok(
+      seededStandards.data.nationalStandardsProgramDocuments.some(
+        (item) => item.id === "public-document-national-program-2026"
+      )
+    );
+
+    const createdNews = await secretariat.requestJson("/news/backoffice", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        title: `Новость для API-теста ${marker}`,
+        excerpt: `Краткое описание новости ${marker}`,
+        body: `Полный текст новости ${marker}`,
+        publicationDate: "2026-04-22T09:00:00.000Z"
+      })
+    });
+    assertCreatedOrOk(createdNews.response.status, createdNews.text);
+    assert.equal(createdNews.data.status, "draft");
+
+    const newsBeforePublish = await publicClient.requestJson("/news");
+    assert.equal(newsBeforePublish.response.status, 200);
+    assert.ok(
+      !newsBeforePublish.data.some((item) => item.id === createdNews.data.id)
+    );
+
+    const publishedNews = await secretariat.requestJson(
+      `/news/backoffice/${createdNews.data.id}/publish`,
+      {
+        method: "POST"
+      }
+    );
+    assertCreatedOrOk(publishedNews.response.status, publishedNews.text);
+    assert.equal(publishedNews.data.status, "published");
+
+    const newsAfterPublish = await publicClient.requestJson("/news");
+    assert.equal(newsAfterPublish.response.status, 200);
+    assert.ok(
+      newsAfterPublish.data.some((item) => item.id === createdNews.data.id)
+    );
+
+    const documentForm = createTextUpload(
+      `api-public-document-${marker}.txt`,
+      `Содержимое документа ${marker}`
+    );
+    documentForm.set("title", `Документ для API-теста ${marker}`);
+    documentForm.set("summary", `Описание документа ${marker}`);
+    documentForm.set("category", "MAIN_DOCUMENTS");
+    documentForm.set("publicationDate", "2026-04-22T10:00:00.000Z");
+    documentForm.set("fileDescription", `Файл документа ${marker}`);
+
+    const createdDocument = await secretariat.requestJson("/documents/backoffice", {
+      method: "POST",
+      body: documentForm
+    });
+    assertCreatedOrOk(createdDocument.response.status, createdDocument.text);
+    assert.equal(createdDocument.data.status, "draft");
+
+    const publishedDocument = await secretariat.requestJson(
+      `/documents/backoffice/${createdDocument.data.id}/publish`,
+      {
+        method: "POST"
+      }
+    );
+    assertCreatedOrOk(publishedDocument.response.status, publishedDocument.text);
+    assert.equal(publishedDocument.data.status, "published");
+
+    const documentsAfterPublish = await publicClient.requestJson("/documents");
+    assert.equal(documentsAfterPublish.response.status, 200);
+    assert.ok(
+      documentsAfterPublish.data.sections.some((section) =>
+        section.documents.some((document) => document.id === createdDocument.data.id)
+      )
+    );
+
+    const meetingForm = createTextUpload(
+      `api-meeting-${marker}.txt`,
+      `Приложение к записи заседания ${marker}`
+    );
+    meetingForm.set("title", `Заседание для API-теста ${marker}`);
+    meetingForm.set("summary", `Краткое описание заседания ${marker}`);
+    meetingForm.set("body", `Подробное содержание заседания ${marker}`);
+    meetingForm.set("location", "Москва");
+    meetingForm.set("category", "MEETING_MINUTES");
+    meetingForm.set("meetingDate", "2026-04-22T11:00:00.000Z");
+    meetingForm.set("publicationDate", "2026-04-22T12:00:00.000Z");
+    meetingForm.set("fileDescription", `Файл заседания ${marker}`);
+
+    const createdMeeting = await secretariat.requestJson("/meetings/backoffice", {
+      method: "POST",
+      body: meetingForm
+    });
+    assertCreatedOrOk(createdMeeting.response.status, createdMeeting.text);
+    assert.equal(createdMeeting.data.status, "draft");
+
+    const publishedMeeting = await secretariat.requestJson(
+      `/meetings/backoffice/${createdMeeting.data.id}/publish`,
+      {
+        method: "POST"
+      }
+    );
+    assertCreatedOrOk(publishedMeeting.response.status, publishedMeeting.text);
+    assert.equal(publishedMeeting.data.status, "published");
+
+    const meetingsAfterPublish = await publicClient.requestJson("/meetings");
+    assert.equal(meetingsAfterPublish.response.status, 200);
+    assert.ok(
+      meetingsAfterPublish.data.sections.some((section) =>
+        section.meetings.some((meeting) => meeting.id === createdMeeting.data.id)
+      )
+    );
+
+    const approvedStandardForm = createTextUpload(
+      `api-approved-standard-${marker}.txt`,
+      `Файл утвержденного стандарта ${marker}`
+    );
+    approvedStandardForm.set("code", `ГОСТ Р API-${marker}`);
+    approvedStandardForm.set("title", `Утвержденный стандарт API ${marker}`);
+    approvedStandardForm.set("summary", `Описание утвержденного стандарта ${marker}`);
+    approvedStandardForm.set("approvalDate", "2026-04-01T00:00:00.000Z");
+    approvedStandardForm.set("publicationDate", "2026-04-22T13:00:00.000Z");
+    approvedStandardForm.set("responsibleSubcommitteeId", "subcommittee-pk3");
+    approvedStandardForm.set("fileDescription", `Файл стандарта ${marker}`);
+
+    const createdApprovedStandard = await secretariat.requestJson(
+      "/standards/backoffice/approved",
+      {
+        method: "POST",
+        body: approvedStandardForm
+      }
+    );
+    assertCreatedOrOk(createdApprovedStandard.response.status, createdApprovedStandard.text);
+    assert.equal(createdApprovedStandard.data.status, "draft");
+
+    const publishedApprovedStandard = await secretariat.requestJson(
+      `/standards/backoffice/approved/${createdApprovedStandard.data.id}/publish`,
+      {
+        method: "POST"
+      }
+    );
+    assertCreatedOrOk(
+      publishedApprovedStandard.response.status,
+      publishedApprovedStandard.text
+    );
+    assert.equal(publishedApprovedStandard.data.status, "published");
+
+    const standardsAfterPublish = await publicClient.requestJson("/standards/public-content");
+    assert.equal(standardsAfterPublish.response.status, 200);
+    assert.ok(
+      standardsAfterPublish.data.approvedStandards.some(
+        (item) => item.id === createdApprovedStandard.data.id
+      )
+    );
+  }
+);
+
+test(
   "secretariat can manage committee structure and public committee data reflects changes",
   { timeout: 120000 },
   async () => {

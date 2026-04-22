@@ -10,6 +10,16 @@ export function toDateTimeLocalValue(value: string): string {
   return new Date(parsed.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
 }
 
+export function toDateInputValue(value: string): string {
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+
+  return parsed.toISOString().slice(0, 10);
+}
+
 export async function extractApiErrorMessage(
   response: Response,
   fallbackMessage: string

@@ -151,6 +151,21 @@ export class AuditService {
     );
   }
 
+  listContentEvents(
+    filters: AuditEventFilters = {}
+  ): Promise<ApprovalAuditEvent[]> {
+    return this.listEvents(
+      "entity_type = ANY($1::text[])",
+      [[
+        "NEWS_ITEM",
+        "PUBLIC_DOCUMENT",
+        "MEETING_RECORD",
+        "APPROVED_STANDARD"
+      ]],
+      filters
+    );
+  }
+
   private async listEvents(
     baseCondition: string,
     baseValues: readonly unknown[],
