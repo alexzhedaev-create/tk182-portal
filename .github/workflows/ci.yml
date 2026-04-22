@@ -71,6 +71,7 @@ jobs:
             apps/api/dist
             apps/web/.next
             packages/shared-types/dist
+          include-hidden-files: true
           if-no-files-found: error
 
   e2e-api:
@@ -171,6 +172,9 @@ jobs:
           name: runtime-builds
           path: .
 
+      - name: Verify restored web runtime artifact
+        run: test -f apps/web/.next/BUILD_ID
+
       - name: Prepare database
         run: pnpm db:setup
 
@@ -222,6 +226,9 @@ jobs:
         with:
           name: runtime-builds
           path: .
+
+      - name: Verify restored web runtime artifact
+        run: test -f apps/web/.next/BUILD_ID
 
       - name: Cache Playwright Chromium
         id: playwright-cache
