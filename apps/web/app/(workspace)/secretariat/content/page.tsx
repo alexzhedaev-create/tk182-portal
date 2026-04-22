@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AccessDeniedCard } from "../../../../components/access-denied-card";
 import { SecretariatApprovedStandardsPanel } from "../../../../components/secretariat-approved-standards-panel";
 import { SecretariatAuditTrail } from "../../../../components/secretariat-audit-trail";
+import { SecretariatContentMigrationChecklist } from "../../../../components/secretariat-content-migration-checklist";
 import { SecretariatMeetingsPanel } from "../../../../components/secretariat-meetings-panel";
 import { SecretariatNewsPanel } from "../../../../components/secretariat-news-panel";
 import { SecretariatPublicDocumentsPanel } from "../../../../components/secretariat-public-documents-panel";
@@ -45,6 +46,15 @@ export default async function SecretariatContentPage() {
       getCommitteeSubcommittees(),
       getContentAuditEvents()
     ]);
+  const migrationChecklistItems = [
+    ...newsItems.map((item) => ({ title: item.title, migration: item.migration })),
+    ...documents.map((item) => ({ title: item.title, migration: item.migration })),
+    ...meetings.map((item) => ({ title: item.title, migration: item.migration })),
+    ...approvedStandards.map((item) => ({
+      title: `${item.code} — ${item.title}`,
+      migration: item.migration
+    }))
+  ];
 
   return (
     <div className="page-frame">
@@ -82,15 +92,17 @@ export default async function SecretariatContentPage() {
             <li>Основные документы, отчеты и планы работ.</li>
             <li>Протоколы заседаний и повестки.</li>
             <li>Утвержденные стандарты и программа разработки национальных стандартов.</li>
+            <li>Контроль ручного переноса со старого сайта по источнику, статусу и комментарию.</li>
           </ul>
           <p className="status-note">
             Все записи создаются как реальные persisted-сущности и могут быть
-            опубликованы или сняты с публикации.
+            опубликованы или сняты с публикации, а также отмечены как перенесенные и проверенные.
           </p>
         </article>
       </section>
 
       <section className="content-stack">
+        <SecretariatContentMigrationChecklist items={migrationChecklistItems} />
         <SecretariatNewsPanel newsItems={newsItems} />
         <SecretariatPublicDocumentsPanel documents={documents} />
         <SecretariatMeetingsPanel meetings={meetings} />

@@ -244,7 +244,11 @@ test(
         title: `Новость для API-теста ${marker}`,
         excerpt: `Краткое описание новости ${marker}`,
         body: `Полный текст новости ${marker}`,
-        publicationDate: "2026-04-22T09:00:00.000Z"
+        publicationDate: "2026-04-22T09:00:00.000Z",
+        legacySection: "NEWS",
+        legacySourceUrl: `https://viam.ru/tk182/news/api-${marker}`,
+        migrationStatus: "IMPORTED",
+        migrationNote: `Комментарий к переносу новости ${marker}`
       })
     });
     assertCreatedOrOk(createdNews.response.status, createdNews.text);
@@ -280,6 +284,10 @@ test(
     documentForm.set("category", "MAIN_DOCUMENTS");
     documentForm.set("publicationDate", "2026-04-22T10:00:00.000Z");
     documentForm.set("fileDescription", `Файл документа ${marker}`);
+    documentForm.set("legacySection", "MAIN_DOCUMENTS");
+    documentForm.set("legacySourceUrl", `https://viam.ru/tk182/documents/api-${marker}`);
+    documentForm.set("migrationStatus", "IMPORTED");
+    documentForm.set("migrationNote", `Комментарий к переносу документа ${marker}`);
 
     const createdDocument = await secretariat.requestJson("/documents/backoffice", {
       method: "POST",
@@ -317,6 +325,10 @@ test(
     meetingForm.set("meetingDate", "2026-04-22T11:00:00.000Z");
     meetingForm.set("publicationDate", "2026-04-22T12:00:00.000Z");
     meetingForm.set("fileDescription", `Файл заседания ${marker}`);
+    meetingForm.set("legacySection", "MEETING_MINUTES");
+    meetingForm.set("legacySourceUrl", `https://viam.ru/tk182/meetings/api-${marker}`);
+    meetingForm.set("migrationStatus", "IMPORTED");
+    meetingForm.set("migrationNote", `Комментарий к переносу заседания ${marker}`);
 
     const createdMeeting = await secretariat.requestJson("/meetings/backoffice", {
       method: "POST",
@@ -353,6 +365,13 @@ test(
     approvedStandardForm.set("publicationDate", "2026-04-22T13:00:00.000Z");
     approvedStandardForm.set("responsibleSubcommitteeId", "subcommittee-pk3");
     approvedStandardForm.set("fileDescription", `Файл стандарта ${marker}`);
+    approvedStandardForm.set("legacySection", "APPROVED_STANDARDS");
+    approvedStandardForm.set("legacySourceUrl", `https://viam.ru/tk182/standards/api-${marker}`);
+    approvedStandardForm.set("migrationStatus", "IMPORTED");
+    approvedStandardForm.set(
+      "migrationNote",
+      `Комментарий к переносу утвержденного стандарта ${marker}`
+    );
 
     const createdApprovedStandard = await secretariat.requestJson(
       "/standards/backoffice/approved",
@@ -383,6 +402,101 @@ test(
         (item) => item.id === createdApprovedStandard.data.id
       )
     );
+  }
+);
+
+test(
+  "secretariat can persist and filter manual migration tracking for public content",
+  { timeout: 120000 },
+  async () => {
+    const secretariat = new SessionClient(apiBaseUrl);
+    await loginAs(secretariat, secretariatCredentials);
+
+    const marker = `${Date.now()}`;
+    const newsSourceUrl = `https://viam.ru/tk182/news/migration-${marker}`;
+
+    const createdNews = await secretariat.requestJson("/news/backoffice", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        title: `Новости переноса ${marker}`,
+        excerpt: `Краткое описание ${marker}`,
+        body: `Полный текст ${marker}`,
+        publicationDate: "2026-04-22T15:00:00.000Z",
+        legacySection: "NEWS",
+        legacySourceUrl: newsSourceUrl,
+        migrationStatus: "IMPORTED",
+        migrationNote: `Проверить форматирование новости ${marker}`
+      })
+    });
+    assertCreatedOrOk(createdNews.response.status, createdNews.text);
+    assert.equal(createdNews.data.migration.legacySection, "NEWS");
+    assert.equal(createdNews.data.migration.legacySourceUrl, newsSourceUrl);
+    assert.equal(createdNews.data.migration.migrationStatus, "IMPORTED");
+
+    const importedNews = await secretariat.requestJson(
+      "/news/backoffice?migrationStatus=IMPORTED"
+    );
+    assert.equal(importedNews.response.status, 200);
+    assert.ok(importedNews.data.some((item) => item.id === createdNews.data.id));
+
+    const updatedNews = await secretariat.requestJson(
+      `/news/backoffice/${createdNews.data.id}`,
+      {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          title: createdNews.data.title,
+          excerpt: createdNews.data.excerpt,
+          body: createdNews.data.body,
+          publicationDate: createdNews.data.publicationDate,
+          legacySection: "NEWS",
+          legacySourceUrl: newsSourceUrl,
+          migrationStatus: "VERIFIED",
+          migrationNote: `Проверено после ручного переноса ${marker}`
+        })
+      }
+    );
+    assertCreatedOrOk(updatedNews.response.status, updatedNews.text);
+    assert.equal(updatedNews.data.migration.migrationStatus, "VERIFIED");
+
+    const verifiedNews = await secretariat.requestJson(
+      "/news/backoffice?migrationStatus=VERIFIED"
+    );
+    assert.equal(verifiedNews.response.status, 200);
+    assert.ok(verifiedNews.data.some((item) => item.id === createdNews.data.id));
+
+    const documentForm = createTextUpload(
+      `migration-document-${marker}.txt`,
+      `Тело документа переноса ${marker}`
+    );
+    documentForm.set("title", `Документ переноса ${marker}`);
+    documentForm.set("summary", `Описание документа ${marker}`);
+    documentForm.set("category", "WORK_REPORTS");
+    documentForm.set("publicationDate", "2026-04-22T16:00:00.000Z");
+    documentForm.set("fileDescription", `Файл ${marker}`);
+    documentForm.set("legacySection", "WORK_REPORTS");
+    documentForm.set("legacySourceUrl", `https://viam.ru/tk182/reports/${marker}`);
+    documentForm.set("migrationStatus", "NOT_IMPORTED");
+    documentForm.set("migrationNote", `Документ еще ожидает полного переноса ${marker}`);
+
+    const createdDocument = await secretariat.requestJson("/documents/backoffice", {
+      method: "POST",
+      body: documentForm
+    });
+    assertCreatedOrOk(createdDocument.response.status, createdDocument.text);
+    assert.equal(createdDocument.data.migration.legacySection, "WORK_REPORTS");
+    assert.equal(createdDocument.data.migration.migrationStatus, "NOT_IMPORTED");
+
+    const filteredDocuments = await secretariat.requestJson(
+      "/documents/backoffice?migrationStatus=NOT_IMPORTED&legacySection=WORK_REPORTS"
+    );
+    assert.equal(filteredDocuments.response.status, 200);
+    assert.ok(filteredDocuments.data.some((item) => item.id === createdDocument.data.id));
   }
 );
 

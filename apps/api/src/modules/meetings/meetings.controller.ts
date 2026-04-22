@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   StreamableFile,
@@ -16,7 +17,10 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type {
+  BackofficeMeetingRecord,
+  ContentMigrationStatus,
   CreateMeetingRecordDto,
+  LegacyContentSection,
   MeetingRecord,
   MeetingsPageData,
   UpdateMeetingRecordDto
@@ -55,8 +59,16 @@ export class MeetingsController {
   @Get("backoffice")
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
-  listBackofficeMeetingRecords(): Promise<MeetingRecord[]> {
-    return this.meetingsService.listBackofficeMeetingRecords();
+  listBackofficeMeetingRecords(
+    @Query("migrationStatus") migrationStatus?: string,
+    @Query("legacySection") legacySection?: string
+  ): Promise<BackofficeMeetingRecord[]> {
+    return this.meetingsService.listBackofficeMeetingRecords({
+      ...(migrationStatus
+        ? { migrationStatus: migrationStatus as ContentMigrationStatus }
+        : {}),
+      ...(legacySection ? { legacySection: legacySection as LegacyContentSection } : {})
+    });
   }
 
   @Post("backoffice")
@@ -67,7 +79,7 @@ export class MeetingsController {
     @Req() request: AuthenticatedRequest,
     @Body() payload: CreateMeetingRecordDto,
     @UploadedFile() file: UploadedBinaryFile | undefined
-  ): Promise<MeetingRecord> {
+  ): Promise<BackofficeMeetingRecord> {
     return this.meetingsService.createMeetingRecord(
       request.authSession!.user.id,
       payload,
@@ -84,7 +96,7 @@ export class MeetingsController {
     @Param("meetingId") meetingId: string,
     @Body() payload: UpdateMeetingRecordDto,
     @UploadedFile() file: UploadedBinaryFile | undefined
-  ): Promise<MeetingRecord> {
+  ): Promise<BackofficeMeetingRecord> {
     return this.meetingsService.updateMeetingRecord(
       request.authSession!.user.id,
       meetingId,
@@ -99,7 +111,7 @@ export class MeetingsController {
   publishMeetingRecord(
     @Req() request: AuthenticatedRequest,
     @Param("meetingId") meetingId: string
-  ): Promise<MeetingRecord> {
+  ): Promise<BackofficeMeetingRecord> {
     return this.meetingsService.publishMeetingRecord(
       request.authSession!.user.id,
       meetingId
@@ -112,7 +124,7 @@ export class MeetingsController {
   unpublishMeetingRecord(
     @Req() request: AuthenticatedRequest,
     @Param("meetingId") meetingId: string
-  ): Promise<MeetingRecord> {
+  ): Promise<BackofficeMeetingRecord> {
     return this.meetingsService.unpublishMeetingRecord(
       request.authSession!.user.id,
       meetingId

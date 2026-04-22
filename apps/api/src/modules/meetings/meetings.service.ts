@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import type {
+  BackofficeContentListFilters,
+  BackofficeMeetingRecord,
   CreateMeetingRecordDto,
   MeetingRecord,
   MeetingsPageData,
@@ -17,15 +19,17 @@ export class MeetingsService {
     return this.contentService.getMeetingsPageData();
   }
 
-  listBackofficeMeetingRecords(): Promise<MeetingRecord[]> {
-    return this.contentService.listBackofficeMeetingRecords();
+  listBackofficeMeetingRecords(
+    filters: BackofficeContentListFilters = {}
+  ): Promise<BackofficeMeetingRecord[]> {
+    return this.contentService.listBackofficeMeetingRecords(filters);
   }
 
   createMeetingRecord(
     userId: string,
     payload: CreateMeetingRecordDto,
     file?: UploadedBinaryFile
-  ): Promise<MeetingRecord> {
+  ): Promise<BackofficeMeetingRecord> {
     return this.contentService.createMeetingRecord(userId, payload, file);
   }
 
@@ -34,15 +38,21 @@ export class MeetingsService {
     meetingId: string,
     payload: UpdateMeetingRecordDto,
     file?: UploadedBinaryFile
-  ): Promise<MeetingRecord> {
+  ): Promise<BackofficeMeetingRecord> {
     return this.contentService.updateMeetingRecord(userId, meetingId, payload, file);
   }
 
-  publishMeetingRecord(userId: string, meetingId: string): Promise<MeetingRecord> {
+  publishMeetingRecord(
+    userId: string,
+    meetingId: string
+  ): Promise<BackofficeMeetingRecord> {
     return this.contentService.publishMeetingRecord(userId, meetingId);
   }
 
-  unpublishMeetingRecord(userId: string, meetingId: string): Promise<MeetingRecord> {
+  unpublishMeetingRecord(
+    userId: string,
+    meetingId: string
+  ): Promise<BackofficeMeetingRecord> {
     return this.contentService.unpublishMeetingRecord(userId, meetingId);
   }
 

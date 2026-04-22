@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   StreamableFile,
@@ -16,8 +17,11 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type {
+  BackofficePublicDocumentRecord,
+  ContentMigrationStatus,
   CreatePublicDocumentDto,
   DocumentSummary,
+  LegacyContentSection,
   PaginatedResult,
   PublicDocumentRecord,
   PublicDocumentsPageData,
@@ -71,8 +75,16 @@ export class DocumentsController {
   @Get("backoffice")
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
-  listBackofficePublicDocuments(): Promise<PublicDocumentRecord[]> {
-    return this.documentsService.listBackofficePublicDocuments();
+  listBackofficePublicDocuments(
+    @Query("migrationStatus") migrationStatus?: string,
+    @Query("legacySection") legacySection?: string
+  ): Promise<BackofficePublicDocumentRecord[]> {
+    return this.documentsService.listBackofficePublicDocuments({
+      ...(migrationStatus
+        ? { migrationStatus: migrationStatus as ContentMigrationStatus }
+        : {}),
+      ...(legacySection ? { legacySection: legacySection as LegacyContentSection } : {})
+    });
   }
 
   @Post("backoffice")
@@ -83,7 +95,7 @@ export class DocumentsController {
     @Req() request: AuthenticatedRequest,
     @Body() payload: CreatePublicDocumentDto,
     @UploadedFile() file: UploadedBinaryFile | undefined
-  ): Promise<PublicDocumentRecord> {
+  ): Promise<BackofficePublicDocumentRecord> {
     return this.documentsService.createPublicDocument(
       request.authSession!.user.id,
       payload,
@@ -100,7 +112,7 @@ export class DocumentsController {
     @Param("documentId") documentId: string,
     @Body() payload: UpdatePublicDocumentDto,
     @UploadedFile() file: UploadedBinaryFile | undefined
-  ): Promise<PublicDocumentRecord> {
+  ): Promise<BackofficePublicDocumentRecord> {
     return this.documentsService.updatePublicDocument(
       request.authSession!.user.id,
       documentId,
@@ -115,7 +127,7 @@ export class DocumentsController {
   publishPublicDocument(
     @Req() request: AuthenticatedRequest,
     @Param("documentId") documentId: string
-  ): Promise<PublicDocumentRecord> {
+  ): Promise<BackofficePublicDocumentRecord> {
     return this.documentsService.publishPublicDocument(
       request.authSession!.user.id,
       documentId
@@ -128,7 +140,7 @@ export class DocumentsController {
   unpublishPublicDocument(
     @Req() request: AuthenticatedRequest,
     @Param("documentId") documentId: string
-  ): Promise<PublicDocumentRecord> {
+  ): Promise<BackofficePublicDocumentRecord> {
     return this.documentsService.unpublishPublicDocument(
       request.authSession!.user.id,
       documentId

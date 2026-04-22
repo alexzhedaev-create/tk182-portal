@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   Res,
   StreamableFile,
@@ -16,8 +17,11 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type {
+  BackofficeApprovedStandardRecord,
   ApprovedStandardRecord,
+  ContentMigrationStatus,
   CreateApprovedStandardDto,
+  LegacyContentSection,
   StandardSummary,
   StandardsPageData,
   UpdateApprovedStandardDto
@@ -63,8 +67,16 @@ export class StandardsController {
   @Get("backoffice/approved")
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
-  listBackofficeApprovedStandards(): Promise<ApprovedStandardRecord[]> {
-    return this.standardsService.listBackofficeApprovedStandards();
+  listBackofficeApprovedStandards(
+    @Query("migrationStatus") migrationStatus?: string,
+    @Query("legacySection") legacySection?: string
+  ): Promise<BackofficeApprovedStandardRecord[]> {
+    return this.standardsService.listBackofficeApprovedStandards({
+      ...(migrationStatus
+        ? { migrationStatus: migrationStatus as ContentMigrationStatus }
+        : {}),
+      ...(legacySection ? { legacySection: legacySection as LegacyContentSection } : {})
+    });
   }
 
   @Post("backoffice/approved")
@@ -75,7 +87,7 @@ export class StandardsController {
     @Req() request: AuthenticatedRequest,
     @Body() payload: CreateApprovedStandardDto,
     @UploadedFile() file: UploadedBinaryFile | undefined
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     return this.standardsService.createApprovedStandard(
       request.authSession!.user.id,
       payload,
@@ -92,7 +104,7 @@ export class StandardsController {
     @Param("standardId") standardId: string,
     @Body() payload: UpdateApprovedStandardDto,
     @UploadedFile() file: UploadedBinaryFile | undefined
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     return this.standardsService.updateApprovedStandard(
       request.authSession!.user.id,
       standardId,
@@ -107,7 +119,7 @@ export class StandardsController {
   publishApprovedStandard(
     @Req() request: AuthenticatedRequest,
     @Param("standardId") standardId: string
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     return this.standardsService.publishApprovedStandard(
       request.authSession!.user.id,
       standardId
@@ -120,7 +132,7 @@ export class StandardsController {
   unpublishApprovedStandard(
     @Req() request: AuthenticatedRequest,
     @Param("standardId") standardId: string
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     return this.standardsService.unpublishApprovedStandard(
       request.authSession!.user.id,
       standardId

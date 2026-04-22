@@ -3,16 +3,25 @@
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { ApprovedStandardRecord, SubcommitteeSummary } from "@tk182/shared-types";
+import type {
+  BackofficeApprovedStandardRecord,
+  ContentMigrationStatus,
+  SubcommitteeSummary
+} from "@tk182/shared-types";
 
-import { formatPublicationStatus } from "../lib/content";
+import {
+  formatLegacyContentSection,
+  formatMigrationStatus,
+  formatPublicationStatus
+} from "../lib/content";
 import { extractApiErrorMessage, toDateInputValue } from "../lib/form-utils";
 import { formatDate } from "../lib/review";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:3001";
+const migrationStatuses: ContentMigrationStatus[] = ["NOT_IMPORTED", "IMPORTED", "VERIFIED"];
 
 interface SecretariatApprovedStandardsPanelProps {
-  standards: ApprovedStandardRecord[];
+  standards: BackofficeApprovedStandardRecord[];
   subcommittees: SubcommitteeSummary[];
 }
 
@@ -29,6 +38,13 @@ export function SecretariatApprovedStandardsPanel({
   const [publicationDate, setPublicationDate] = useState("");
   const [responsibleSubcommitteeId, setResponsibleSubcommitteeId] = useState("");
   const [fileDescription, setFileDescription] = useState("");
+  const [legacySourceUrl, setLegacySourceUrl] = useState("");
+  const [migrationStatus, setMigrationStatus] =
+    useState<ContentMigrationStatus>("NOT_IMPORTED");
+  const [migrationNote, setMigrationNote] = useState("");
+  const [filterMigrationStatus, setFilterMigrationStatus] = useState<
+    ContentMigrationStatus | "ALL"
+  >("ALL");
   const [file, setFile] = useState<File | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -36,6 +52,12 @@ export function SecretariatApprovedStandardsPanel({
 
   const selectedStandard = standards.find((item) => item.id === selectedStandardId) ?? null;
   const isEditMode = Boolean(selectedStandard);
+  const visibleStandards =
+    filterMigrationStatus === "ALL"
+      ? standards
+      : standards.filter(
+          (item) => item.migration.migrationStatus === filterMigrationStatus
+        );
 
   useEffect(() => {
     if (!selectedStandard) {
@@ -46,6 +68,9 @@ export function SecretariatApprovedStandardsPanel({
       setPublicationDate("");
       setResponsibleSubcommitteeId(subcommittees[0]?.id ?? "");
       setFileDescription("");
+      setLegacySourceUrl("");
+      setMigrationStatus("NOT_IMPORTED");
+      setMigrationNote("");
       setFile(null);
       return;
     }
@@ -57,6 +82,9 @@ export function SecretariatApprovedStandardsPanel({
     setPublicationDate(toDateInputValue(selectedStandard.publicationDate));
     setResponsibleSubcommitteeId(selectedStandard.responsibleSubcommittee?.id ?? "");
     setFileDescription(selectedStandard.attachment?.description ?? "");
+    setLegacySourceUrl(selectedStandard.migration.legacySourceUrl ?? "");
+    setMigrationStatus(selectedStandard.migration.migrationStatus);
+    setMigrationNote(selectedStandard.migration.migrationNote ?? "");
     setFile(null);
   }, [selectedStandard, subcommittees]);
 
@@ -74,6 +102,10 @@ export function SecretariatApprovedStandardsPanel({
     formData.set("publicationDate", new Date(publicationDate).toISOString());
     formData.set("responsibleSubcommitteeId", responsibleSubcommitteeId);
     formData.set("fileDescription", fileDescription);
+    formData.set("legacySection", "APPROVED_STANDARDS");
+    formData.set("legacySourceUrl", legacySourceUrl);
+    formData.set("migrationStatus", migrationStatus);
+    formData.set("migrationNote", migrationNote);
 
     if (file) {
       formData.set("file", file);
@@ -120,6 +152,9 @@ export function SecretariatApprovedStandardsPanel({
       setPublicationDate("");
       setResponsibleSubcommitteeId(subcommittees[0]?.id ?? "");
       setFileDescription("");
+      setLegacySourceUrl("");
+      setMigrationStatus("NOT_IMPORTED");
+      setMigrationNote("");
       setFile(null);
     }
 
@@ -169,8 +204,29 @@ export function SecretariatApprovedStandardsPanel({
   return (
     <article className="content-card">
       <h2>Утвержденные стандарты</h2>
+      <div className="form-grid">
+        <label className="field-label">
+          <span>Фильтр по статусу переноса</span>
+          <select
+            className="text-input"
+            value={filterMigrationStatus}
+            onChange={(event) => {
+              setFilterMigrationStatus(
+                event.target.value as ContentMigrationStatus | "ALL"
+              );
+            }}
+          >
+            <option value="ALL">Все стандарты</option>
+            {migrationStatuses.map((status) => (
+              <option key={status} value={status}>
+                {formatMigrationStatus(status)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <div className="content-stack">
-        {standards.map((standard) => (
+        {visibleStandards.map((standard) => (
           <div key={standard.id} className="review-card">
             <div className="review-card-header">
               <div>
@@ -181,6 +237,9 @@ export function SecretariatApprovedStandardsPanel({
               <div className="pill-row">
                 <span className="pill">{formatPublicationStatus(standard.status)}</span>
                 <span className="pill">Утвержден: {formatDate(standard.approvalDate)}</span>
+                <span className="pill">
+                  {formatMigrationStatus(standard.migration.migrationStatus)}
+                </span>
               </div>
             </div>
             <div className="pill-row">
@@ -188,6 +247,9 @@ export function SecretariatApprovedStandardsPanel({
                 {standard.responsibleSubcommittee
                   ? `${standard.responsibleSubcommittee.code} — ${standard.responsibleSubcommittee.title}`
                   : "Подкомитет не указан"}
+              </span>
+              <span className="pill">
+                {formatLegacyContentSection(standard.migration.legacySection)}
               </span>
               <button
                 className="pill pill-button"
@@ -222,6 +284,25 @@ export function SecretariatApprovedStandardsPanel({
                 </a>
               ) : null}
             </div>
+            <div className="info-grid compact-grid">
+              <div>
+                <strong>Источник на старом сайте</strong>
+                <p>
+                  {standard.migration.legacySourceUrl ? (
+                    <a href={standard.migration.legacySourceUrl} target="_blank" rel="noreferrer">
+                      Открыть источник
+                    </a>
+                  ) : (
+                    "Не указан"
+                  )}
+                </p>
+              </div>
+            </div>
+            {standard.migration.migrationNote ? (
+              <p className="status-note">
+                Комментарий по переносу: {standard.migration.migrationNote}
+              </p>
+            ) : null}
           </div>
         ))}
       </div>
@@ -312,6 +393,49 @@ export function SecretariatApprovedStandardsPanel({
             onChange={(event) => {
               setSummary(event.target.value);
             }}
+          />
+        </label>
+
+        <div className="form-grid">
+          <label className="field-label">
+            <span>Источник на старом сайте</span>
+            <input
+              className="text-input"
+              value={legacySourceUrl}
+              onChange={(event) => {
+                setLegacySourceUrl(event.target.value);
+              }}
+              placeholder="https://viam.ru/tk182/..."
+            />
+          </label>
+
+          <label className="field-label">
+            <span>Статус переноса</span>
+            <select
+              className="text-input"
+              value={migrationStatus}
+              onChange={(event) => {
+                setMigrationStatus(event.target.value as ContentMigrationStatus);
+              }}
+            >
+              {migrationStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {formatMigrationStatus(status)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <label className="field-label">
+          <span>Комментарий по переносу</span>
+          <textarea
+            className="text-area"
+            value={migrationNote}
+            onChange={(event) => {
+              setMigrationNote(event.target.value);
+            }}
+            placeholder="Например, после публикации проверить ссылку на PDF и реквизиты утверждения"
           />
         </label>
 

@@ -1,6 +1,19 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+  UseGuards
+} from "@nestjs/common";
 import type {
+  BackofficeNewsItemRecord,
+  ContentMigrationStatus,
   CreateNewsItemDto,
+  LegacyContentSection,
   NewsItemRecord,
   UpdateNewsItemDto
 } from "@tk182/shared-types";
@@ -23,8 +36,16 @@ export class NewsController {
   @Get("backoffice")
   @UseGuards(SessionAuthGuard, RolesGuard)
   @Roles("SECRETARIAT", "ADMIN")
-  listBackofficeNewsItems(): Promise<NewsItemRecord[]> {
-    return this.newsService.listBackofficeNewsItems();
+  listBackofficeNewsItems(
+    @Query("migrationStatus") migrationStatus?: string,
+    @Query("legacySection") legacySection?: string
+  ): Promise<BackofficeNewsItemRecord[]> {
+    return this.newsService.listBackofficeNewsItems({
+      ...(migrationStatus
+        ? { migrationStatus: migrationStatus as ContentMigrationStatus }
+        : {}),
+      ...(legacySection ? { legacySection: legacySection as LegacyContentSection } : {})
+    });
   }
 
   @Post("backoffice")
@@ -33,7 +54,7 @@ export class NewsController {
   createNewsItem(
     @Req() request: AuthenticatedRequest,
     @Body() payload: CreateNewsItemDto
-  ): Promise<NewsItemRecord> {
+  ): Promise<BackofficeNewsItemRecord> {
     return this.newsService.createNewsItem(request.authSession!.user.id, payload);
   }
 
@@ -44,7 +65,7 @@ export class NewsController {
     @Req() request: AuthenticatedRequest,
     @Param("newsId") newsId: string,
     @Body() payload: UpdateNewsItemDto
-  ): Promise<NewsItemRecord> {
+  ): Promise<BackofficeNewsItemRecord> {
     return this.newsService.updateNewsItem(request.authSession!.user.id, newsId, payload);
   }
 
@@ -54,7 +75,7 @@ export class NewsController {
   publishNewsItem(
     @Req() request: AuthenticatedRequest,
     @Param("newsId") newsId: string
-  ): Promise<NewsItemRecord> {
+  ): Promise<BackofficeNewsItemRecord> {
     return this.newsService.publishNewsItem(request.authSession!.user.id, newsId);
   }
 
@@ -64,7 +85,7 @@ export class NewsController {
   unpublishNewsItem(
     @Req() request: AuthenticatedRequest,
     @Param("newsId") newsId: string
-  ): Promise<NewsItemRecord> {
+  ): Promise<BackofficeNewsItemRecord> {
     return this.newsService.unpublishNewsItem(request.authSession!.user.id, newsId);
   }
 }

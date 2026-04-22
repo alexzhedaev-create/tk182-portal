@@ -185,8 +185,12 @@ Manual migration from the old `viam.ru/tk182` site is intentionally supported th
 - create or update public records in `http://127.0.0.1:3000/secretariat/content`
 - upload the corresponding local attachment file where needed
 - choose the correct category/section used by the old site
+- fill in `Источник на старом сайте`
+- track `Статус переноса` as `Не перенесено`, `Перенесено`, or `Проверено`
+- add `Комментарий по переносу` when the record still needs verification
 - set the publication date
 - publish the record to make it visible on the public site
+- use `Чек-лист переноса контента` to see grouped counts by old site sections and unfinished items
 
 This keeps the target structure ready for staged migration while avoiding automatic import complexity in the MVP.
 
@@ -265,18 +269,34 @@ The seed script recreates several demo text attachments for the active and archi
    - `Планы и перспективные программы работ ТК 182`
    - `Программа разработки национальных стандартов`
 5. Upload the related local file if the section requires an attachment
-6. In `Заседания`, create and publish:
+6. For each migrated record, fill in:
+   - `Источник на старом сайте`
+   - `Статус переноса`
+   - `Комментарий по переносу`
+7. Use `Чек-лист переноса контента` and the per-section `Фильтр по статусу переноса` to see what is still not transferred or not yet verified
+8. In `Заседания`, create and publish:
    - `Уведомления и повестки заседаний`
    - `Протоколы заседаний`
-7. In `Утвержденные стандарты`, create the public standard card, choose the responsible subcommittee, and upload the file if needed
-8. Open `/news`, `/documents`, `/meetings`, and `/standards` to verify public visibility
-9. Check `Журнал изменений контента` to review create, update, publish, and unpublish actions
+9. In `Утвержденные стандарты`, create the public standard card, choose the responsible subcommittee, and upload the file if needed
+10. Open `/news`, `/documents`, `/meetings`, and `/standards` to verify public visibility
+11. Check `Журнал изменений контента` to review create, update, publish, and unpublish actions
+
+Recommended manual migration workflow from the old TK 182 site:
+
+1. Inventory the old material and decide which public section it belongs to.
+2. Upload the file attachment if the legacy page had a downloadable file.
+3. Create the target record in `Контент портала`.
+4. Set `Источник на старом сайте` to the exact legacy URL.
+5. Save the record with `Статус переноса = Не перенесено` or `Перенесено`.
+6. Review the rendered public page and downloaded file in the new portal.
+7. When the migrated card and file are verified, switch `Статус переноса` to `Проверено`.
 
 Current MVP constraints for public content:
 
 - create/update/publish/unpublish is supported
 - delete/archive is intentionally out of scope for now
 - migration is manual through backoffice forms; no automatic scraping/import is included yet
+- migration tracking is stored directly on public content records via legacy URL, old-site section, migration status, and migration note
 
 ### Secretariat backoffice flow
 
@@ -545,6 +565,7 @@ Implemented now:
 - secretariat backoffice endpoints and UI for projects, versions, cycles, and assignments
 - secretariat backoffice endpoints and UI for organizations, committee representatives, role assignments, and subcommittees
 - secretariat publishing backoffice endpoints and UI for news, public documents, meetings, and approved standards
+- manual migration tracking for public content with legacy source URL, old-site section, migration status, migration note, and checklist summaries
 - responsible subcommittee selection in secretariat backoffice and visibility across public and private flows
 - local upload/download pipeline for draft standard version files
 - persisted public-content modules for the legacy TK 182 site sections

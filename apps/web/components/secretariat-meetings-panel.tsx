@@ -3,17 +3,32 @@
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { MeetingRecord, MeetingRecordCategory } from "@tk182/shared-types";
+import type {
+  BackofficeMeetingRecord,
+  ContentMigrationStatus,
+  LegacyContentSection,
+  MeetingRecordCategory
+} from "@tk182/shared-types";
 
-import { formatMeetingRecordCategory, formatPublicationStatus } from "../lib/content";
+import {
+  formatLegacyContentSection,
+  formatMeetingRecordCategory,
+  formatMigrationStatus,
+  formatPublicationStatus
+} from "../lib/content";
 import { extractApiErrorMessage, toDateInputValue } from "../lib/form-utils";
 import { formatDate } from "../lib/review";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:3001";
 const meetingCategories: MeetingRecordCategory[] = ["MEETING_AGENDA", "MEETING_MINUTES"];
+const meetingLegacySections: LegacyContentSection[] = [
+  "MEETING_AGENDA",
+  "MEETING_MINUTES"
+];
+const migrationStatuses: ContentMigrationStatus[] = ["NOT_IMPORTED", "IMPORTED", "VERIFIED"];
 
 interface SecretariatMeetingsPanelProps {
-  meetings: MeetingRecord[];
+  meetings: BackofficeMeetingRecord[];
 }
 
 export function SecretariatMeetingsPanel({ meetings }: SecretariatMeetingsPanelProps) {
@@ -27,6 +42,15 @@ export function SecretariatMeetingsPanel({ meetings }: SecretariatMeetingsPanelP
   const [meetingDate, setMeetingDate] = useState("");
   const [publicationDate, setPublicationDate] = useState("");
   const [fileDescription, setFileDescription] = useState("");
+  const [legacySection, setLegacySection] =
+    useState<LegacyContentSection>("MEETING_AGENDA");
+  const [legacySourceUrl, setLegacySourceUrl] = useState("");
+  const [migrationStatus, setMigrationStatus] =
+    useState<ContentMigrationStatus>("NOT_IMPORTED");
+  const [migrationNote, setMigrationNote] = useState("");
+  const [filterMigrationStatus, setFilterMigrationStatus] = useState<
+    ContentMigrationStatus | "ALL"
+  >("ALL");
   const [file, setFile] = useState<File | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -34,6 +58,12 @@ export function SecretariatMeetingsPanel({ meetings }: SecretariatMeetingsPanelP
 
   const selectedMeeting = meetings.find((item) => item.id === selectedMeetingId) ?? null;
   const isEditMode = Boolean(selectedMeeting);
+  const visibleMeetings =
+    filterMigrationStatus === "ALL"
+      ? meetings
+      : meetings.filter(
+          (item) => item.migration.migrationStatus === filterMigrationStatus
+        );
 
   useEffect(() => {
     if (!selectedMeeting) {
@@ -45,6 +75,10 @@ export function SecretariatMeetingsPanel({ meetings }: SecretariatMeetingsPanelP
       setMeetingDate("");
       setPublicationDate("");
       setFileDescription("");
+      setLegacySection("MEETING_AGENDA");
+      setLegacySourceUrl("");
+      setMigrationStatus("NOT_IMPORTED");
+      setMigrationNote("");
       setFile(null);
       return;
     }
@@ -57,6 +91,10 @@ export function SecretariatMeetingsPanel({ meetings }: SecretariatMeetingsPanelP
     setMeetingDate(toDateInputValue(selectedMeeting.meetingDate));
     setPublicationDate(toDateInputValue(selectedMeeting.publicationDate));
     setFileDescription(selectedMeeting.attachment?.description ?? "");
+    setLegacySection(selectedMeeting.migration.legacySection);
+    setLegacySourceUrl(selectedMeeting.migration.legacySourceUrl ?? "");
+    setMigrationStatus(selectedMeeting.migration.migrationStatus);
+    setMigrationNote(selectedMeeting.migration.migrationNote ?? "");
     setFile(null);
   }, [selectedMeeting]);
 
@@ -75,6 +113,10 @@ export function SecretariatMeetingsPanel({ meetings }: SecretariatMeetingsPanelP
     formData.set("meetingDate", new Date(meetingDate).toISOString());
     formData.set("publicationDate", new Date(publicationDate).toISOString());
     formData.set("fileDescription", fileDescription);
+    formData.set("legacySection", legacySection);
+    formData.set("legacySourceUrl", legacySourceUrl);
+    formData.set("migrationStatus", migrationStatus);
+    formData.set("migrationNote", migrationNote);
 
     if (file) {
       formData.set("file", file);
@@ -118,6 +160,10 @@ export function SecretariatMeetingsPanel({ meetings }: SecretariatMeetingsPanelP
       setMeetingDate("");
       setPublicationDate("");
       setFileDescription("");
+      setLegacySection("MEETING_AGENDA");
+      setLegacySourceUrl("");
+      setMigrationStatus("NOT_IMPORTED");
+      setMigrationNote("");
       setFile(null);
     }
 
@@ -167,8 +213,29 @@ export function SecretariatMeetingsPanel({ meetings }: SecretariatMeetingsPanelP
   return (
     <article className="content-card">
       <h2>Заседания</h2>
+      <div className="form-grid">
+        <label className="field-label">
+          <span>Фильтр по статусу переноса</span>
+          <select
+            className="text-input"
+            value={filterMigrationStatus}
+            onChange={(event) => {
+              setFilterMigrationStatus(
+                event.target.value as ContentMigrationStatus | "ALL"
+              );
+            }}
+          >
+            <option value="ALL">Все записи</option>
+            {migrationStatuses.map((status) => (
+              <option key={status} value={status}>
+                {formatMigrationStatus(status)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
       <div className="content-stack">
-        {meetings.map((meeting) => (
+        {visibleMeetings.map((meeting) => (
           <div key={meeting.id} className="review-card">
             <div className="review-card-header">
               <div>
@@ -178,8 +245,34 @@ export function SecretariatMeetingsPanel({ meetings }: SecretariatMeetingsPanelP
               <div className="pill-row">
                 <span className="pill">{formatPublicationStatus(meeting.status)}</span>
                 <span className="pill">{formatMeetingRecordCategory(meeting.category)}</span>
+                <span className="pill">
+                  {formatMigrationStatus(meeting.migration.migrationStatus)}
+                </span>
               </div>
             </div>
+            <div className="info-grid compact-grid">
+              <div>
+                <strong>Раздел старого сайта</strong>
+                <p>{formatLegacyContentSection(meeting.migration.legacySection)}</p>
+              </div>
+              <div>
+                <strong>Источник на старом сайте</strong>
+                <p>
+                  {meeting.migration.legacySourceUrl ? (
+                    <a href={meeting.migration.legacySourceUrl} target="_blank" rel="noreferrer">
+                      Открыть источник
+                    </a>
+                  ) : (
+                    "Не указан"
+                  )}
+                </p>
+              </div>
+            </div>
+            {meeting.migration.migrationNote ? (
+              <p className="status-note">
+                Комментарий по переносу: {meeting.migration.migrationNote}
+              </p>
+            ) : null}
             <div className="pill-row">
               <span className="pill">Дата заседания: {formatDate(meeting.meetingDate)}</span>
               <button
@@ -247,12 +340,50 @@ export function SecretariatMeetingsPanel({ meetings }: SecretariatMeetingsPanelP
               className="text-input"
               value={category}
               onChange={(event) => {
-                setCategory(event.target.value as MeetingRecordCategory);
+                const nextCategory = event.target.value as MeetingRecordCategory;
+                setCategory(nextCategory);
+                setLegacySection(nextCategory as LegacyContentSection);
               }}
             >
               {meetingCategories.map((item) => (
                 <option key={item} value={item}>
                   {formatMeetingRecordCategory(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="form-grid">
+          <label className="field-label">
+            <span>Раздел старого сайта</span>
+            <select
+              className="text-input"
+              value={legacySection}
+              onChange={(event) => {
+                setLegacySection(event.target.value as LegacyContentSection);
+              }}
+            >
+              {meetingLegacySections.map((section) => (
+                <option key={section} value={section}>
+                  {formatLegacyContentSection(section)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field-label">
+            <span>Статус переноса</span>
+            <select
+              className="text-input"
+              value={migrationStatus}
+              onChange={(event) => {
+                setMigrationStatus(event.target.value as ContentMigrationStatus);
+              }}
+            >
+              {migrationStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {formatMigrationStatus(status)}
                 </option>
               ))}
             </select>
@@ -279,6 +410,18 @@ export function SecretariatMeetingsPanel({ meetings }: SecretariatMeetingsPanelP
             onChange={(event) => {
               setSummary(event.target.value);
             }}
+          />
+        </label>
+
+        <label className="field-label">
+          <span>Источник на старом сайте</span>
+          <input
+            className="text-input"
+            value={legacySourceUrl}
+            onChange={(event) => {
+              setLegacySourceUrl(event.target.value);
+            }}
+            placeholder="https://viam.ru/tk182/..."
           />
         </label>
 
@@ -318,6 +461,18 @@ export function SecretariatMeetingsPanel({ meetings }: SecretariatMeetingsPanelP
             />
           </label>
         </div>
+
+        <label className="field-label">
+          <span>Комментарий по переносу</span>
+          <textarea
+            className="text-area"
+            value={migrationNote}
+            onChange={(event) => {
+              setMigrationNote(event.target.value);
+            }}
+            placeholder="Например, сверить приложения к протоколу после загрузки"
+          />
+        </label>
 
         <div className="form-grid">
           <label className="field-label">

@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import type {
+  BackofficeApprovedStandardRecord,
+  BackofficeContentListFilters,
   ApprovedStandardRecord,
   CreateApprovedStandardDto,
   StandardSummary,
@@ -91,15 +93,17 @@ export class StandardsService {
     return this.contentService.getStandardsPageData(draftStandards);
   }
 
-  listBackofficeApprovedStandards(): Promise<ApprovedStandardRecord[]> {
-    return this.contentService.listBackofficeApprovedStandards();
+  listBackofficeApprovedStandards(
+    filters: BackofficeContentListFilters = {}
+  ): Promise<BackofficeApprovedStandardRecord[]> {
+    return this.contentService.listBackofficeApprovedStandards(filters);
   }
 
   createApprovedStandard(
     userId: string,
     payload: CreateApprovedStandardDto,
     file?: UploadedBinaryFile
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     return this.contentService.createApprovedStandard(userId, payload, file);
   }
 
@@ -108,18 +112,21 @@ export class StandardsService {
     standardId: string,
     payload: UpdateApprovedStandardDto,
     file?: UploadedBinaryFile
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     return this.contentService.updateApprovedStandard(userId, standardId, payload, file);
   }
 
-  publishApprovedStandard(userId: string, standardId: string): Promise<ApprovedStandardRecord> {
+  publishApprovedStandard(
+    userId: string,
+    standardId: string
+  ): Promise<BackofficeApprovedStandardRecord> {
     return this.contentService.publishApprovedStandard(userId, standardId);
   }
 
   unpublishApprovedStandard(
     userId: string,
     standardId: string
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     return this.contentService.unpublishApprovedStandard(userId, standardId);
   }
 

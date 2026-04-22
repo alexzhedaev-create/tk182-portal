@@ -2,6 +2,11 @@ import "server-only";
 
 import type {
   ApprovalAuditEvent,
+  BackofficeApprovedStandardRecord,
+  BackofficeContentListFilters,
+  BackofficeMeetingRecord,
+  BackofficeNewsItemRecord,
+  BackofficePublicDocumentRecord,
   ApprovedStandardRecord,
   AuthenticatedUser,
   CommitteeBackofficeData,
@@ -205,20 +210,51 @@ export function getContentAuditEvents(): Promise<ApprovalAuditEvent[]> {
   return fetchFromApi<ApprovalAuditEvent[]>("/audit/content/events");
 }
 
-export function getBackofficeNewsItems(): Promise<NewsItemRecord[]> {
-  return fetchFromApi<NewsItemRecord[]>("/news/backoffice");
+function buildContentFilterQuery(filters: BackofficeContentListFilters = {}): string {
+  const searchParams = new URLSearchParams();
+
+  if (filters.migrationStatus) {
+    searchParams.set("migrationStatus", filters.migrationStatus);
+  }
+
+  if (filters.legacySection) {
+    searchParams.set("legacySection", filters.legacySection);
+  }
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
 }
 
-export function getBackofficePublicDocuments(): Promise<PublicDocumentRecord[]> {
-  return fetchFromApi<PublicDocumentRecord[]>("/documents/backoffice");
+export function getBackofficeNewsItems(
+  filters: BackofficeContentListFilters = {}
+): Promise<BackofficeNewsItemRecord[]> {
+  return fetchFromApi<BackofficeNewsItemRecord[]>(
+    `/news/backoffice${buildContentFilterQuery(filters)}`
+  );
 }
 
-export function getBackofficeMeetingRecords(): Promise<MeetingRecord[]> {
-  return fetchFromApi<MeetingRecord[]>("/meetings/backoffice");
+export function getBackofficePublicDocuments(
+  filters: BackofficeContentListFilters = {}
+): Promise<BackofficePublicDocumentRecord[]> {
+  return fetchFromApi<BackofficePublicDocumentRecord[]>(
+    `/documents/backoffice${buildContentFilterQuery(filters)}`
+  );
 }
 
-export function getBackofficeApprovedStandards(): Promise<ApprovedStandardRecord[]> {
-  return fetchFromApi<ApprovedStandardRecord[]>("/standards/backoffice/approved");
+export function getBackofficeMeetingRecords(
+  filters: BackofficeContentListFilters = {}
+): Promise<BackofficeMeetingRecord[]> {
+  return fetchFromApi<BackofficeMeetingRecord[]>(
+    `/meetings/backoffice${buildContentFilterQuery(filters)}`
+  );
+}
+
+export function getBackofficeApprovedStandards(
+  filters: BackofficeContentListFilters = {}
+): Promise<BackofficeApprovedStandardRecord[]> {
+  return fetchFromApi<BackofficeApprovedStandardRecord[]>(
+    `/standards/backoffice/approved${buildContentFilterQuery(filters)}`
+  );
 }
 
 export function getUsers(): Promise<AuthenticatedUser[]> {

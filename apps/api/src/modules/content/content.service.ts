@@ -2,12 +2,20 @@ import { randomUUID } from "node:crypto";
 
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import type {
+  BackofficeApprovedStandardRecord,
+  BackofficeContentListFilters,
+  BackofficeMeetingRecord,
+  BackofficeNewsItemRecord,
+  BackofficePublicDocumentRecord,
   ApprovedStandardRecord,
   ContentFileAttachment,
+  ContentMigrationInfo,
+  ContentMigrationStatus,
   CreateApprovedStandardDto,
   CreateMeetingRecordDto,
   CreateNewsItemDto,
   CreatePublicDocumentDto,
+  LegacyContentSection,
   MeetingRecord,
   MeetingsPageData,
   MeetingRecordCategory,
@@ -44,6 +52,45 @@ const MEETING_CATEGORY_ORDER: readonly MeetingRecordCategory[] = [
   "MEETING_MINUTES"
 ];
 
+const MIGRATION_STATUSES: readonly ContentMigrationStatus[] = [
+  "NOT_IMPORTED",
+  "IMPORTED",
+  "VERIFIED"
+];
+
+const LEGACY_CONTENT_SECTIONS: readonly LegacyContentSection[] = [
+  "NEWS",
+  "MAIN_DOCUMENTS",
+  "WORK_REPORTS",
+  "WORK_PLANS",
+  "NATIONAL_STANDARDS_PROGRAM",
+  "MEETING_MINUTES",
+  "MEETING_AGENDA",
+  "APPROVED_STANDARDS"
+];
+
+const NEWS_LEGACY_SECTIONS: readonly LegacyContentSection[] = ["NEWS"];
+const DOCUMENT_LEGACY_SECTIONS: readonly LegacyContentSection[] = [
+  "MAIN_DOCUMENTS",
+  "WORK_REPORTS",
+  "WORK_PLANS",
+  "NATIONAL_STANDARDS_PROGRAM"
+];
+const MEETING_LEGACY_SECTIONS: readonly LegacyContentSection[] = [
+  "MEETING_AGENDA",
+  "MEETING_MINUTES"
+];
+const APPROVED_STANDARD_LEGACY_SECTIONS: readonly LegacyContentSection[] = [
+  "APPROVED_STANDARDS"
+];
+
+interface MigrationColumns {
+  legacy_section: LegacyContentSection;
+  legacy_source_url: string | null;
+  migration_note: string | null;
+  migration_status: ContentMigrationStatus;
+}
+
 interface FileColumns {
   file_description: string | null;
   file_mime_type: string | null;
@@ -55,7 +102,7 @@ interface FileColumns {
   file_uploaded_by_display_name: string | null;
 }
 
-interface NewsRow {
+interface NewsRow extends MigrationColumns {
   body: string;
   id: string;
   excerpt: string;
@@ -65,7 +112,7 @@ interface NewsRow {
   title: string;
 }
 
-interface PublicDocumentRow extends FileColumns {
+interface PublicDocumentRow extends FileColumns, MigrationColumns {
   category: PublicDocumentCategory;
   id: string;
   publication_date: string;
@@ -75,7 +122,7 @@ interface PublicDocumentRow extends FileColumns {
   title: string;
 }
 
-interface MeetingRow extends FileColumns {
+interface MeetingRow extends FileColumns, MigrationColumns {
   body: string;
   category: MeetingRecordCategory;
   id: string;
@@ -88,7 +135,7 @@ interface MeetingRow extends FileColumns {
   title: string;
 }
 
-interface ApprovedStandardRow extends FileColumns {
+interface ApprovedStandardRow extends FileColumns, MigrationColumns {
   approval_date: string;
   code: string;
   id: string;
@@ -136,7 +183,11 @@ export class ContentService {
           body,
           status,
           publication_date,
-          published_at
+          published_at,
+          legacy_source_url,
+          legacy_section,
+          migration_status,
+          migration_note
         FROM news_items
         WHERE status = 'published'
         ORDER BY publication_date DESC, created_at DESC
@@ -146,7 +197,10 @@ export class ContentService {
     return result.rows.map((row) => this.mapNewsItem(row));
   }
 
-  async listBackofficeNewsItems(): Promise<NewsItemRecord[]> {
+  async listBackofficeNewsItems(
+    filters: BackofficeContentListFilters = {}
+  ): Promise<BackofficeNewsItemRecord[]> {
+    const whereClause = this.buildMigrationWhereClause(filters, "news_items");
     const result = await this.databaseService.query<NewsRow>(
       `
         SELECT
@@ -156,16 +210,25 @@ export class ContentService {
           body,
           status,
           publication_date,
-          published_at
+          published_at,
+          legacy_source_url,
+          legacy_section,
+          migration_status,
+          migration_note
         FROM news_items
+        ${whereClause.sql}
         ORDER BY publication_date DESC, created_at DESC
-      `
+      `,
+      whereClause.values
     );
 
-    return result.rows.map((row) => this.mapNewsItem(row));
+    return result.rows.map((row) => this.mapBackofficeNewsItem(row));
   }
 
-  async createNewsItem(userId: string, payload: CreateNewsItemDto): Promise<NewsItemRecord> {
+  async createNewsItem(
+    userId: string,
+    payload: CreateNewsItemDto
+  ): Promise<BackofficeNewsItemRecord> {
     const normalized = this.normalizeNewsPayload(payload);
     const newsId = `news-item-${randomUUID()}`;
 
@@ -178,11 +241,15 @@ export class ContentService {
           body,
           status,
           publication_date,
+          legacy_source_url,
+          legacy_section,
+          migration_status,
+          migration_note,
           created_by_user_id,
           updated_by_user_id,
           updated_at
         )
-        VALUES ($1, $2, $3, $4, 'draft', $5, $6, $6, NOW())
+        VALUES ($1, $2, $3, $4, 'draft', $5, $6, $7, $8, $9, $10, $10, NOW())
       `,
       [
         newsId,
@@ -190,11 +257,15 @@ export class ContentService {
         normalized.excerpt,
         normalized.body,
         normalized.publicationDate,
+        normalized.legacySourceUrl,
+        normalized.legacySection,
+        normalized.migrationStatus,
+        normalized.migrationNote,
         userId
       ]
     );
 
-    const item = await this.getNewsItemById(newsId);
+    const item = await this.getBackofficeNewsItemById(newsId);
 
     await this.auditService.recordEvent({
       actorUserId: userId,
@@ -205,7 +276,10 @@ export class ContentService {
       metadata: {
         title: item.title,
         publicationDate: item.publicationDate,
-        status: item.status
+        status: item.status,
+        migrationStatus: item.migration.migrationStatus,
+        legacySection: item.migration.legacySection,
+        legacySourceUrl: item.migration.legacySourceUrl
       }
     });
 
@@ -216,7 +290,7 @@ export class ContentService {
     userId: string,
     newsId: string,
     payload: UpdateNewsItemDto
-  ): Promise<NewsItemRecord> {
+  ): Promise<BackofficeNewsItemRecord> {
     const normalized = this.normalizeNewsPayload(payload);
     await this.assertNewsItemExists(newsId);
 
@@ -228,7 +302,11 @@ export class ContentService {
           excerpt = $3,
           body = $4,
           publication_date = $5,
-          updated_by_user_id = $6,
+          legacy_source_url = $6,
+          legacy_section = $7,
+          migration_status = $8,
+          migration_note = $9,
+          updated_by_user_id = $10,
           updated_at = NOW()
         WHERE id = $1
       `,
@@ -238,11 +316,15 @@ export class ContentService {
         normalized.excerpt,
         normalized.body,
         normalized.publicationDate,
+        normalized.legacySourceUrl,
+        normalized.legacySection,
+        normalized.migrationStatus,
+        normalized.migrationNote,
         userId
       ]
     );
 
-    const item = await this.getNewsItemById(newsId);
+    const item = await this.getBackofficeNewsItemById(newsId);
 
     await this.auditService.recordEvent({
       actorUserId: userId,
@@ -253,14 +335,20 @@ export class ContentService {
       metadata: {
         title: item.title,
         publicationDate: item.publicationDate,
-        status: item.status
+        status: item.status,
+        migrationStatus: item.migration.migrationStatus,
+        legacySection: item.migration.legacySection,
+        legacySourceUrl: item.migration.legacySourceUrl
       }
     });
 
     return item;
   }
 
-  async publishNewsItem(userId: string, newsId: string): Promise<NewsItemRecord> {
+  async publishNewsItem(
+    userId: string,
+    newsId: string
+  ): Promise<BackofficeNewsItemRecord> {
     const item = await this.setNewsStatus(newsId, userId, "published");
 
     await this.auditService.recordEvent({
@@ -272,14 +360,20 @@ export class ContentService {
       metadata: {
         title: item.title,
         publicationDate: item.publicationDate,
-        status: item.status
+        status: item.status,
+        migrationStatus: item.migration.migrationStatus,
+        legacySection: item.migration.legacySection,
+        legacySourceUrl: item.migration.legacySourceUrl
       }
     });
 
     return item;
   }
 
-  async unpublishNewsItem(userId: string, newsId: string): Promise<NewsItemRecord> {
+  async unpublishNewsItem(
+    userId: string,
+    newsId: string
+  ): Promise<BackofficeNewsItemRecord> {
     const item = await this.setNewsStatus(newsId, userId, "draft");
 
     await this.auditService.recordEvent({
@@ -291,7 +385,10 @@ export class ContentService {
       metadata: {
         title: item.title,
         publicationDate: item.publicationDate,
-        status: item.status
+        status: item.status,
+        migrationStatus: item.migration.migrationStatus,
+        legacySection: item.migration.legacySection,
+        legacySourceUrl: item.migration.legacySourceUrl
       }
     });
 
@@ -324,16 +421,18 @@ export class ContentService {
     };
   }
 
-  async listBackofficePublicDocuments(): Promise<PublicDocumentRecord[]> {
-    const rows = await this.listPublicDocumentRows(false);
-    return rows.map((row) => this.mapPublicDocument(row));
+  async listBackofficePublicDocuments(
+    filters: BackofficeContentListFilters = {}
+  ): Promise<BackofficePublicDocumentRecord[]> {
+    const rows = await this.listPublicDocumentRows(false, undefined, filters);
+    return rows.map((row) => this.mapBackofficePublicDocument(row));
   }
 
   async createPublicDocument(
     userId: string,
     payload: CreatePublicDocumentDto,
     file?: UploadedBinaryFile
-  ): Promise<PublicDocumentRecord> {
+  ): Promise<BackofficePublicDocumentRecord> {
     const normalized = this.normalizePublicDocumentPayload(payload);
     const documentId = `public-document-${randomUUID()}`;
     const savedFile = file ? await this.contentFileStorageService.saveUploadedFile(file) : null;
@@ -355,13 +454,18 @@ export class ContentService {
             file_uploaded_at,
             file_uploaded_by_user_id,
             file_description,
+            legacy_source_url,
+            legacy_section,
+            migration_status,
+            migration_note,
             created_by_user_id,
             updated_by_user_id,
             updated_at
           )
           VALUES (
             $1, $2, $3, $4, 'draft', $5,
-            $6, $7, $8, $9, $10, $11, $12, $13, $13, NOW()
+            $6, $7, $8, $9, $10, $11, $12,
+            $13, $14, $15, $16, $17, $17, NOW()
           )
         `,
         [
@@ -377,6 +481,10 @@ export class ContentService {
           savedFile ? new Date().toISOString() : null,
           savedFile ? userId : null,
           savedFile ? normalized.fileDescription : null,
+          normalized.legacySourceUrl,
+          normalized.legacySection,
+          normalized.migrationStatus,
+          normalized.migrationNote,
           userId
         ]
       );
@@ -385,7 +493,7 @@ export class ContentService {
       throw error;
     }
 
-    const document = await this.getPublicDocumentById(documentId);
+    const document = await this.getBackofficePublicDocumentById(documentId);
 
     await this.auditService.recordEvent({
       actorUserId: userId,
@@ -404,7 +512,7 @@ export class ContentService {
     documentId: string,
     payload: UpdatePublicDocumentDto,
     file?: UploadedBinaryFile
-  ): Promise<PublicDocumentRecord> {
+  ): Promise<BackofficePublicDocumentRecord> {
     const existing = await this.getStoredPublicDocumentById(documentId);
     const normalized = this.normalizePublicDocumentPayload(payload);
     const savedFile = file ? await this.contentFileStorageService.saveUploadedFile(file) : null;
@@ -425,7 +533,11 @@ export class ContentService {
             file_uploaded_at = $10,
             file_uploaded_by_user_id = $11,
             file_description = $12,
-            updated_by_user_id = $13,
+            legacy_source_url = $13,
+            legacy_section = $14,
+            migration_status = $15,
+            migration_note = $16,
+            updated_by_user_id = $17,
             updated_at = NOW()
           WHERE id = $1
         `,
@@ -446,6 +558,10 @@ export class ContentService {
             : existing.attachment
               ? normalized.fileDescription
               : null,
+          normalized.legacySourceUrl,
+          normalized.legacySection,
+          normalized.migrationStatus,
+          normalized.migrationNote,
           userId
         ]
       );
@@ -458,7 +574,7 @@ export class ContentService {
       await this.contentFileStorageService.deleteStoredFile(existing.attachment.storedName);
     }
 
-    const document = await this.getPublicDocumentById(documentId);
+    const document = await this.getBackofficePublicDocumentById(documentId);
 
     await this.auditService.recordEvent({
       actorUserId: userId,
@@ -475,7 +591,7 @@ export class ContentService {
   async publishPublicDocument(
     userId: string,
     documentId: string
-  ): Promise<PublicDocumentRecord> {
+  ): Promise<BackofficePublicDocumentRecord> {
     const document = await this.setPublicDocumentStatus(documentId, userId, "published");
 
     await this.auditService.recordEvent({
@@ -493,7 +609,7 @@ export class ContentService {
   async unpublishPublicDocument(
     userId: string,
     documentId: string
-  ): Promise<PublicDocumentRecord> {
+  ): Promise<BackofficePublicDocumentRecord> {
     const document = await this.setPublicDocumentStatus(documentId, userId, "draft");
 
     await this.auditService.recordEvent({
@@ -531,16 +647,18 @@ export class ContentService {
     };
   }
 
-  async listBackofficeMeetingRecords(): Promise<MeetingRecord[]> {
-    const rows = await this.listMeetingRows(false);
-    return rows.map((row) => this.mapMeeting(row));
+  async listBackofficeMeetingRecords(
+    filters: BackofficeContentListFilters = {}
+  ): Promise<BackofficeMeetingRecord[]> {
+    const rows = await this.listMeetingRows(false, filters);
+    return rows.map((row) => this.mapBackofficeMeeting(row));
   }
 
   async createMeetingRecord(
     userId: string,
     payload: CreateMeetingRecordDto,
     file?: UploadedBinaryFile
-  ): Promise<MeetingRecord> {
+  ): Promise<BackofficeMeetingRecord> {
     const normalized = this.normalizeMeetingPayload(payload);
     const meetingId = `meeting-record-${randomUUID()}`;
     const savedFile = file ? await this.contentFileStorageService.saveUploadedFile(file) : null;
@@ -565,13 +683,18 @@ export class ContentService {
             file_uploaded_at,
             file_uploaded_by_user_id,
             file_description,
+            legacy_source_url,
+            legacy_section,
+            migration_status,
+            migration_note,
             created_by_user_id,
             updated_by_user_id,
             updated_at
           )
           VALUES (
             $1, $2, $3, $4, $5, $6, $7, 'draft', $8,
-            $9, $10, $11, $12, $13, $14, $15, $16, $16, NOW()
+            $9, $10, $11, $12, $13, $14, $15,
+            $16, $17, $18, $19, $20, $20, NOW()
           )
         `,
         [
@@ -590,6 +713,10 @@ export class ContentService {
           savedFile ? new Date().toISOString() : null,
           savedFile ? userId : null,
           savedFile ? normalized.fileDescription : null,
+          normalized.legacySourceUrl,
+          normalized.legacySection,
+          normalized.migrationStatus,
+          normalized.migrationNote,
           userId
         ]
       );
@@ -598,7 +725,7 @@ export class ContentService {
       throw error;
     }
 
-    const meeting = await this.getMeetingRecordById(meetingId);
+    const meeting = await this.getBackofficeMeetingRecordById(meetingId);
 
     await this.auditService.recordEvent({
       actorUserId: userId,
@@ -617,7 +744,7 @@ export class ContentService {
     meetingId: string,
     payload: UpdateMeetingRecordDto,
     file?: UploadedBinaryFile
-  ): Promise<MeetingRecord> {
+  ): Promise<BackofficeMeetingRecord> {
     const existing = await this.getStoredMeetingRecordById(meetingId);
     const normalized = this.normalizeMeetingPayload(payload);
     const savedFile = file ? await this.contentFileStorageService.saveUploadedFile(file) : null;
@@ -641,7 +768,11 @@ export class ContentService {
             file_uploaded_at = $13,
             file_uploaded_by_user_id = $14,
             file_description = $15,
-            updated_by_user_id = $16,
+            legacy_source_url = $16,
+            legacy_section = $17,
+            migration_status = $18,
+            migration_note = $19,
+            updated_by_user_id = $20,
             updated_at = NOW()
           WHERE id = $1
         `,
@@ -665,6 +796,10 @@ export class ContentService {
             : existing.attachment
               ? normalized.fileDescription
               : null,
+          normalized.legacySourceUrl,
+          normalized.legacySection,
+          normalized.migrationStatus,
+          normalized.migrationNote,
           userId
         ]
       );
@@ -677,7 +812,7 @@ export class ContentService {
       await this.contentFileStorageService.deleteStoredFile(existing.attachment.storedName);
     }
 
-    const meeting = await this.getMeetingRecordById(meetingId);
+    const meeting = await this.getBackofficeMeetingRecordById(meetingId);
 
     await this.auditService.recordEvent({
       actorUserId: userId,
@@ -691,7 +826,10 @@ export class ContentService {
     return meeting;
   }
 
-  async publishMeetingRecord(userId: string, meetingId: string): Promise<MeetingRecord> {
+  async publishMeetingRecord(
+    userId: string,
+    meetingId: string
+  ): Promise<BackofficeMeetingRecord> {
     const meeting = await this.setMeetingStatus(meetingId, userId, "published");
 
     await this.auditService.recordEvent({
@@ -706,7 +844,10 @@ export class ContentService {
     return meeting;
   }
 
-  async unpublishMeetingRecord(userId: string, meetingId: string): Promise<MeetingRecord> {
+  async unpublishMeetingRecord(
+    userId: string,
+    meetingId: string
+  ): Promise<BackofficeMeetingRecord> {
     const meeting = await this.setMeetingStatus(meetingId, userId, "draft");
 
     await this.auditService.recordEvent({
@@ -736,16 +877,18 @@ export class ContentService {
     return rows.map((row) => this.mapApprovedStandard(row));
   }
 
-  async listBackofficeApprovedStandards(): Promise<ApprovedStandardRecord[]> {
-    const rows = await this.listApprovedStandardRows(false);
-    return rows.map((row) => this.mapApprovedStandard(row));
+  async listBackofficeApprovedStandards(
+    filters: BackofficeContentListFilters = {}
+  ): Promise<BackofficeApprovedStandardRecord[]> {
+    const rows = await this.listApprovedStandardRows(false, filters);
+    return rows.map((row) => this.mapBackofficeApprovedStandard(row));
   }
 
   async createApprovedStandard(
     userId: string,
     payload: CreateApprovedStandardDto,
     file?: UploadedBinaryFile
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     const normalized = await this.normalizeApprovedStandardPayload(payload);
     const standardId = `approved-standard-${randomUUID()}`;
     const savedFile = file ? await this.contentFileStorageService.saveUploadedFile(file) : null;
@@ -769,13 +912,18 @@ export class ContentService {
             file_uploaded_at,
             file_uploaded_by_user_id,
             file_description,
+            legacy_source_url,
+            legacy_section,
+            migration_status,
+            migration_note,
             created_by_user_id,
             updated_by_user_id,
             updated_at
           )
           VALUES (
             $1, $2, $3, $4, $5, 'draft', $6, $7,
-            $8, $9, $10, $11, $12, $13, $14, $15, $15, NOW()
+            $8, $9, $10, $11, $12, $13, $14,
+            $15, $16, $17, $18, $19, $19, NOW()
           )
         `,
         [
@@ -793,6 +941,10 @@ export class ContentService {
           savedFile ? new Date().toISOString() : null,
           savedFile ? userId : null,
           savedFile ? normalized.fileDescription : null,
+          normalized.legacySourceUrl,
+          normalized.legacySection,
+          normalized.migrationStatus,
+          normalized.migrationNote,
           userId
         ]
       );
@@ -808,7 +960,7 @@ export class ContentService {
       throw error;
     }
 
-    const standard = await this.getApprovedStandardById(standardId);
+    const standard = await this.getBackofficeApprovedStandardById(standardId);
 
     await this.auditService.recordEvent({
       actorUserId: userId,
@@ -827,7 +979,7 @@ export class ContentService {
     standardId: string,
     payload: UpdateApprovedStandardDto,
     file?: UploadedBinaryFile
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     const existing = await this.getStoredApprovedStandardById(standardId);
     const normalized = await this.normalizeApprovedStandardPayload(payload);
     const savedFile = file ? await this.contentFileStorageService.saveUploadedFile(file) : null;
@@ -850,7 +1002,11 @@ export class ContentService {
             file_uploaded_at = $12,
             file_uploaded_by_user_id = $13,
             file_description = $14,
-            updated_by_user_id = $15,
+            legacy_source_url = $15,
+            legacy_section = $16,
+            migration_status = $17,
+            migration_note = $18,
+            updated_by_user_id = $19,
             updated_at = NOW()
           WHERE id = $1
         `,
@@ -873,6 +1029,10 @@ export class ContentService {
             : existing.attachment
               ? normalized.fileDescription
               : null,
+          normalized.legacySourceUrl,
+          normalized.legacySection,
+          normalized.migrationStatus,
+          normalized.migrationNote,
           userId
         ]
       );
@@ -892,7 +1052,7 @@ export class ContentService {
       await this.contentFileStorageService.deleteStoredFile(existing.attachment.storedName);
     }
 
-    const standard = await this.getApprovedStandardById(standardId);
+    const standard = await this.getBackofficeApprovedStandardById(standardId);
 
     await this.auditService.recordEvent({
       actorUserId: userId,
@@ -909,7 +1069,7 @@ export class ContentService {
   async publishApprovedStandard(
     userId: string,
     standardId: string
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     const standard = await this.setApprovedStandardStatus(standardId, userId, "published");
 
     await this.auditService.recordEvent({
@@ -927,7 +1087,7 @@ export class ContentService {
   async unpublishApprovedStandard(
     userId: string,
     standardId: string
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     const standard = await this.setApprovedStandardStatus(standardId, userId, "draft");
 
     await this.auditService.recordEvent({
@@ -974,6 +1134,7 @@ export class ContentService {
     const excerpt = payload.excerpt.trim();
     const body = payload.body.trim();
     const publicationDate = this.parseDate(payload.publicationDate, "Укажите дату публикации новости.");
+    const migration = this.normalizeMigrationFields(payload, NEWS_LEGACY_SECTIONS, "NEWS");
 
     if (!title || !excerpt || !body) {
       throw new BadRequestException("Заполните заголовок, краткое описание и текст новости.");
@@ -983,7 +1144,8 @@ export class ContentService {
       title,
       excerpt,
       body,
-      publicationDate
+      publicationDate,
+      ...migration
     };
   }
 
@@ -998,6 +1160,11 @@ export class ContentService {
       "Укажите дату публикации документа."
     );
     const fileDescription = this.normalizeOptionalText(payload.fileDescription);
+    const migration = this.normalizeMigrationFields(
+      payload,
+      DOCUMENT_LEGACY_SECTIONS,
+      category
+    );
 
     if (!title || !summary) {
       throw new BadRequestException("Заполните заголовок и описание документа.");
@@ -1008,7 +1175,8 @@ export class ContentService {
       category,
       summary,
       publicationDate,
-      fileDescription
+      fileDescription,
+      ...migration
     };
   }
 
@@ -1026,6 +1194,11 @@ export class ContentService {
     );
     const location = this.normalizeOptionalText(payload.location);
     const fileDescription = this.normalizeOptionalText(payload.fileDescription);
+    const migration = this.normalizeMigrationFields(
+      payload,
+      MEETING_LEGACY_SECTIONS,
+      category
+    );
 
     if (!title || !summary || !body) {
       throw new BadRequestException(
@@ -1041,7 +1214,8 @@ export class ContentService {
       meetingDate,
       publicationDate,
       location,
-      fileDescription
+      fileDescription,
+      ...migration
     };
   }
 
@@ -1063,6 +1237,11 @@ export class ContentService {
       payload.responsibleSubcommitteeId
     );
     const fileDescription = this.normalizeOptionalText(payload.fileDescription);
+    const migration = this.normalizeMigrationFields(
+      payload,
+      APPROVED_STANDARD_LEGACY_SECTIONS,
+      "APPROVED_STANDARDS"
+    );
 
     if (!code || !title || !summary) {
       throw new BadRequestException(
@@ -1081,13 +1260,15 @@ export class ContentService {
       approvalDate,
       publicationDate,
       responsibleSubcommitteeId,
-      fileDescription
+      fileDescription,
+      ...migration
     };
   }
 
   private async listPublicDocumentRows(
     publishedOnly: boolean,
-    categories?: readonly PublicDocumentCategory[]
+    categories?: readonly PublicDocumentCategory[],
+    filters: BackofficeContentListFilters = {}
   ): Promise<PublicDocumentRow[]> {
     const conditions: string[] = [];
     const values: unknown[] = [];
@@ -1099,6 +1280,10 @@ export class ContentService {
     if (categories && categories.length > 0) {
       values.push(categories);
       conditions.push(`pd.category = ANY($${values.length}::text[])`);
+    }
+
+    if (!publishedOnly) {
+      this.appendMigrationFilters(conditions, values, filters, "pd");
     }
 
     const result = await this.databaseService.query<PublicDocumentRow>(
@@ -1118,7 +1303,11 @@ export class ContentService {
           pd.file_uploaded_at,
           pd.file_uploaded_by_user_id,
           uploader.display_name AS file_uploaded_by_display_name,
-          pd.file_description
+          pd.file_description,
+          pd.legacy_source_url,
+          pd.legacy_section,
+          pd.migration_status,
+          pd.migration_note
         FROM public_documents pd
         LEFT JOIN users uploader ON uploader.id = pd.file_uploaded_by_user_id
         ${conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""}
@@ -1138,7 +1327,19 @@ export class ContentService {
     return result.rows;
   }
 
-  private async listMeetingRows(publishedOnly: boolean): Promise<MeetingRow[]> {
+  private async listMeetingRows(
+    publishedOnly: boolean,
+    filters: BackofficeContentListFilters = {}
+  ): Promise<MeetingRow[]> {
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+
+    if (publishedOnly) {
+      conditions.push("mr.status = 'published'");
+    } else {
+      this.appendMigrationFilters(conditions, values, filters, "mr");
+    }
+
     const result = await this.databaseService.query<MeetingRow>(
       `
         SELECT
@@ -1159,10 +1360,14 @@ export class ContentService {
           mr.file_uploaded_at,
           mr.file_uploaded_by_user_id,
           uploader.display_name AS file_uploaded_by_display_name,
-          mr.file_description
+          mr.file_description,
+          mr.legacy_source_url,
+          mr.legacy_section,
+          mr.migration_status,
+          mr.migration_note
         FROM meeting_records mr
         LEFT JOIN users uploader ON uploader.id = mr.file_uploaded_by_user_id
-        ${publishedOnly ? "WHERE mr.status = 'published'" : ""}
+        ${conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""}
         ORDER BY
           CASE mr.category
             WHEN 'MEETING_AGENDA' THEN 0
@@ -1170,15 +1375,26 @@ export class ContentService {
           END,
           mr.meeting_date DESC,
           mr.title ASC
-      `
+      `,
+      values
     );
 
     return result.rows;
   }
 
   private async listApprovedStandardRows(
-    publishedOnly: boolean
+    publishedOnly: boolean,
+    filters: BackofficeContentListFilters = {}
   ): Promise<ApprovedStandardRow[]> {
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+
+    if (publishedOnly) {
+      conditions.push("aps.status = 'published'");
+    } else {
+      this.appendMigrationFilters(conditions, values, filters, "aps");
+    }
+
     const result = await this.databaseService.query<ApprovedStandardRow>(
       `
         SELECT
@@ -1198,6 +1414,10 @@ export class ContentService {
           aps.file_uploaded_by_user_id,
           uploader.display_name AS file_uploaded_by_display_name,
           aps.file_description,
+          aps.legacy_source_url,
+          aps.legacy_section,
+          aps.migration_status,
+          aps.migration_note,
           sc.id AS responsible_subcommittee_id,
           sc.code AS responsible_subcommittee_code,
           sc.title AS responsible_subcommittee_title,
@@ -1209,15 +1429,18 @@ export class ContentService {
         LEFT JOIN users uploader ON uploader.id = aps.file_uploaded_by_user_id
         LEFT JOIN subcommittees sc ON sc.id = aps.responsible_subcommittee_id
         LEFT JOIN organizations host ON host.id = sc.host_organization_id
-        ${publishedOnly ? "WHERE aps.status = 'published'" : ""}
+        ${conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""}
         ORDER BY aps.approval_date DESC, aps.code ASC
-      `
+      `,
+      values
     );
 
     return result.rows;
   }
 
-  private async getNewsItemById(newsId: string): Promise<NewsItemRecord> {
+  private async getBackofficeNewsItemById(
+    newsId: string
+  ): Promise<BackofficeNewsItemRecord> {
     const result = await this.databaseService.query<NewsRow>(
       `
         SELECT
@@ -1227,7 +1450,11 @@ export class ContentService {
           body,
           status,
           publication_date,
-          published_at
+          published_at,
+          legacy_source_url,
+          legacy_section,
+          migration_status,
+          migration_note
         FROM news_items
         WHERE id = $1
         LIMIT 1
@@ -1240,18 +1467,18 @@ export class ContentService {
       throw new NotFoundException("Новость не найдена.");
     }
 
-    return this.mapNewsItem(row);
+    return this.mapBackofficeNewsItem(row);
   }
 
   private async assertNewsItemExists(newsId: string): Promise<void> {
-    await this.getNewsItemById(newsId);
+    await this.getBackofficeNewsItemById(newsId);
   }
 
   private async setNewsStatus(
     newsId: string,
     userId: string,
     status: PublicationStatus
-  ): Promise<NewsItemRecord> {
+  ): Promise<BackofficeNewsItemRecord> {
     const result = await this.databaseService.query<NewsRow>(
       `
         UPDATE news_items
@@ -1268,7 +1495,11 @@ export class ContentService {
           body,
           status,
           publication_date,
-          published_at
+          published_at,
+          legacy_source_url,
+          legacy_section,
+          migration_status,
+          migration_note
       `,
       [newsId, status, userId]
     );
@@ -1278,10 +1509,12 @@ export class ContentService {
       throw new NotFoundException("Новость не найдена.");
     }
 
-    return this.mapNewsItem(row);
+    return this.mapBackofficeNewsItem(row);
   }
 
-  private async getPublicDocumentById(documentId: string): Promise<PublicDocumentRecord> {
+  private async getBackofficePublicDocumentById(
+    documentId: string
+  ): Promise<BackofficePublicDocumentRecord> {
     const stored = await this.getStoredPublicDocumentById(documentId);
     return this.stripStoredDocument(stored);
   }
@@ -1289,7 +1522,7 @@ export class ContentService {
   private async getStoredPublicDocumentById(
     documentId: string,
     publishedOnly = false
-  ): Promise<PublicDocumentRecord & { attachment: StoredAttachmentInfo | null }> {
+  ): Promise<BackofficePublicDocumentRecord & { attachment: StoredAttachmentInfo | null }> {
     const result = await this.databaseService.query<PublicDocumentRow>(
       `
         SELECT
@@ -1307,7 +1540,11 @@ export class ContentService {
           pd.file_uploaded_at,
           pd.file_uploaded_by_user_id,
           uploader.display_name AS file_uploaded_by_display_name,
-          pd.file_description
+          pd.file_description,
+          pd.legacy_source_url,
+          pd.legacy_section,
+          pd.migration_status,
+          pd.migration_note
         FROM public_documents pd
         LEFT JOIN users uploader ON uploader.id = pd.file_uploaded_by_user_id
         WHERE pd.id = $1
@@ -1329,7 +1566,7 @@ export class ContentService {
     documentId: string,
     userId: string,
     status: PublicationStatus
-  ): Promise<PublicDocumentRecord> {
+  ): Promise<BackofficePublicDocumentRecord> {
     const result = await this.databaseService.query<PublicDocumentRow>(
       `
         UPDATE public_documents
@@ -1354,7 +1591,11 @@ export class ContentService {
           file_uploaded_at,
           file_uploaded_by_user_id,
           NULL::text AS file_uploaded_by_display_name,
-          file_description
+          file_description,
+          legacy_source_url,
+          legacy_section,
+          migration_status,
+          migration_note
       `,
       [documentId, status, userId]
     );
@@ -1364,10 +1605,12 @@ export class ContentService {
       throw new NotFoundException("Публичный документ не найден.");
     }
 
-    return this.mapPublicDocument(row);
+    return this.mapBackofficePublicDocument(row);
   }
 
-  private async getMeetingRecordById(meetingId: string): Promise<MeetingRecord> {
+  private async getBackofficeMeetingRecordById(
+    meetingId: string
+  ): Promise<BackofficeMeetingRecord> {
     const stored = await this.getStoredMeetingRecordById(meetingId);
     return this.stripStoredMeeting(stored);
   }
@@ -1375,7 +1618,7 @@ export class ContentService {
   private async getStoredMeetingRecordById(
     meetingId: string,
     publishedOnly = false
-  ): Promise<MeetingRecord & { attachment: StoredAttachmentInfo | null }> {
+  ): Promise<BackofficeMeetingRecord & { attachment: StoredAttachmentInfo | null }> {
     const result = await this.databaseService.query<MeetingRow>(
       `
         SELECT
@@ -1396,7 +1639,11 @@ export class ContentService {
           mr.file_uploaded_at,
           mr.file_uploaded_by_user_id,
           uploader.display_name AS file_uploaded_by_display_name,
-          mr.file_description
+          mr.file_description,
+          mr.legacy_source_url,
+          mr.legacy_section,
+          mr.migration_status,
+          mr.migration_note
         FROM meeting_records mr
         LEFT JOIN users uploader ON uploader.id = mr.file_uploaded_by_user_id
         WHERE mr.id = $1
@@ -1418,7 +1665,7 @@ export class ContentService {
     meetingId: string,
     userId: string,
     status: PublicationStatus
-  ): Promise<MeetingRecord> {
+  ): Promise<BackofficeMeetingRecord> {
     const result = await this.databaseService.query<MeetingRow>(
       `
         UPDATE meeting_records
@@ -1446,7 +1693,11 @@ export class ContentService {
           file_uploaded_at,
           file_uploaded_by_user_id,
           NULL::text AS file_uploaded_by_display_name,
-          file_description
+          file_description,
+          legacy_source_url,
+          legacy_section,
+          migration_status,
+          migration_note
       `,
       [meetingId, status, userId]
     );
@@ -1456,12 +1707,12 @@ export class ContentService {
       throw new NotFoundException("Запись заседания не найдена.");
     }
 
-    return this.mapMeeting(row);
+    return this.mapBackofficeMeeting(row);
   }
 
-  private async getApprovedStandardById(
+  private async getBackofficeApprovedStandardById(
     standardId: string
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     const stored = await this.getStoredApprovedStandardById(standardId);
     return this.stripStoredApprovedStandard(stored);
   }
@@ -1469,7 +1720,7 @@ export class ContentService {
   private async getStoredApprovedStandardById(
     standardId: string,
     publishedOnly = false
-  ): Promise<ApprovedStandardRecord & { attachment: StoredAttachmentInfo | null }> {
+  ): Promise<BackofficeApprovedStandardRecord & { attachment: StoredAttachmentInfo | null }> {
     const result = await this.databaseService.query<ApprovedStandardRow>(
       `
         SELECT
@@ -1489,6 +1740,10 @@ export class ContentService {
           aps.file_uploaded_by_user_id,
           uploader.display_name AS file_uploaded_by_display_name,
           aps.file_description,
+          aps.legacy_source_url,
+          aps.legacy_section,
+          aps.migration_status,
+          aps.migration_note,
           sc.id AS responsible_subcommittee_id,
           sc.code AS responsible_subcommittee_code,
           sc.title AS responsible_subcommittee_title,
@@ -1519,7 +1774,7 @@ export class ContentService {
     standardId: string,
     userId: string,
     status: PublicationStatus
-  ): Promise<ApprovedStandardRecord> {
+  ): Promise<BackofficeApprovedStandardRecord> {
     const result = await this.databaseService.query<ApprovedStandardRow>(
       `
         UPDATE approved_standards
@@ -1546,6 +1801,10 @@ export class ContentService {
           file_uploaded_by_user_id,
           NULL::text AS file_uploaded_by_display_name,
           file_description,
+          legacy_source_url,
+          legacy_section,
+          migration_status,
+          migration_note,
           NULL::text AS responsible_subcommittee_id,
           NULL::text AS responsible_subcommittee_code,
           NULL::text AS responsible_subcommittee_title,
@@ -1562,7 +1821,7 @@ export class ContentService {
       throw new NotFoundException("Утвержденный стандарт не найден.");
     }
 
-    return this.getApprovedStandardById(row.id);
+    return this.getBackofficeApprovedStandardById(row.id);
   }
 
   private async assertSubcommitteeExists(subcommitteeId: string): Promise<void> {
@@ -1597,6 +1856,11 @@ export class ContentService {
   }
 
   private mapNewsItem(row: NewsRow): NewsItemRecord {
+    const { migration, ...item } = this.mapBackofficeNewsItem(row);
+    return item;
+  }
+
+  private mapBackofficeNewsItem(row: NewsRow): BackofficeNewsItemRecord {
     return {
       id: row.id,
       title: row.title,
@@ -1604,17 +1868,25 @@ export class ContentService {
       body: row.body,
       status: row.status,
       publicationDate: new Date(row.publication_date).toISOString(),
-      publishedAt: row.published_at ? new Date(row.published_at).toISOString() : null
+      publishedAt: row.published_at ? new Date(row.published_at).toISOString() : null,
+      migration: this.mapMigrationInfo(row)
     };
   }
 
   private mapPublicDocument(row: PublicDocumentRow): PublicDocumentRecord {
+    const { migration, ...document } = this.mapBackofficePublicDocument(row);
+    return document;
+  }
+
+  private mapBackofficePublicDocument(
+    row: PublicDocumentRow
+  ): BackofficePublicDocumentRecord {
     return this.stripStoredDocument(this.mapStoredPublicDocument(row));
   }
 
   private mapStoredPublicDocument(
     row: PublicDocumentRow
-  ): PublicDocumentRecord & { attachment: StoredAttachmentInfo | null } {
+  ): BackofficePublicDocumentRecord & { attachment: StoredAttachmentInfo | null } {
     return {
       id: row.id,
       title: row.title,
@@ -1623,13 +1895,14 @@ export class ContentService {
       status: row.status,
       publicationDate: new Date(row.publication_date).toISOString(),
       publishedAt: row.published_at ? new Date(row.published_at).toISOString() : null,
-      attachment: this.mapStoredAttachment(row)
+      attachment: this.mapStoredAttachment(row),
+      migration: this.mapMigrationInfo(row)
     };
   }
 
   private stripStoredDocument(
-    record: PublicDocumentRecord & { attachment: StoredAttachmentInfo | null }
-  ): PublicDocumentRecord {
+    record: BackofficePublicDocumentRecord & { attachment: StoredAttachmentInfo | null }
+  ): BackofficePublicDocumentRecord {
     return {
       ...record,
       attachment: record.attachment
@@ -1646,12 +1919,17 @@ export class ContentService {
   }
 
   private mapMeeting(row: MeetingRow): MeetingRecord {
+    const { migration, ...meeting } = this.mapBackofficeMeeting(row);
+    return meeting;
+  }
+
+  private mapBackofficeMeeting(row: MeetingRow): BackofficeMeetingRecord {
     return this.stripStoredMeeting(this.mapStoredMeeting(row));
   }
 
   private mapStoredMeeting(
     row: MeetingRow
-  ): MeetingRecord & { attachment: StoredAttachmentInfo | null } {
+  ): BackofficeMeetingRecord & { attachment: StoredAttachmentInfo | null } {
     return {
       id: row.id,
       title: row.title,
@@ -1663,13 +1941,14 @@ export class ContentService {
       status: row.status,
       publicationDate: new Date(row.publication_date).toISOString(),
       publishedAt: row.published_at ? new Date(row.published_at).toISOString() : null,
-      attachment: this.mapStoredAttachment(row)
+      attachment: this.mapStoredAttachment(row),
+      migration: this.mapMigrationInfo(row)
     };
   }
 
   private stripStoredMeeting(
-    record: MeetingRecord & { attachment: StoredAttachmentInfo | null }
-  ): MeetingRecord {
+    record: BackofficeMeetingRecord & { attachment: StoredAttachmentInfo | null }
+  ): BackofficeMeetingRecord {
     return {
       ...record,
       attachment: record.attachment
@@ -1686,12 +1965,19 @@ export class ContentService {
   }
 
   private mapApprovedStandard(row: ApprovedStandardRow): ApprovedStandardRecord {
+    const { migration, ...standard } = this.mapBackofficeApprovedStandard(row);
+    return standard;
+  }
+
+  private mapBackofficeApprovedStandard(
+    row: ApprovedStandardRow
+  ): BackofficeApprovedStandardRecord {
     return this.stripStoredApprovedStandard(this.mapStoredApprovedStandard(row));
   }
 
   private mapStoredApprovedStandard(
     row: ApprovedStandardRow
-  ): ApprovedStandardRecord & { attachment: StoredAttachmentInfo | null } {
+  ): BackofficeApprovedStandardRecord & { attachment: StoredAttachmentInfo | null } {
     return {
       id: row.id,
       code: row.code,
@@ -1702,6 +1988,7 @@ export class ContentService {
       publicationDate: new Date(row.publication_date).toISOString(),
       publishedAt: row.published_at ? new Date(row.published_at).toISOString() : null,
       attachment: this.mapStoredAttachment(row),
+      migration: this.mapMigrationInfo(row),
       responsibleSubcommittee: row.responsible_subcommittee_id
         ? {
             id: row.responsible_subcommittee_id,
@@ -1727,8 +2014,8 @@ export class ContentService {
   }
 
   private stripStoredApprovedStandard(
-    record: ApprovedStandardRecord & { attachment: StoredAttachmentInfo | null }
-  ): ApprovedStandardRecord {
+    record: BackofficeApprovedStandardRecord & { attachment: StoredAttachmentInfo | null }
+  ): BackofficeApprovedStandardRecord {
     return {
       ...record,
       attachment: record.attachment
@@ -1741,6 +2028,15 @@ export class ContentService {
             uploadedByDisplayName: record.attachment.uploadedByDisplayName
           }
         : null
+    };
+  }
+
+  private mapMigrationInfo(row: MigrationColumns): ContentMigrationInfo {
+    return {
+      legacySourceUrl: row.legacy_source_url,
+      legacySection: row.legacy_section,
+      migrationStatus: row.migration_status,
+      migrationNote: row.migration_note
     };
   }
 
@@ -1766,18 +2062,30 @@ export class ContentService {
     };
   }
 
-  private buildDocumentAuditMetadata(document: PublicDocumentRecord): Record<string, unknown> {
-    return {
+  private buildDocumentAuditMetadata(
+    document: PublicDocumentRecord | BackofficePublicDocumentRecord
+  ): Record<string, unknown> {
+    const metadata: Record<string, unknown> = {
       title: document.title,
       category: document.category,
       publicationDate: document.publicationDate,
       status: document.status,
       originalName: document.attachment?.originalName ?? null
     };
+
+    if ("migration" in document) {
+      metadata.migrationStatus = document.migration.migrationStatus;
+      metadata.legacySection = document.migration.legacySection;
+      metadata.legacySourceUrl = document.migration.legacySourceUrl;
+    }
+
+    return metadata;
   }
 
-  private buildMeetingAuditMetadata(meeting: MeetingRecord): Record<string, unknown> {
-    return {
+  private buildMeetingAuditMetadata(
+    meeting: MeetingRecord | BackofficeMeetingRecord
+  ): Record<string, unknown> {
+    const metadata: Record<string, unknown> = {
       title: meeting.title,
       category: meeting.category,
       meetingDate: meeting.meetingDate,
@@ -1785,12 +2093,20 @@ export class ContentService {
       status: meeting.status,
       originalName: meeting.attachment?.originalName ?? null
     };
+
+    if ("migration" in meeting) {
+      metadata.migrationStatus = meeting.migration.migrationStatus;
+      metadata.legacySection = meeting.migration.legacySection;
+      metadata.legacySourceUrl = meeting.migration.legacySourceUrl;
+    }
+
+    return metadata;
   }
 
   private buildApprovedStandardAuditMetadata(
-    standard: ApprovedStandardRecord
+    standard: ApprovedStandardRecord | BackofficeApprovedStandardRecord
   ): Record<string, unknown> {
-    return {
+    const metadata: Record<string, unknown> = {
       code: standard.code,
       title: standard.title,
       approvalDate: standard.approvalDate,
@@ -1799,6 +2115,109 @@ export class ContentService {
       responsibleSubcommitteeId: standard.responsibleSubcommittee?.id ?? null,
       originalName: standard.attachment?.originalName ?? null
     };
+
+    if ("migration" in standard) {
+      metadata.migrationStatus = standard.migration.migrationStatus;
+      metadata.legacySection = standard.migration.legacySection;
+      metadata.legacySourceUrl = standard.migration.legacySourceUrl;
+    }
+
+    return metadata;
+  }
+
+  private normalizeMigrationFields(
+    payload: {
+      legacySection: LegacyContentSection;
+      legacySourceUrl?: string | null;
+      migrationNote?: string | null;
+      migrationStatus: ContentMigrationStatus;
+    },
+    allowedSections: readonly LegacyContentSection[],
+    defaultSection: LegacyContentSection
+  ): ContentMigrationInfo {
+    return {
+      legacySourceUrl: this.normalizeLegacySourceUrl(payload.legacySourceUrl),
+      legacySection: this.parseLegacySection(
+        payload.legacySection ?? defaultSection,
+        allowedSections
+      ),
+      migrationStatus: this.parseMigrationStatus(payload.migrationStatus),
+      migrationNote: this.normalizeOptionalText(payload.migrationNote)
+    };
+  }
+
+  private normalizeLegacySourceUrl(value: string | null | undefined): string | null {
+    const normalized = this.normalizeOptionalText(value);
+
+    if (!normalized) {
+      return null;
+    }
+
+    try {
+      const parsed = new URL(normalized);
+
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        throw new Error("unsupported");
+      }
+
+      return parsed.toString();
+    } catch {
+      throw new BadRequestException("Укажите корректную ссылку на материал старого сайта.");
+    }
+  }
+
+  private parseLegacySection(
+    value: string,
+    allowedSections = LEGACY_CONTENT_SECTIONS
+  ): LegacyContentSection {
+    if (
+      LEGACY_CONTENT_SECTIONS.includes(value as LegacyContentSection) &&
+      allowedSections.includes(value as LegacyContentSection)
+    ) {
+      return value as LegacyContentSection;
+    }
+
+    throw new BadRequestException("Выберите корректный раздел старого сайта.");
+  }
+
+  private parseMigrationStatus(value: string): ContentMigrationStatus {
+    if (MIGRATION_STATUSES.includes(value as ContentMigrationStatus)) {
+      return value as ContentMigrationStatus;
+    }
+
+    throw new BadRequestException("Выберите корректный статус переноса.");
+  }
+
+  private buildMigrationWhereClause(
+    filters: BackofficeContentListFilters,
+    tableName: string
+  ): { sql: string; values: unknown[] } {
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+
+    this.appendMigrationFilters(conditions, values, filters, tableName);
+
+    return {
+      sql: conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "",
+      values
+    };
+  }
+
+  private appendMigrationFilters(
+    conditions: string[],
+    values: unknown[],
+    filters: BackofficeContentListFilters,
+    tableAlias: string
+  ): void {
+    if (filters.migrationStatus) {
+      values.push(this.parseMigrationStatus(filters.migrationStatus));
+      conditions.push(`${tableAlias}.migration_status = $${values.length}`);
+    }
+
+    if (filters.legacySection) {
+      values.push(this.parseLegacySection(filters.legacySection));
+      conditions.push(`${tableAlias}.legacy_section = $${values.length}`);
+    }
   }
 
   private parseDocumentCategory(value: string): PublicDocumentCategory {

@@ -2,7 +2,13 @@ import "../common/config/load-env";
 
 import { rm, writeFile } from "node:fs/promises";
 
-import type { AuthRole, ParticipantPositionValue, ReviewCommentStatus } from "@tk182/shared-types";
+import type {
+  AuthRole,
+  ContentMigrationStatus,
+  LegacyContentSection,
+  ParticipantPositionValue,
+  ReviewCommentStatus
+} from "@tk182/shared-types";
 
 import { getApplicationConfig } from "../common/config/environment";
 import { createDatabasePool } from "../common/database/database.pool";
@@ -188,6 +194,10 @@ interface SeedNewsItem {
   createdByUserId: string;
   excerpt: string;
   id: string;
+  legacySection: LegacyContentSection;
+  legacySourceUrl?: string | null;
+  migrationNote?: string | null;
+  migrationStatus: ContentMigrationStatus;
   publicationDate: string;
   publishedAt: string;
   status: "draft" | "published";
@@ -203,6 +213,10 @@ interface SeedPublicDocument {
     | "NATIONAL_STANDARDS_PROGRAM";
   createdByUserId: string;
   id: string;
+  legacySection: LegacyContentSection;
+  legacySourceUrl?: string | null;
+  migrationNote?: string | null;
+  migrationStatus: ContentMigrationStatus;
   publicationDate: string;
   publishedAt: string;
   status: "draft" | "published";
@@ -216,8 +230,12 @@ interface SeedMeetingRecord {
   category: "MEETING_MINUTES" | "MEETING_AGENDA";
   createdByUserId: string;
   id: string;
+  legacySection: LegacyContentSection;
+  legacySourceUrl?: string | null;
   location?: string | null;
   meetingDate: string;
+  migrationNote?: string | null;
+  migrationStatus: ContentMigrationStatus;
   publicationDate: string;
   publishedAt: string;
   status: "draft" | "published";
@@ -231,6 +249,10 @@ interface SeedApprovedStandard {
   code: string;
   createdByUserId: string;
   id: string;
+  legacySection: LegacyContentSection;
+  legacySourceUrl?: string | null;
+  migrationNote?: string | null;
+  migrationStatus: ContentMigrationStatus;
   publicationDate: string;
   publishedAt: string;
   responsibleSubcommitteeId?: string | null;
@@ -855,6 +877,8 @@ const notifications: SeedNotification[] = [
   }
 ];
 
+const legacyBaseUrl = "https://viam.ru/tk182";
+
 const newsItems: SeedNewsItem[] = [
   {
     id: "news-portal-content-launch",
@@ -869,6 +893,10 @@ const newsItems: SeedNewsItem[] = [
       "Все опубликованные материалы доступны на публичной части портала."
     ].join("\n"),
     status: "published",
+    legacySection: "NEWS",
+    legacySourceUrl: `${legacyBaseUrl}/news/otkryt-novyj-publichnyj-kontur-publikacij`,
+    migrationStatus: "VERIFIED",
+    migrationNote: "Сверено описание и порядок публикации на новом портале.",
     publicationDate: "2026-04-18T09:00:00.000Z",
     publishedAt: "2026-04-18T09:00:00.000Z",
     createdByUserId: "user-secretariat"
@@ -886,6 +914,10 @@ const newsItems: SeedNewsItem[] = [
       "Секретариат продолжит пополнять раздел по мере подготовки новых редакций."
     ].join("\n"),
     status: "published",
+    legacySection: "NEWS",
+    legacySourceUrl: `${legacyBaseUrl}/news/programma-razrabotki-nacionalnyh-standartov-2026`,
+    migrationStatus: "IMPORTED",
+    migrationNote: "Проверить формулировки заголовка и формат вложений после переноса.",
     publicationDate: "2026-04-19T10:30:00.000Z",
     publishedAt: "2026-04-19T10:30:00.000Z",
     createdByUserId: "user-secretariat"
@@ -900,6 +932,10 @@ const publicDocuments: SeedPublicDocument[] = [
     summary:
       "Основной документ о задачах, составе и порядке работы технического комитета 182.",
     status: "published",
+    legacySection: "MAIN_DOCUMENTS",
+    legacySourceUrl: `${legacyBaseUrl}/documents/polozhenie-o-tk-182`,
+    migrationStatus: "VERIFIED",
+    migrationNote: "Структура и вложение проверены после ручного переноса.",
     publicationDate: "2026-01-20T09:00:00.000Z",
     publishedAt: "2026-01-20T09:00:00.000Z",
     createdByUserId: "user-secretariat",
@@ -925,6 +961,10 @@ const publicDocuments: SeedPublicDocument[] = [
     summary:
       "Сводный отчет по рассмотренным проектам, заседаниям и результатам работ за 2025 год.",
     status: "published",
+    legacySection: "WORK_REPORTS",
+    legacySourceUrl: `${legacyBaseUrl}/reports/otchet-o-rabote-tk-182-za-2025-god`,
+    migrationStatus: "IMPORTED",
+    migrationNote: "Нужно дополнительно сверить реквизиты годового отчета.",
     publicationDate: "2026-02-05T12:00:00.000Z",
     publishedAt: "2026-02-05T12:00:00.000Z",
     createdByUserId: "user-secretariat",
@@ -950,6 +990,10 @@ const publicDocuments: SeedPublicDocument[] = [
     summary:
       "План ключевых работ комитета, заседаний и публикаций по направлениям стандартизации.",
     status: "published",
+    legacySection: "WORK_PLANS",
+    legacySourceUrl: `${legacyBaseUrl}/plans/plan-i-perspektivnaya-programma-rabot-2026`,
+    migrationStatus: "IMPORTED",
+    migrationNote: "После переноса проверить даты заседаний и приложения к плану.",
     publicationDate: "2026-03-01T09:30:00.000Z",
     publishedAt: "2026-03-01T09:30:00.000Z",
     createdByUserId: "user-secretariat",
@@ -975,6 +1019,10 @@ const publicDocuments: SeedPublicDocument[] = [
     summary:
       "Сводный перечень планируемых к разработке и актуализации стандартов по направлениям ТК 182.",
     status: "published",
+    legacySection: "NATIONAL_STANDARDS_PROGRAM",
+    legacySourceUrl: `${legacyBaseUrl}/programs/programma-razrabotki-nacionalnyh-standartov-2026`,
+    migrationStatus: "VERIFIED",
+    migrationNote: "Содержание программы и файл сверены.",
     publicationDate: "2026-03-10T10:00:00.000Z",
     publishedAt: "2026-03-10T10:00:00.000Z",
     createdByUserId: "user-secretariat",
@@ -1012,6 +1060,10 @@ const meetingRecords: SeedMeetingRecord[] = [
     location: 'Москва, НИЦ "Курчатовский институт" - ВИАМ',
     meetingDate: "2026-04-24T10:00:00.000Z",
     status: "published",
+    legacySection: "MEETING_AGENDA",
+    legacySourceUrl: `${legacyBaseUrl}/meetings/uvedomlenie-i-povestka-24-04-2026`,
+    migrationStatus: "IMPORTED",
+    migrationNote: "Проверить приложения к повестке перед финальной верификацией.",
     publicationDate: "2026-04-16T09:00:00.000Z",
     publishedAt: "2026-04-16T09:00:00.000Z",
     createdByUserId: "user-secretariat",
@@ -1046,6 +1098,10 @@ const meetingRecords: SeedMeetingRecord[] = [
     location: 'Москва, НИЦ "Курчатовский институт" - ВИАМ',
     meetingDate: "2026-02-12T11:00:00.000Z",
     status: "published",
+    legacySection: "MEETING_MINUTES",
+    legacySourceUrl: `${legacyBaseUrl}/meetings/protokol-12-02-2026`,
+    migrationStatus: "VERIFIED",
+    migrationNote: "Протокол и вложение перепроверены на новом портале.",
     publicationDate: "2026-02-20T12:00:00.000Z",
     publishedAt: "2026-02-20T12:00:00.000Z",
     createdByUserId: "user-secretariat",
@@ -1075,6 +1131,10 @@ const approvedStandards: SeedApprovedStandard[] = [
       "Утвержденный стандарт по базовым требованиям к порошковым материалам для аддитивного производства.",
     approvalDate: "2025-12-15T00:00:00.000Z",
     status: "published",
+    legacySection: "APPROVED_STANDARDS",
+    legacySourceUrl: `${legacyBaseUrl}/standards/gost-r-70501-2025`,
+    migrationStatus: "VERIFIED",
+    migrationNote: "Файл и сведения об утверждении подтверждены.",
     publicationDate: "2026-01-15T09:00:00.000Z",
     publishedAt: "2026-01-15T09:00:00.000Z",
     createdByUserId: "user-secretariat",
@@ -1101,6 +1161,10 @@ const approvedStandards: SeedApprovedStandard[] = [
       "Утвержденный стандарт по общим положениям неразрушающего контроля аддитивных изделий.",
     approvalDate: "2025-11-28T00:00:00.000Z",
     status: "published",
+    legacySection: "APPROVED_STANDARDS",
+    legacySourceUrl: `${legacyBaseUrl}/standards/gost-r-70518-2025`,
+    migrationStatus: "IMPORTED",
+    migrationNote: "Осталось проверить карточку и ссылку на файл перед пометкой как проверено.",
     publicationDate: "2026-02-01T09:00:00.000Z",
     publishedAt: "2026-02-01T09:00:00.000Z",
     createdByUserId: "user-secretariat",
@@ -1348,11 +1412,15 @@ async function main(): Promise<void> {
               status,
               publication_date,
               published_at,
+              legacy_source_url,
+              legacy_section,
+              migration_status,
+              migration_note,
               created_by_user_id,
               updated_by_user_id,
               updated_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $8, NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $12, NOW())
           `,
           [
             newsItem.id,
@@ -1362,6 +1430,10 @@ async function main(): Promise<void> {
             newsItem.status,
             newsItem.publicationDate,
             newsItem.publishedAt,
+            newsItem.legacySourceUrl ?? null,
+            newsItem.legacySection,
+            newsItem.migrationStatus,
+            newsItem.migrationNote ?? null,
             newsItem.createdByUserId
           ]
         );
@@ -1388,13 +1460,18 @@ async function main(): Promise<void> {
               file_uploaded_at,
               file_uploaded_by_user_id,
               file_description,
+              legacy_source_url,
+              legacy_section,
+              migration_status,
+              migration_note,
               created_by_user_id,
               updated_by_user_id,
               updated_at
             )
             VALUES (
               $1, $2, $3, $4, $5, $6, $7,
-              $8, $9, $10, $11, $12, $13, $14, $15, $15, NOW()
+              $8, $9, $10, $11, $12, $13, $14,
+              $15, $16, $17, $18, $19, $19, NOW()
             )
           `,
           [
@@ -1412,6 +1489,10 @@ async function main(): Promise<void> {
             storedFile?.attachment.uploadedAt ?? null,
             storedFile?.attachment.uploadedByUserId ?? null,
             storedFile?.attachment.description ?? null,
+            document.legacySourceUrl ?? null,
+            document.legacySection,
+            document.migrationStatus,
+            document.migrationNote ?? null,
             document.createdByUserId
           ]
         );
@@ -1441,13 +1522,18 @@ async function main(): Promise<void> {
               file_uploaded_at,
               file_uploaded_by_user_id,
               file_description,
+              legacy_source_url,
+              legacy_section,
+              migration_status,
+              migration_note,
               created_by_user_id,
               updated_by_user_id,
               updated_at
             )
             VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-              $11, $12, $13, $14, $15, $16, $17, $18, $18, NOW()
+              $11, $12, $13, $14, $15, $16, $17,
+              $18, $19, $20, $21, $22, $22, NOW()
             )
           `,
           [
@@ -1468,6 +1554,10 @@ async function main(): Promise<void> {
             storedFile?.attachment.uploadedAt ?? null,
             storedFile?.attachment.uploadedByUserId ?? null,
             storedFile?.attachment.description ?? null,
+            meeting.legacySourceUrl ?? null,
+            meeting.legacySection,
+            meeting.migrationStatus,
+            meeting.migrationNote ?? null,
             meeting.createdByUserId
           ]
         );
@@ -1586,13 +1676,18 @@ async function main(): Promise<void> {
               file_uploaded_at,
               file_uploaded_by_user_id,
               file_description,
+              legacy_source_url,
+              legacy_section,
+              migration_status,
+              migration_note,
               created_by_user_id,
               updated_by_user_id,
               updated_at
             )
             VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9,
-              $10, $11, $12, $13, $14, $15, $16, $17, $17, NOW()
+              $10, $11, $12, $13, $14, $15, $16,
+              $17, $18, $19, $20, $21, $21, NOW()
             )
           `,
           [
@@ -1612,6 +1707,10 @@ async function main(): Promise<void> {
             storedFile?.attachment.uploadedAt ?? null,
             storedFile?.attachment.uploadedByUserId ?? null,
             storedFile?.attachment.description ?? null,
+            standard.legacySourceUrl ?? null,
+            standard.legacySection,
+            standard.migrationStatus,
+            standard.migrationNote ?? null,
             standard.createdByUserId
           ]
         );

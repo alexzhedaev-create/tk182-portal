@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import type {
+  BackofficeContentListFilters,
+  BackofficePublicDocumentRecord,
   CreatePublicDocumentDto,
   DocumentSummary,
   PaginatedResult,
@@ -34,15 +36,17 @@ export class DocumentsService {
     return this.contentService.getPublicDocumentsPageData();
   }
 
-  listBackofficePublicDocuments(): Promise<PublicDocumentRecord[]> {
-    return this.contentService.listBackofficePublicDocuments();
+  listBackofficePublicDocuments(
+    filters: BackofficeContentListFilters = {}
+  ): Promise<BackofficePublicDocumentRecord[]> {
+    return this.contentService.listBackofficePublicDocuments(filters);
   }
 
   createPublicDocument(
     userId: string,
     payload: CreatePublicDocumentDto,
     file?: UploadedBinaryFile
-  ): Promise<PublicDocumentRecord> {
+  ): Promise<BackofficePublicDocumentRecord> {
     return this.contentService.createPublicDocument(userId, payload, file);
   }
 
@@ -51,15 +55,21 @@ export class DocumentsService {
     documentId: string,
     payload: UpdatePublicDocumentDto,
     file?: UploadedBinaryFile
-  ): Promise<PublicDocumentRecord> {
+  ): Promise<BackofficePublicDocumentRecord> {
     return this.contentService.updatePublicDocument(userId, documentId, payload, file);
   }
 
-  publishPublicDocument(userId: string, documentId: string): Promise<PublicDocumentRecord> {
+  publishPublicDocument(
+    userId: string,
+    documentId: string
+  ): Promise<BackofficePublicDocumentRecord> {
     return this.contentService.publishPublicDocument(userId, documentId);
   }
 
-  unpublishPublicDocument(userId: string, documentId: string): Promise<PublicDocumentRecord> {
+  unpublishPublicDocument(
+    userId: string,
+    documentId: string
+  ): Promise<BackofficePublicDocumentRecord> {
     return this.contentService.unpublishPublicDocument(userId, documentId);
   }
 

@@ -3,9 +3,19 @@
 import { startTransition, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { PublicDocumentCategory, PublicDocumentRecord } from "@tk182/shared-types";
+import type {
+  BackofficePublicDocumentRecord,
+  ContentMigrationStatus,
+  LegacyContentSection,
+  PublicDocumentCategory
+} from "@tk182/shared-types";
 
-import { formatPublicDocumentCategory, formatPublicationStatus } from "../lib/content";
+import {
+  formatLegacyContentSection,
+  formatMigrationStatus,
+  formatPublicDocumentCategory,
+  formatPublicationStatus
+} from "../lib/content";
 import { extractApiErrorMessage, toDateInputValue } from "../lib/form-utils";
 import { formatDate, formatFileSize } from "../lib/review";
 
@@ -16,9 +26,16 @@ const documentCategories: PublicDocumentCategory[] = [
   "WORK_PLANS",
   "NATIONAL_STANDARDS_PROGRAM"
 ];
+const documentLegacySections: LegacyContentSection[] = [
+  "MAIN_DOCUMENTS",
+  "WORK_REPORTS",
+  "WORK_PLANS",
+  "NATIONAL_STANDARDS_PROGRAM"
+];
+const migrationStatuses: ContentMigrationStatus[] = ["NOT_IMPORTED", "IMPORTED", "VERIFIED"];
 
 interface SecretariatPublicDocumentsPanelProps {
-  documents: PublicDocumentRecord[];
+  documents: BackofficePublicDocumentRecord[];
 }
 
 export function SecretariatPublicDocumentsPanel({
@@ -31,6 +48,15 @@ export function SecretariatPublicDocumentsPanel({
   const [category, setCategory] = useState<PublicDocumentCategory>("MAIN_DOCUMENTS");
   const [publicationDate, setPublicationDate] = useState("");
   const [fileDescription, setFileDescription] = useState("");
+  const [legacySection, setLegacySection] =
+    useState<LegacyContentSection>("MAIN_DOCUMENTS");
+  const [legacySourceUrl, setLegacySourceUrl] = useState("");
+  const [migrationStatus, setMigrationStatus] =
+    useState<ContentMigrationStatus>("NOT_IMPORTED");
+  const [migrationNote, setMigrationNote] = useState("");
+  const [filterMigrationStatus, setFilterMigrationStatus] = useState<
+    ContentMigrationStatus | "ALL"
+  >("ALL");
   const [file, setFile] = useState<File | null>(null);
   const [isPending, setIsPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -39,6 +65,12 @@ export function SecretariatPublicDocumentsPanel({
   const selectedDocument =
     documents.find((item) => item.id === selectedDocumentId) ?? null;
   const isEditMode = Boolean(selectedDocument);
+  const visibleDocuments =
+    filterMigrationStatus === "ALL"
+      ? documents
+      : documents.filter(
+          (item) => item.migration.migrationStatus === filterMigrationStatus
+        );
 
   useEffect(() => {
     if (!selectedDocument) {
@@ -47,6 +79,10 @@ export function SecretariatPublicDocumentsPanel({
       setCategory("MAIN_DOCUMENTS");
       setPublicationDate("");
       setFileDescription("");
+      setLegacySection("MAIN_DOCUMENTS");
+      setLegacySourceUrl("");
+      setMigrationStatus("NOT_IMPORTED");
+      setMigrationNote("");
       setFile(null);
       return;
     }
@@ -56,6 +92,10 @@ export function SecretariatPublicDocumentsPanel({
     setCategory(selectedDocument.category);
     setPublicationDate(toDateInputValue(selectedDocument.publicationDate));
     setFileDescription(selectedDocument.attachment?.description ?? "");
+    setLegacySection(selectedDocument.migration.legacySection);
+    setLegacySourceUrl(selectedDocument.migration.legacySourceUrl ?? "");
+    setMigrationStatus(selectedDocument.migration.migrationStatus);
+    setMigrationNote(selectedDocument.migration.migrationNote ?? "");
     setFile(null);
   }, [selectedDocument]);
 
@@ -71,6 +111,10 @@ export function SecretariatPublicDocumentsPanel({
     formData.set("category", category);
     formData.set("publicationDate", new Date(publicationDate).toISOString());
     formData.set("fileDescription", fileDescription);
+    formData.set("legacySection", legacySection);
+    formData.set("legacySourceUrl", legacySourceUrl);
+    formData.set("migrationStatus", migrationStatus);
+    formData.set("migrationNote", migrationNote);
 
     if (file) {
       formData.set("file", file);
@@ -109,6 +153,10 @@ export function SecretariatPublicDocumentsPanel({
       setCategory("MAIN_DOCUMENTS");
       setPublicationDate("");
       setFileDescription("");
+      setLegacySection("MAIN_DOCUMENTS");
+      setLegacySourceUrl("");
+      setMigrationStatus("NOT_IMPORTED");
+      setMigrationNote("");
       setFile(null);
     }
 
@@ -160,9 +208,30 @@ export function SecretariatPublicDocumentsPanel({
         Раздел поддерживает категории старого сайта: основные документы, отчеты,
         планы и программу разработки национальных стандартов.
       </p>
+      <div className="form-grid">
+        <label className="field-label">
+          <span>Фильтр по статусу переноса</span>
+          <select
+            className="text-input"
+            value={filterMigrationStatus}
+            onChange={(event) => {
+              setFilterMigrationStatus(
+                event.target.value as ContentMigrationStatus | "ALL"
+              );
+            }}
+          >
+            <option value="ALL">Все документы</option>
+            {migrationStatuses.map((status) => (
+              <option key={status} value={status}>
+                {formatMigrationStatus(status)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <div className="content-stack">
-        {documents.map((document) => (
+        {visibleDocuments.map((document) => (
           <div key={document.id} className="review-card">
             <div className="review-card-header">
               <div>
@@ -172,6 +241,9 @@ export function SecretariatPublicDocumentsPanel({
               <div className="pill-row">
                 <span className="pill">{formatPublicationStatus(document.status)}</span>
                 <span className="pill">{formatPublicDocumentCategory(document.category)}</span>
+                <span className="pill">
+                  {formatMigrationStatus(document.migration.migrationStatus)}
+                </span>
               </div>
             </div>
 
@@ -192,7 +264,32 @@ export function SecretariatPublicDocumentsPanel({
                     : "—"}
                 </p>
               </div>
+              <div>
+                <strong>Раздел старого сайта</strong>
+                <p>{formatLegacyContentSection(document.migration.legacySection)}</p>
+              </div>
+              <div>
+                <strong>Источник на старом сайте</strong>
+                <p>
+                  {document.migration.legacySourceUrl ? (
+                    <a
+                      href={document.migration.legacySourceUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Открыть источник
+                    </a>
+                  ) : (
+                    "Не указан"
+                  )}
+                </p>
+              </div>
             </div>
+            {document.migration.migrationNote ? (
+              <p className="status-note">
+                Комментарий по переносу: {document.migration.migrationNote}
+              </p>
+            ) : null}
 
             <div className="pill-row">
               <button
@@ -260,12 +357,50 @@ export function SecretariatPublicDocumentsPanel({
               className="text-input"
               value={category}
               onChange={(event) => {
-                setCategory(event.target.value as PublicDocumentCategory);
+                const nextCategory = event.target.value as PublicDocumentCategory;
+                setCategory(nextCategory);
+                setLegacySection(nextCategory as LegacyContentSection);
               }}
             >
               {documentCategories.map((item) => (
                 <option key={item} value={item}>
                   {formatPublicDocumentCategory(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="form-grid">
+          <label className="field-label">
+            <span>Раздел старого сайта</span>
+            <select
+              className="text-input"
+              value={legacySection}
+              onChange={(event) => {
+                setLegacySection(event.target.value as LegacyContentSection);
+              }}
+            >
+              {documentLegacySections.map((section) => (
+                <option key={section} value={section}>
+                  {formatLegacyContentSection(section)}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field-label">
+            <span>Статус переноса</span>
+            <select
+              className="text-input"
+              value={migrationStatus}
+              onChange={(event) => {
+                setMigrationStatus(event.target.value as ContentMigrationStatus);
+              }}
+            >
+              {migrationStatuses.map((status) => (
+                <option key={status} value={status}>
+                  {formatMigrationStatus(status)}
                 </option>
               ))}
             </select>
@@ -297,6 +432,18 @@ export function SecretariatPublicDocumentsPanel({
             />
           </label>
         </div>
+
+        <label className="field-label">
+          <span>Источник на старом сайте</span>
+          <input
+            className="text-input"
+            value={legacySourceUrl}
+            onChange={(event) => {
+              setLegacySourceUrl(event.target.value);
+            }}
+            placeholder="https://viam.ru/tk182/..."
+          />
+        </label>
 
         <label className="field-label">
           <span>Краткое описание</span>
@@ -334,6 +481,18 @@ export function SecretariatPublicDocumentsPanel({
             />
           </label>
         </div>
+
+        <label className="field-label">
+          <span>Комментарий по переносу</span>
+          <textarea
+            className="text-area"
+            value={migrationNote}
+            onChange={(event) => {
+              setMigrationNote(event.target.value);
+            }}
+            placeholder="Например, проверить вложения и форматирование после переноса"
+          />
+        </label>
 
         {selectedDocument?.attachment ? (
           <p className="status-note">
