@@ -107,6 +107,14 @@ export default async function ParticipantWorkspacePage() {
                   <strong>Файл</strong>
                   <p>{item.currentVersion.fileName}</p>
                 </div>
+                <div>
+                  <strong>Ответственный подкомитет</strong>
+                  <p>
+                    {item.draftStandard.responsibleSubcommittee
+                      ? `${item.draftStandard.responsibleSubcommittee.code} — ${item.draftStandard.responsibleSubcommittee.title}`
+                      : "Не указан"}
+                  </p>
+                </div>
               </div>
 
               <div className="pill-row">

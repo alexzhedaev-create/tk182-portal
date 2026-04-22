@@ -1,3 +1,5 @@
+import type { SubcommitteeSummary } from "./committee";
+
 export interface PageSummary {
   slug: string;
   title: string;
@@ -24,7 +26,9 @@ export interface StandardSummary {
   id: string;
   code: string;
   title: string;
+  summary: string;
   stage: string;
+  responsibleSubcommittee: SubcommitteeSummary | null;
 }
 
 export interface MeetingSummary {

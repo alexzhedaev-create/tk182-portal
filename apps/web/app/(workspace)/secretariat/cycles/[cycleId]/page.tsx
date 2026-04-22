@@ -86,6 +86,14 @@ export default async function SecretariatCycleDetailPage({
           <h2>Текущая версия и публикация</h2>
           <div className="content-stack">
             <div>
+              <strong>Ответственный подкомитет</strong>
+              <p>
+                {detail.cycle.draftStandard.responsibleSubcommittee
+                  ? `${detail.cycle.draftStandard.responsibleSubcommittee.code} — ${detail.cycle.draftStandard.responsibleSubcommittee.title}`
+                  : "Не указан"}
+              </p>
+            </div>
+            <div>
               <strong>Редакция</strong>
               <p>{detail.cycle.currentVersion.versionLabel}</p>
             </div>

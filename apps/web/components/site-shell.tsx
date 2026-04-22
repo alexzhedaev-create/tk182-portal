@@ -4,9 +4,10 @@ import type { SiteNavigationItem } from "@tk182/shared-types";
 
 const navigationItems: SiteNavigationItem[] = [
   { href: "/", label: "Главная", area: "public" },
-  { href: "/about", label: "О комитете", area: "public" },
+  { href: "/about", label: "Структура ТК 182", area: "public" },
   { href: "/documents", label: "Документы", area: "public" },
   { href: "/standards", label: "Стандарты", area: "public" },
+  { href: "/organizations", label: "Организации", area: "public" },
   { href: "/meetings", label: "Заседания", area: "public" },
   { href: "/news", label: "Новости", area: "public" },
   { href: "/contacts", label: "Контакты", area: "public" },

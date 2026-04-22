@@ -1,7 +1,15 @@
-import { readdir, rm } from "node:fs/promises";
-import { resolve } from "node:path";
+import { access, mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
 
 const pagesDirectory = resolve(process.cwd(), "pages");
+const distDirectory = process.env.NEXT_DIST_DIR?.trim() || ".next";
+const pagesManifestPath = resolve(
+  process.cwd(),
+  distDirectory,
+  "server",
+  "pages-manifest.json"
+);
+const pagesOutputDirectory = resolve(process.cwd(), distDirectory, "server", "pages");
 
 async function removeEmptyPagesDirectory() {
   try {
@@ -22,4 +30,16 @@ async function removeEmptyPagesDirectory() {
   }
 }
 
+async function ensureLegacyPagesManifestPlaceholder() {
+  await mkdir(dirname(pagesManifestPath), { recursive: true });
+  await mkdir(pagesOutputDirectory, { recursive: true });
+
+  try {
+    await access(pagesManifestPath);
+  } catch {
+    await writeFile(pagesManifestPath, "{}\n", "utf8");
+  }
+}
+
 await removeEmptyPagesDirectory();
+await ensureLegacyPagesManifestPlaceholder();

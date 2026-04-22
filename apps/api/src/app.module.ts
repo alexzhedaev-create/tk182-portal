@@ -5,6 +5,7 @@ import { DatabaseModule } from "./common/database/database.module";
 import { ApprovalModule } from "./modules/approval/approval.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { AuthModule } from "./modules/auth/auth.module";
+import { CommitteeModule } from "./modules/committee/committee.module";
 import { DocumentsModule } from "./modules/documents/documents.module";
 import { HealthModule } from "./modules/health/health.module";
 import { MeetingsModule } from "./modules/meetings/meetings.module";
@@ -23,6 +24,7 @@ import { UsersModule } from "./modules/users/users.module";
     AuthModule,
     UsersModule,
     OrganizationsModule,
+    CommitteeModule,
     PagesModule,
     NewsModule,
     DocumentsModule,

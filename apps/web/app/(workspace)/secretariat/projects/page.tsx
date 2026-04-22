@@ -5,6 +5,7 @@ import { AccessDeniedCard } from "../../../../components/access-denied-card";
 import { SecretariatDraftStandardForm } from "../../../../components/secretariat-draft-standard-form";
 import { WorkspaceSessionCard } from "../../../../components/workspace-session-card";
 import {
+  getCommitteeSubcommittees,
   getSecretariatDraftStandards,
   getServerSession
 } from "../../../../lib/api";
@@ -27,7 +28,10 @@ export default async function SecretariatProjectsPage() {
     );
   }
 
-  const draftStandards = await getSecretariatDraftStandards();
+  const [draftStandards, subcommittees] = await Promise.all([
+    getSecretariatDraftStandards(),
+    getCommitteeSubcommittees()
+  ]);
 
   return (
     <div className="page-frame">
@@ -55,7 +59,7 @@ export default async function SecretariatProjectsPage() {
 
       <section className="info-grid">
         <WorkspaceSessionCard heading="Текущая сессия" user={session.user} />
-        <SecretariatDraftStandardForm />
+        <SecretariatDraftStandardForm subcommittees={subcommittees} />
       </section>
 
       <section className="content-stack">
@@ -87,6 +91,14 @@ export default async function SecretariatProjectsPage() {
                 <div>
                   <strong>Активных циклов</strong>
                   <p>{item.activeCyclesCount}</p>
+                </div>
+                <div>
+                  <strong>Ответственный подкомитет</strong>
+                  <p>
+                    {item.draftStandard.responsibleSubcommittee
+                      ? `${item.draftStandard.responsibleSubcommittee.code} — ${item.draftStandard.responsibleSubcommittee.title}`
+                      : "Не указан"}
+                  </p>
                 </div>
               </div>
 

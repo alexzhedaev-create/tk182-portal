@@ -1,31 +1,34 @@
 import Link from "next/link";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+import { getCommitteeStructure, getPublicStandards } from "../../lib/api";
 
-export default function HomePage() {
+export const dynamic = "force-dynamic";
+
+const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:3001";
+
+export default async function HomePage() {
+  const [committee, standards] = await Promise.all([
+    getCommitteeStructure(),
+    getPublicStandards()
+  ]);
+
   return (
     <div className="page-frame">
       <section className="hero-card">
         <div>
-          <div className="eyebrow">Локальный MVP</div>
-          <h1 className="hero-title">Рабочий портал ТК 182 для согласования проектов стандартов.</h1>
+          <div className="eyebrow">Официальный портал</div>
+          <h1 className="hero-title">ТК 182: структура комитета и рабочий контур согласования.</h1>
           <p className="hero-copy">
-            Портал разделяет публичный сайт, кабинет участника и кабинет
-            секретариата. Локальная инфраструктура, база данных и авторизация
-            уже работают, а первый цикл согласования доступен в демо-режиме.
+            Портал объединяет публичную информацию о ТК 182, кабинет участника и
+            кабинет секретариата. На публичной части уже отражены руководство,
+            секретариат, подкомитеты и действующие проекты стандартов.
           </p>
         </div>
 
         <div className="pill-row">
-          <Link className="pill" href="/">
-            Публичный сайт
-          </Link>
-          <Link className="pill" href="/participant">
-            Кабинет участника
-          </Link>
-          <Link className="pill" href="/secretariat">
-            Кабинет секретариата
-          </Link>
+          <span className="pill">Подкомитетов: {committee.subcommittees.length}</span>
+          <span className="pill">Организаций в структуре: {committee.organizations.length}</span>
+          <span className="pill">Проектов стандартов: {standards.length}</span>
           <Link className="pill" href={`${apiBaseUrl}/health`}>
             Состояние API
           </Link>
@@ -33,24 +36,23 @@ export default function HomePage() {
 
         <div className="hero-grid">
           <article>
-            <h2>Публичный сайт</h2>
+            <h2>Руководство ТК 182</h2>
             <p>
-              На публичной части размещаются сведения о комитете, новости,
-              заседания, каталог стандартов и открытые документы.
+              Сопредседатели: {committee.leadership.map((item) => item.person.fullName).join(", ")}.
             </p>
           </article>
           <article>
-            <h2>Кабинет участника</h2>
+            <h2>Секретариат</h2>
             <p>
-              Участник видит назначенные циклы согласования, текущую редакцию
-              проекта, свои замечания и итоговую позицию.
+              Секретариат ведёт{" "}
+              {committee.secretariatHostOrganization?.name ?? "базовая организация комитета"}.
             </p>
           </article>
           <article>
-            <h2>Кабинет секретариата</h2>
+            <h2>Подкомитеты</h2>
             <p>
-              Секретариат контролирует ход цикла, ответы участников, статусы
-              замечаний и итоговые позиции по каждому проекту.
+              Действуют тематические ПК 1–ПК 7 по материалам, оборудованию,
+              управлению жизненным циклом, испытаниям и медицине.
             </p>
           </article>
         </div>
@@ -58,78 +60,68 @@ export default function HomePage() {
 
       <section className="status-grid">
         <article>
-          <div className="eyebrow">Уже доступно</div>
-          <h2>Три независимые поверхности портала</h2>
+          <div className="eyebrow">Публичный сайт</div>
+          <h2>Реальная структура ТК 182</h2>
           <p>
-            Публичный сайт и внутренние рабочие кабинеты не смешиваются и могут
-            развиваться независимо.
+            Публичные страницы уже показывают руководство, секретариат, базовые
+            организации и распределение ответственности по подкомитетам.
           </p>
         </article>
         <article>
-          <div className="eyebrow">API и база</div>
-          <h2>Локальная авторизация и реальный workflow</h2>
+          <div className="eyebrow">Workflow</div>
+          <h2>Проекты стандартов связаны с подкомитетами</h2>
           <p>
-            API уже хранит пользователей, сессии, организации, документы,
-            проекты стандартов, циклы согласования и замечания участников.
+            Каждый проект стандарта в рабочем контуре и на публичной витрине
+            может быть привязан к ответственному подкомитету ТК 182.
           </p>
         </article>
         <article>
-          <div className="eyebrow">Только локально</div>
-          <h2>Без облачных зависимостей и внешнего SSO</h2>
+          <div className="eyebrow">Локальный MVP</div>
+          <h2>Без облачных сервисов</h2>
           <p>
-            MVP использует локальную инфраструктуру, Docker Compose и
-            cookie-сессии без внешних провайдеров авторизации.
+            Портал остаётся локальным MVP: Next.js, NestJS, PostgreSQL,
+            cookie-сессии и файловое хранилище в локальной инфраструктуре.
           </p>
         </article>
       </section>
 
       <section className="route-grid">
         <article>
-          <h2>Разделы публичного сайта</h2>
+          <h2>Публичные разделы</h2>
           <p>
-            Здесь размещаются открытые материалы комитета и служебная
-            информация для внешних посетителей.
+            Здесь размещены открытые сведения о структуре ТК 182, организациях и
+            текущих проектах стандартизации.
           </p>
           <div className="pill-row">
             <Link className="pill" href="/about">
-              О комитете
-            </Link>
-            <Link className="pill" href="/documents">
-              Документы
-            </Link>
-            <Link className="pill" href="/standards">
-              Стандарты
-            </Link>
-            <Link className="pill" href="/meetings">
-              Заседания
-            </Link>
-            <Link className="pill" href="/news">
-              Новости
+              Руководство и подкомитеты
             </Link>
             <Link className="pill" href="/contacts">
-              Контакты
+              Секретариат
+            </Link>
+            <Link className="pill" href="/standards">
+              Проекты стандартов
+            </Link>
+            <Link className="pill" href="/organizations">
+              Организации
             </Link>
           </div>
         </article>
         <article>
-          <h2>Перейти в рабочий контур</h2>
+          <h2>Рабочий контур</h2>
           <p>
-            Внутренние кабинеты уже позволяют пройти первый сценарий
-            согласования: участник оставляет замечания, секретариат видит
-            прогресс и ответы.
+            Участники и секретариат могут перейти в защищённые кабинеты для
+            согласования проектов стандартов и управления циклами.
           </p>
           <div className="pill-row">
             <Link className="pill" href="/login">
               Страница входа
             </Link>
             <Link className="pill" href="/participant">
-              Участник
+              Кабинет участника
             </Link>
             <Link className="pill" href="/secretariat">
-              Секретариат
-            </Link>
-            <Link className="pill" href={apiBaseUrl}>
-              Корень API
+              Кабинет секретариата
             </Link>
           </div>
         </article>

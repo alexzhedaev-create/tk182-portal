@@ -31,6 +31,7 @@ import type {
   SecretariatParticipantResponse,
   SecretariatReviewAssignmentRecord,
   SecretariatReviewCycleListItem,
+  SubcommitteeSummary,
   SubmitParticipantPositionDto,
   UpdateDraftStandardDto,
   UpdateReviewCycleDto,
@@ -59,6 +60,13 @@ interface ParticipantCycleRow {
   cycle_title: string;
   draft_standard_code: string;
   draft_standard_id: string;
+  draft_standard_responsible_subcommittee_code: string | null;
+  draft_standard_responsible_subcommittee_host_country_code: string | null;
+  draft_standard_responsible_subcommittee_host_id: string | null;
+  draft_standard_responsible_subcommittee_host_name: string | null;
+  draft_standard_responsible_subcommittee_host_short_name: string | null;
+  draft_standard_responsible_subcommittee_id: string | null;
+  draft_standard_responsible_subcommittee_title: string | null;
   draft_standard_stage: string;
   draft_standard_summary: string;
   draft_standard_title: string;
@@ -123,6 +131,13 @@ interface SecretariatCycleRow {
   cycle_title: string;
   draft_standard_code: string;
   draft_standard_id: string;
+  draft_standard_responsible_subcommittee_code: string | null;
+  draft_standard_responsible_subcommittee_host_country_code: string | null;
+  draft_standard_responsible_subcommittee_host_id: string | null;
+  draft_standard_responsible_subcommittee_host_name: string | null;
+  draft_standard_responsible_subcommittee_host_short_name: string | null;
+  draft_standard_responsible_subcommittee_id: string | null;
+  draft_standard_responsible_subcommittee_title: string | null;
   draft_standard_stage: string;
   draft_standard_summary: string;
   draft_standard_title: string;
@@ -214,6 +229,13 @@ interface DraftStandardListRow {
   cycles_count: string;
   id: string;
   latest_version_label: string | null;
+  responsible_subcommittee_code: string | null;
+  responsible_subcommittee_host_country_code: string | null;
+  responsible_subcommittee_host_id: string | null;
+  responsible_subcommittee_host_name: string | null;
+  responsible_subcommittee_host_short_name: string | null;
+  responsible_subcommittee_id: string | null;
+  responsible_subcommittee_title: string | null;
   stage: string;
   summary: string;
   title: string;
@@ -225,6 +247,13 @@ interface DraftStandardRow {
   code: string;
   created_at: string;
   id: string;
+  responsible_subcommittee_code: string | null;
+  responsible_subcommittee_host_country_code: string | null;
+  responsible_subcommittee_host_id: string | null;
+  responsible_subcommittee_host_name: string | null;
+  responsible_subcommittee_host_short_name: string | null;
+  responsible_subcommittee_id: string | null;
+  responsible_subcommittee_title: string | null;
   stage: string;
   summary: string;
   title: string;
@@ -335,6 +364,13 @@ export class ApprovalService {
           ds.title,
           ds.summary,
           ds.stage,
+          sc.id AS responsible_subcommittee_id,
+          sc.code AS responsible_subcommittee_code,
+          sc.title AS responsible_subcommittee_title,
+          host.id AS responsible_subcommittee_host_id,
+          host.name AS responsible_subcommittee_host_name,
+          host.short_name AS responsible_subcommittee_host_short_name,
+          host.country_code AS responsible_subcommittee_host_country_code,
           ds.created_at,
           ds.updated_at,
           (
@@ -361,6 +397,8 @@ export class ApprovalService {
             LIMIT 1
           ) AS latest_version_label
         FROM draft_standards ds
+        LEFT JOIN subcommittees sc ON sc.id = ds.responsible_subcommittee_id
+        LEFT JOIN organizations host ON host.id = sc.host_organization_id
         ORDER BY ds.updated_at DESC, ds.code ASC
       `
     );
@@ -379,6 +417,7 @@ export class ApprovalService {
     payload: CreateDraftStandardDto
   ): Promise<SecretariatDraftStandardDetail> {
     const normalized = this.normalizeDraftStandardPayload(payload);
+    await this.assertSubcommitteeExists(normalized.responsibleSubcommitteeId);
     const draftStandardId = `draft-standard-${randomUUID()}`;
 
     try {
@@ -389,16 +428,18 @@ export class ApprovalService {
             code,
             title,
             summary,
-            stage
+            stage,
+            responsible_subcommittee_id
           )
-          VALUES ($1, $2, $3, $4, $5)
+          VALUES ($1, $2, $3, $4, $5, $6)
         `,
         [
           draftStandardId,
           normalized.code,
           normalized.title,
           normalized.summary,
-          normalized.stage
+          normalized.stage,
+          normalized.responsibleSubcommitteeId
         ]
       );
     } catch (error) {
@@ -451,6 +492,7 @@ export class ApprovalService {
   ): Promise<SecretariatDraftStandardDetail> {
     const existing = await this.getDraftStandardRowById(draftStandardId);
     const normalized = this.normalizeDraftStandardPayload(payload);
+    await this.assertSubcommitteeExists(normalized.responsibleSubcommitteeId);
 
     try {
       await this.databaseService.query(
@@ -461,6 +503,7 @@ export class ApprovalService {
             title = $3,
             summary = $4,
             stage = $5,
+            responsible_subcommittee_id = $6,
             updated_at = NOW()
           WHERE id = $1
         `,
@@ -469,7 +512,8 @@ export class ApprovalService {
           normalized.code,
           normalized.title,
           normalized.summary,
-          normalized.stage
+          normalized.stage,
+          normalized.responsibleSubcommitteeId
         ]
       );
     } catch (error) {
@@ -488,7 +532,8 @@ export class ApprovalService {
       existing.code !== updated.code ||
       existing.title !== updated.title ||
       existing.summary !== updated.summary ||
-      existing.stage !== updated.stage
+      existing.stage !== updated.stage ||
+      existing.responsible_subcommittee_id !== updated.responsible_subcommittee_id
     ) {
       await this.auditService.recordEvent({
         actorUserId: userId,
@@ -502,7 +547,8 @@ export class ApprovalService {
           previousCode: existing.code,
           previousTitle: existing.title,
           previousSummary: existing.summary,
-          previousStage: existing.stage
+          previousStage: existing.stage,
+          previousResponsibleSubcommitteeId: existing.responsible_subcommittee_id
         }
       });
     }
@@ -930,6 +976,13 @@ export class ApprovalService {
           ds.title AS draft_standard_title,
           ds.summary AS draft_standard_summary,
           ds.stage AS draft_standard_stage,
+          sc.id AS draft_standard_responsible_subcommittee_id,
+          sc.code AS draft_standard_responsible_subcommittee_code,
+          sc.title AS draft_standard_responsible_subcommittee_title,
+          host.id AS draft_standard_responsible_subcommittee_host_id,
+          host.name AS draft_standard_responsible_subcommittee_host_name,
+          host.short_name AS draft_standard_responsible_subcommittee_host_short_name,
+          host.country_code AS draft_standard_responsible_subcommittee_host_country_code,
           dsv.id AS version_id,
           dsv.version_label,
           dsv.revision_summary AS version_revision_summary,
@@ -939,6 +992,8 @@ export class ApprovalService {
         FROM review_assignments ra
         INNER JOIN review_cycles rc ON rc.id = ra.review_cycle_id
         INNER JOIN draft_standards ds ON ds.id = rc.draft_standard_id
+        LEFT JOIN subcommittees sc ON sc.id = ds.responsible_subcommittee_id
+        LEFT JOIN organizations host ON host.id = sc.host_organization_id
         INNER JOIN draft_standard_versions dsv ON dsv.id = rc.draft_standard_version_id
         WHERE ra.user_id = $1
           AND rc.status = 'open'
@@ -1588,6 +1643,13 @@ export class ApprovalService {
           ds.title AS draft_standard_title,
           ds.summary AS draft_standard_summary,
           ds.stage AS draft_standard_stage,
+          sc.id AS draft_standard_responsible_subcommittee_id,
+          sc.code AS draft_standard_responsible_subcommittee_code,
+          sc.title AS draft_standard_responsible_subcommittee_title,
+          host.id AS draft_standard_responsible_subcommittee_host_id,
+          host.name AS draft_standard_responsible_subcommittee_host_name,
+          host.short_name AS draft_standard_responsible_subcommittee_host_short_name,
+          host.country_code AS draft_standard_responsible_subcommittee_host_country_code,
           dsv.id AS version_id,
           dsv.version_label,
           dsv.revision_summary AS version_revision_summary,
@@ -1598,12 +1660,16 @@ export class ApprovalService {
           COUNT(pp.id)::text AS responded_participants
         FROM review_cycles rc
         INNER JOIN draft_standards ds ON ds.id = rc.draft_standard_id
+        LEFT JOIN subcommittees sc ON sc.id = ds.responsible_subcommittee_id
+        LEFT JOIN organizations host ON host.id = sc.host_organization_id
         INNER JOIN draft_standard_versions dsv ON dsv.id = rc.draft_standard_version_id
         LEFT JOIN review_assignments ra ON ra.review_cycle_id = rc.id
         LEFT JOIN participant_positions pp ON pp.review_assignment_id = ra.id
         GROUP BY
           rc.id,
           ds.id,
+          sc.id,
+          host.id,
           dsv.id
         ORDER BY
           CASE rc.status
@@ -1760,6 +1826,13 @@ export class ApprovalService {
           ds.title AS draft_standard_title,
           ds.summary AS draft_standard_summary,
           ds.stage AS draft_standard_stage,
+          sc.id AS draft_standard_responsible_subcommittee_id,
+          sc.code AS draft_standard_responsible_subcommittee_code,
+          sc.title AS draft_standard_responsible_subcommittee_title,
+          host.id AS draft_standard_responsible_subcommittee_host_id,
+          host.name AS draft_standard_responsible_subcommittee_host_name,
+          host.short_name AS draft_standard_responsible_subcommittee_host_short_name,
+          host.country_code AS draft_standard_responsible_subcommittee_host_country_code,
           dsv.id AS version_id,
           dsv.version_label,
           dsv.revision_summary AS version_revision_summary,
@@ -1770,6 +1843,8 @@ export class ApprovalService {
           COUNT(pp.id)::text AS responded_participants
         FROM review_cycles rc
         INNER JOIN draft_standards ds ON ds.id = rc.draft_standard_id
+        LEFT JOIN subcommittees sc ON sc.id = ds.responsible_subcommittee_id
+        LEFT JOIN organizations host ON host.id = sc.host_organization_id
         INNER JOIN draft_standard_versions dsv ON dsv.id = rc.draft_standard_version_id
         LEFT JOIN review_assignments ra ON ra.review_cycle_id = rc.id
         LEFT JOIN participant_positions pp ON pp.review_assignment_id = ra.id
@@ -1777,6 +1852,8 @@ export class ApprovalService {
         GROUP BY
           rc.id,
           ds.id,
+          sc.id,
+          host.id,
           dsv.id
         ORDER BY
           CASE rc.status
@@ -1798,15 +1875,24 @@ export class ApprovalService {
     const result = await this.databaseService.query<DraftStandardRow>(
       `
         SELECT
-          id,
-          code,
-          title,
-          summary,
-          stage,
-          created_at,
-          updated_at
-        FROM draft_standards
-        WHERE id = $1
+          ds.id,
+          ds.code,
+          ds.title,
+          ds.summary,
+          ds.stage,
+          sc.id AS responsible_subcommittee_id,
+          sc.code AS responsible_subcommittee_code,
+          sc.title AS responsible_subcommittee_title,
+          host.id AS responsible_subcommittee_host_id,
+          host.name AS responsible_subcommittee_host_name,
+          host.short_name AS responsible_subcommittee_host_short_name,
+          host.country_code AS responsible_subcommittee_host_country_code,
+          ds.created_at,
+          ds.updated_at
+        FROM draft_standards ds
+        LEFT JOIN subcommittees sc ON sc.id = ds.responsible_subcommittee_id
+        LEFT JOIN organizations host ON host.id = sc.host_organization_id
+        WHERE ds.id = $1
         LIMIT 1
       `,
       [draftStandardId]
@@ -2020,6 +2106,13 @@ export class ApprovalService {
           ds.title AS draft_standard_title,
           ds.summary AS draft_standard_summary,
           ds.stage AS draft_standard_stage,
+          sc.id AS draft_standard_responsible_subcommittee_id,
+          sc.code AS draft_standard_responsible_subcommittee_code,
+          sc.title AS draft_standard_responsible_subcommittee_title,
+          host.id AS draft_standard_responsible_subcommittee_host_id,
+          host.name AS draft_standard_responsible_subcommittee_host_name,
+          host.short_name AS draft_standard_responsible_subcommittee_host_short_name,
+          host.country_code AS draft_standard_responsible_subcommittee_host_country_code,
           dsv.id AS version_id,
           dsv.version_label,
           dsv.revision_summary AS version_revision_summary,
@@ -2029,6 +2122,8 @@ export class ApprovalService {
         FROM review_assignments ra
         INNER JOIN review_cycles rc ON rc.id = ra.review_cycle_id
         INNER JOIN draft_standards ds ON ds.id = rc.draft_standard_id
+        LEFT JOIN subcommittees sc ON sc.id = ds.responsible_subcommittee_id
+        LEFT JOIN organizations host ON host.id = sc.host_organization_id
         INNER JOIN draft_standard_versions dsv ON dsv.id = rc.draft_standard_version_id
         WHERE ra.user_id = $1
           AND rc.id = $2
@@ -2218,6 +2313,13 @@ export class ApprovalService {
           ds.title AS draft_standard_title,
           ds.summary AS draft_standard_summary,
           ds.stage AS draft_standard_stage,
+          sc.id AS draft_standard_responsible_subcommittee_id,
+          sc.code AS draft_standard_responsible_subcommittee_code,
+          sc.title AS draft_standard_responsible_subcommittee_title,
+          host.id AS draft_standard_responsible_subcommittee_host_id,
+          host.name AS draft_standard_responsible_subcommittee_host_name,
+          host.short_name AS draft_standard_responsible_subcommittee_host_short_name,
+          host.country_code AS draft_standard_responsible_subcommittee_host_country_code,
           dsv.id AS version_id,
           dsv.version_label,
           dsv.revision_summary AS version_revision_summary,
@@ -2228,6 +2330,8 @@ export class ApprovalService {
           COUNT(pp.id)::text AS responded_participants
         FROM review_cycles rc
         INNER JOIN draft_standards ds ON ds.id = rc.draft_standard_id
+        LEFT JOIN subcommittees sc ON sc.id = ds.responsible_subcommittee_id
+        LEFT JOIN organizations host ON host.id = sc.host_organization_id
         INNER JOIN draft_standard_versions dsv ON dsv.id = rc.draft_standard_version_id
         LEFT JOIN review_assignments ra ON ra.review_cycle_id = rc.id
         LEFT JOIN participant_positions pp ON pp.review_assignment_id = ra.id
@@ -2235,6 +2339,8 @@ export class ApprovalService {
         GROUP BY
           rc.id,
           ds.id,
+          sc.id,
+          host.id,
           dsv.id
         LIMIT 1
       `,
@@ -2524,6 +2630,78 @@ export class ApprovalService {
     };
   }
 
+  private async assertSubcommitteeExists(subcommitteeId: string): Promise<void> {
+    const result = await this.databaseService.query<{ id: string }>(
+      `
+        SELECT id
+        FROM subcommittees
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [subcommitteeId]
+    );
+
+    if (!result.rows[0]) {
+      throw new BadRequestException(
+        "Выберите корректный ответственный подкомитет для проекта стандарта."
+      );
+    }
+  }
+
+  private mapSubcommitteeSummary(fields: {
+    code: string | null;
+    hostCountryCode: string | null;
+    hostId: string | null;
+    hostName: string | null;
+    hostShortName: string | null;
+    id: string | null;
+    title: string | null;
+  }): SubcommitteeSummary | null {
+    if (!fields.id) {
+      return null;
+    }
+
+    return {
+      id: fields.id,
+      code: fields.code ?? "ПК",
+      title: fields.title ?? "Подкомитет",
+      hostOrganization: {
+        id: fields.hostId ?? "organization",
+        name: fields.hostName ?? fields.hostShortName ?? "Организация",
+        shortName: fields.hostShortName ?? fields.hostName ?? "Организация",
+        ...(fields.hostCountryCode ? { countryCode: fields.hostCountryCode } : {})
+      }
+    };
+  }
+
+  private mapDraftStandardResponsibleSubcommittee(
+    row: DraftStandardRow | DraftStandardListRow
+  ): SubcommitteeSummary | null {
+    return this.mapSubcommitteeSummary({
+      id: row.responsible_subcommittee_id,
+      code: row.responsible_subcommittee_code,
+      title: row.responsible_subcommittee_title,
+      hostId: row.responsible_subcommittee_host_id,
+      hostName: row.responsible_subcommittee_host_name,
+      hostShortName: row.responsible_subcommittee_host_short_name,
+      hostCountryCode: row.responsible_subcommittee_host_country_code
+    });
+  }
+
+  private mapCycleDraftStandardResponsibleSubcommittee(
+    row: ParticipantCycleRow | SecretariatCycleRow
+  ): SubcommitteeSummary | null {
+    return this.mapSubcommitteeSummary({
+      id: row.draft_standard_responsible_subcommittee_id,
+      code: row.draft_standard_responsible_subcommittee_code,
+      title: row.draft_standard_responsible_subcommittee_title,
+      hostId: row.draft_standard_responsible_subcommittee_host_id,
+      hostName: row.draft_standard_responsible_subcommittee_host_name,
+      hostShortName: row.draft_standard_responsible_subcommittee_host_short_name,
+      hostCountryCode: row.draft_standard_responsible_subcommittee_host_country_code
+    });
+  }
+
   private mapParticipantAssignedCycle(
     row: ParticipantCycleRow
   ): ParticipantAssignedReviewCycle {
@@ -2542,7 +2720,8 @@ export class ApprovalService {
         code: row.draft_standard_code,
         title: row.draft_standard_title,
         summary: row.draft_standard_summary,
-        stage: row.draft_standard_stage
+        stage: row.draft_standard_stage,
+        responsibleSubcommittee: this.mapCycleDraftStandardResponsibleSubcommittee(row)
       },
       currentVersion: {
         id: row.version_id,
@@ -2574,7 +2753,8 @@ export class ApprovalService {
         code: row.draft_standard_code,
         title: row.draft_standard_title,
         summary: row.draft_standard_summary,
-        stage: row.draft_standard_stage
+        stage: row.draft_standard_stage,
+        responsibleSubcommittee: this.mapCycleDraftStandardResponsibleSubcommittee(row)
       },
       currentVersion: {
         id: row.version_id,
@@ -2673,7 +2853,8 @@ export class ApprovalService {
         code: row.draft_standard_code,
         title: row.draft_standard_title,
         summary: row.draft_standard_summary,
-        stage: row.draft_standard_stage
+        stage: row.draft_standard_stage,
+        responsibleSubcommittee: this.mapCycleDraftStandardResponsibleSubcommittee(row)
       },
       currentVersion: {
         id: row.version_id,
@@ -2698,6 +2879,7 @@ export class ApprovalService {
       title: row.title,
       summary: row.summary,
       stage: row.stage,
+      responsibleSubcommittee: this.mapDraftStandardResponsibleSubcommittee(row),
       createdAt: new Date(row.created_at).toISOString(),
       updatedAt: new Date(row.updated_at).toISOString()
     };
@@ -2741,10 +2923,11 @@ export class ApprovalService {
     const title = payload.title.trim();
     const summary = payload.summary.trim();
     const stage = payload.stage.trim();
+    const responsibleSubcommitteeId = payload.responsibleSubcommitteeId.trim();
 
-    if (!code || !title || !summary || !stage) {
+    if (!code || !title || !summary || !stage || !responsibleSubcommitteeId) {
       throw new BadRequestException(
-        "Заполните код, название, краткое описание и стадию проекта стандарта."
+        "Заполните код, название, краткое описание, стадию проекта стандарта и ответственный подкомитет."
       );
     }
 
@@ -2752,7 +2935,8 @@ export class ApprovalService {
       code,
       title,
       summary,
-      stage
+      stage,
+      responsibleSubcommitteeId
     };
   }
 
@@ -2981,6 +3165,9 @@ export class ApprovalService {
 
   private buildDraftStandardAuditMetadata(draftStandard: {
     code: string;
+    responsible_subcommittee_code?: string | null;
+    responsible_subcommittee_id?: string | null;
+    responsible_subcommittee_title?: string | null;
     stage: string;
     summary: string;
     title: string;
@@ -2989,7 +3176,11 @@ export class ApprovalService {
       code: draftStandard.code,
       title: draftStandard.title,
       summary: draftStandard.summary,
-      stage: draftStandard.stage
+      stage: draftStandard.stage,
+      responsibleSubcommitteeId: draftStandard.responsible_subcommittee_id ?? null,
+      responsibleSubcommitteeCode: draftStandard.responsible_subcommittee_code ?? null,
+      responsibleSubcommitteeTitle:
+        draftStandard.responsible_subcommittee_title ?? null
     };
   }
 

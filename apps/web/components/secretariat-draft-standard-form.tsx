@@ -3,7 +3,10 @@
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import type { SecretariatDraftStandardRecord } from "@tk182/shared-types";
+import type {
+  SecretariatDraftStandardRecord,
+  SubcommitteeSummary
+} from "@tk182/shared-types";
 
 import { extractApiErrorMessage } from "../lib/form-utils";
 
@@ -11,16 +14,21 @@ const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:3001";
 
 interface SecretariatDraftStandardFormProps {
   draftStandard?: SecretariatDraftStandardRecord;
+  subcommittees: SubcommitteeSummary[];
 }
 
 export function SecretariatDraftStandardForm({
-  draftStandard
+  draftStandard,
+  subcommittees
 }: SecretariatDraftStandardFormProps) {
   const router = useRouter();
   const [code, setCode] = useState(draftStandard?.code ?? "");
   const [title, setTitle] = useState(draftStandard?.title ?? "");
   const [summary, setSummary] = useState(draftStandard?.summary ?? "");
   const [stage, setStage] = useState(draftStandard?.stage ?? "Подготовка");
+  const [responsibleSubcommitteeId, setResponsibleSubcommitteeId] = useState(
+    draftStandard?.responsibleSubcommittee?.id ?? subcommittees[0]?.id ?? ""
+  );
   const [isPending, setIsPending] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -49,7 +57,8 @@ export function SecretariatDraftStandardForm({
           code,
           title,
           summary,
-          stage
+          stage,
+          responsibleSubcommitteeId
         })
       }
     );
@@ -121,7 +130,32 @@ export function SecretariatDraftStandardForm({
             placeholder="Например, Подготовка"
           />
         </label>
+
+        <label className="field-label">
+          <span>Ответственный подкомитет</span>
+          <select
+            className="text-input"
+            data-testid="secretariat-draft-standard-subcommittee"
+            value={responsibleSubcommitteeId}
+            onChange={(event) => {
+              setResponsibleSubcommitteeId(event.target.value);
+            }}
+          >
+            {subcommittees.map((subcommittee) => (
+              <option key={subcommittee.id} value={subcommittee.id}>
+                {subcommittee.code} — {subcommittee.title}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
+
+      {draftStandard?.responsibleSubcommittee ? (
+        <p className="status-note">
+          Текущий ответственный подкомитет: {draftStandard.responsibleSubcommittee.code} —{" "}
+          {draftStandard.responsibleSubcommittee.title}
+        </p>
+      ) : null}
 
       <label className="field-label">
         <span>Название проекта стандарта</span>

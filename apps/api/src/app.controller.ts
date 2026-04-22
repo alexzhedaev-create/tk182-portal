@@ -47,6 +47,18 @@ const apiEndpoints: ApiIndexResponse["endpoints"] = [
   },
   {
     method: "GET",
+    path: "/committee",
+    areas: ["public", "secretariat"],
+    description: "TK 182 leadership, secretariat, subcommittee, and organization structure."
+  },
+  {
+    method: "GET",
+    path: "/committee/subcommittees",
+    areas: ["public", "secretariat"],
+    description: "Subcommittee directory for public pages and secretariat draft-standard ownership."
+  },
+  {
+    method: "GET",
     path: "/pages",
     areas: ["public"],
     description: "Managed public-page scaffold."
@@ -79,7 +91,7 @@ const apiEndpoints: ApiIndexResponse["endpoints"] = [
     method: "GET",
     path: "/standards",
     areas: ["public", "participant", "secretariat"],
-    description: "Standards catalogue scaffold."
+    description: "Public draft-standard catalogue with linked responsible subcommittees."
   },
   {
     method: "GET",

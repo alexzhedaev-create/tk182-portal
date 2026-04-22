@@ -3,7 +3,7 @@
 TK182 Portal is the local MVP monorepo for the official Technical Committee 182 portal.
 
 The repository now includes a real first review workflow on top of the existing auth and PostgreSQL foundation:
-- public website in Russian
+- public website in Russian with the seeded TK 182 committee structure
 - participant workspace for reviewing assigned draft standards
 - secretariat workspace for creating projects, versions, review cycles, participant assignments, and tracking cycle progress
 - participant notification center for important workflow events
@@ -84,6 +84,9 @@ pnpm --filter @tk182/web start
 
 ```text
 Public site: http://127.0.0.1:3000
+Committee structure: http://127.0.0.1:3000/about
+Organizations: http://127.0.0.1:3000/organizations
+Public standards: http://127.0.0.1:3000/standards
 Login page: http://127.0.0.1:3000/login
 Participant workspace: http://127.0.0.1:3000/participant
 Secretariat workspace: http://127.0.0.1:3000/secretariat
@@ -100,7 +103,16 @@ Use `127.0.0.1` consistently in local development so cookie behavior stays predi
 - Participant: `participant@tk182.local` / `ParticipantPass123!`
 - Participant 2: `participant2@tk182.local` / `Participant2Pass123!`
 
-## Implemented review workflow
+## Implemented workflow and structure
+
+The public portal and workflow now understand the real TK 182 committee structure.
+
+- public pages show `Руководство ТК 182`, `Секретариат`, `Подкомитеты`, and `Организации`
+- the seed contains the named co-chairs, deputy co-chairs, secretariat representatives, and subcommittees `ПК 1` through `ПК 7`
+- draft standards are linked to a responsible subcommittee
+- the responsible subcommittee is shown on the public standards catalogue, participant draft-standard cards, secretariat cycle/project pages, and secretariat backoffice forms
+
+In the current MVP, secretariat users choose the responsible subcommittee directly on the draft-standard form. Once a cycle is created from that draft standard, the same link is visible to participants and secretariat users in the workflow UI.
 
 The current seed demonstrates the first real draft standard review slice:
 
@@ -116,6 +128,7 @@ The current seed demonstrates the first real draft standard review slice:
 - persistent in-portal notifications for participant-facing workflow events
 - local version-file storage with DB metadata and role-based download access
 - secretariat backoffice flow for creating draft standards, versions, cycles, and assignments
+- public TK 182 structure with named leadership, secretariat, subcommittees, and organizations
 
 Core persisted entities now include:
 
@@ -202,19 +215,21 @@ The seed script recreates several demo text attachments for the active and archi
 1. Sign in as `secretariat@tk182.local` or `admin@tk182.local`
 2. Open `http://127.0.0.1:3000/secretariat/projects`
 3. In `Новый проект стандарта`, create a draft standard card
-4. Open the created project
-5. In `Новая версия`, add the first version metadata
-6. In `Новый цикл согласования`, create a cycle and attach the version
-7. Open the created cycle page
-8. In `Назначения участников`, choose a seeded participant and save the assignment
-9. In `Параметры цикла`, click `Открыть цикл`
-10. Sign in as the participant and confirm that the new active cycle is now visible in `На согласовании`
+4. Выберите ответственный подкомитет в поле `Ответственный подкомитет`
+5. Open the created project
+6. In `Новая версия`, add the first version metadata
+7. In `Новый цикл согласования`, create a cycle and attach the version
+8. Open the created cycle page
+9. In `Назначения участников`, choose a seeded participant and save the assignment
+10. In `Параметры цикла`, click `Открыть цикл`
+11. Sign in as the participant and confirm that the new active cycle is now visible in `На согласовании`
 
 New cycles created in the backoffice are connected to the existing participant workflow:
 
 - draft cycle + assignment does not yet expose the cycle to participants
 - once the cycle is opened, assigned participants see it in `На согласовании`
 - opening a cycle also creates participant notifications for the assignment
+- the participant sees the same responsible subcommittee that was selected by secretariat for the draft standard
 
 ### File upload and download checks
 
@@ -247,6 +262,7 @@ The MVP now includes integration/e2e coverage for the current core flows:
 - audit trail creation for participant and secretariat review actions
 - participant notification creation and read/unread state updates
 - secretariat backoffice creation of draft standards, versions, cycles, assignments, and cycle activation
+- seeded TK 182 leadership, secretariat, subcommittee, and standard-to-subcommittee API coverage
 - production-like `next start` checks for the current Russian UI
 - browser-level Playwright scenarios for the current Russian UI
 
@@ -434,9 +450,11 @@ Implemented now:
 - PostgreSQL migrations for auth and review workflow
 - repeatable seed data with Russian demo content
 - local credential auth with hashed passwords and httpOnly sessions
+- persisted TK 182 committee structure with leadership, secretariat, subcommittees, and organization links
 - participant review endpoints and UI
 - secretariat review management endpoints and UI
 - secretariat backoffice endpoints and UI for projects, versions, cycles, and assignments
+- responsible subcommittee selection in secretariat backoffice and visibility across public and private flows
 - local upload/download pipeline for draft standard version files
 - persistent audit trail for the current review workflow actions
 - persistent participant notifications with unread/read flow inside the portal
@@ -445,7 +463,7 @@ Implemented now:
 - Russian-only visible UI for current MVP surfaces
 
 Still intentionally minimal:
-- public content pages remain mostly informational placeholders
-- pages, news, meetings, and broader standards lifecycle remain MVP-level scaffolds
+- news, meetings, documents, and broader standards lifecycle still remain MVP-level scaffolds
+- public structure pages are real, but there is no editable public-content backoffice yet
 - audit currently covers only the core review/file actions described above
 - notifications currently cover only the participant-facing workflow events described above

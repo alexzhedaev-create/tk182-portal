@@ -73,6 +73,26 @@ test(
     assert.match(loginHtml, /Вход в рабочие кабинеты/u);
     assert.match(loginHtml, /Портал ТК 182/u);
 
+    const aboutPage = await fetch(`${webBaseUrl}/about`);
+    const aboutHtml = await aboutPage.text();
+    assert.equal(aboutPage.status, 200);
+    assert.match(aboutHtml, /Руководство ТК 182/u);
+    assert.match(aboutHtml, /Яковлев Сергей Викторович/u);
+    assert.match(aboutHtml, /ПК 7/u);
+
+    const standardsPage = await fetch(`${webBaseUrl}/standards`);
+    const standardsHtml = await standardsPage.text();
+    assert.equal(standardsPage.status, 200);
+    assert.match(standardsHtml, /Проекты стандартов/u);
+    assert.match(standardsHtml, /ПК 5/u);
+    assert.match(standardsHtml, /ТК182-01-2026/u);
+
+    const organizationsPage = await fetch(`${webBaseUrl}/organizations`);
+    const organizationsHtml = await organizationsPage.text();
+    assert.equal(organizationsPage.status, 200);
+    assert.match(organizationsHtml, /Организации/u);
+    assert.match(organizationsHtml, /Наука и инновации/u);
+
     const participantPage = await fetch(
       `${webBaseUrl}/participant/reviews/review-cycle-fire-sensors-apr/draft-standard-fire-sensors`,
       {
@@ -86,6 +106,8 @@ test(
     assert.match(participantHtml, /Файлы версии/u);
     assert.match(participantHtml, /Скачать/u);
     assert.match(participantHtml, /Описание основного документа/u);
+    assert.match(participantHtml, /Ответственный подкомитет/u);
+    assert.match(participantHtml, /ПК 5/u);
 
     const secretariatPage = await fetch(
       `${webBaseUrl}/secretariat/cycles/review-cycle-fire-sensors-apr`,
@@ -100,5 +122,6 @@ test(
     assert.match(secretariatHtml, /Файлы версии/u);
     assert.match(secretariatHtml, /Загрузить файл/u);
     assert.match(secretariatHtml, /Видимость/u);
+    assert.match(secretariatHtml, /Ответственный подкомитет/u);
   }
 );

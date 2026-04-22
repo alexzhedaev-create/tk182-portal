@@ -1,4 +1,5 @@
 import type { AuthRole } from "./auth";
+import type { SubcommitteeSummary } from "./committee";
 
 export type ReviewCycleStatus = "draft" | "open" | "closed";
 
@@ -62,6 +63,7 @@ export interface DraftStandardSummary {
   title: string;
   summary: string;
   stage: string;
+  responsibleSubcommittee: SubcommitteeSummary | null;
 }
 
 export interface DraftStandardVersionSummary {
@@ -262,6 +264,7 @@ export interface CreateDraftStandardDto {
   title: string;
   summary: string;
   stage: string;
+  responsibleSubcommitteeId: string;
 }
 
 export interface UpdateDraftStandardDto {
@@ -269,6 +272,7 @@ export interface UpdateDraftStandardDto {
   title: string;
   summary: string;
   stage: string;
+  responsibleSubcommitteeId: string;
 }
 
 export interface CreateDraftStandardVersionDto {

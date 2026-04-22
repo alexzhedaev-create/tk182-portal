@@ -137,6 +137,48 @@ test(
 );
 
 test(
+  "seeded TK 182 structure and standard-to-subcommittee links are available",
+  { timeout: 120000 },
+  async () => {
+    const publicClient = new SessionClient(apiBaseUrl);
+
+    const committee = await publicClient.requestJson("/committee");
+    assert.equal(committee.response.status, 200);
+    assert.equal(committee.data.leadership.length, 2);
+    assert.equal(committee.data.subcommittees.length, 7);
+    assert.equal(
+      committee.data.secretariatHostOrganization.name,
+      'НИЦ "Курчатовский институт" - ВИАМ'
+    );
+    assert.ok(
+      committee.data.leadership.some(
+        (item) => item.person.fullName === "Яковлев Сергей Викторович"
+      )
+    );
+    assert.ok(
+      committee.data.subcommittees.some(
+        (item) =>
+          item.code === "ПК 5" &&
+          /Неразрушающий контроль/u.test(item.title)
+      )
+    );
+
+    const standards = await publicClient.requestJson("/standards");
+    assert.equal(standards.response.status, 200);
+    assert.ok(Array.isArray(standards.data));
+    const fireSensors = standards.data.find(
+      (item) => item.id === "draft-standard-fire-sensors"
+    );
+    assert.ok(fireSensors);
+    assert.equal(fireSensors.responsibleSubcommittee.code, "ПК 5");
+    assert.match(
+      fireSensors.responsibleSubcommittee.title,
+      /Неразрушающий контроль/u
+    );
+  }
+);
+
+test(
   "participant can see assigned review items, create a comment, and submit a final position",
   { timeout: 120000 },
   async () => {
@@ -157,6 +199,7 @@ test(
     );
     assert.equal(draftCard.response.status, 200);
     assert.equal(draftCard.data.draftStandard.code, "ТК182-01-2026");
+    assert.equal(draftCard.data.draftStandard.responsibleSubcommittee.code, "ПК 5");
     assert.ok(draftCard.data.attachments.length > 0);
     assert.ok(
       draftCard.data.attachments.every(
@@ -461,7 +504,8 @@ test(
           code: draftCode,
           title: draftTitle,
           summary: "Автотестовое описание проекта стандарта для проверки backoffice-flow.",
-          stage: "Подготовка"
+          stage: "Подготовка",
+          responsibleSubcommitteeId: "subcommittee-pk7"
         })
       }
     );
@@ -470,6 +514,10 @@ test(
       createdDraftStandard.text
     );
     assert.equal(createdDraftStandard.data.draftStandard.code, draftCode);
+    assert.equal(
+      createdDraftStandard.data.draftStandard.responsibleSubcommittee.code,
+      "ПК 7"
+    );
     const draftStandardId = createdDraftStandard.data.draftStandard.id;
 
     const createdVersion = await secretariat.requestJson(
@@ -551,6 +599,10 @@ test(
     assert.ok(createdParticipantCycle);
     assert.equal(createdParticipantCycle.draftStandard.id, draftStandardId);
     assert.equal(createdParticipantCycle.draftStandard.title, draftTitle);
+    assert.equal(
+      createdParticipantCycle.draftStandard.responsibleSubcommittee.code,
+      "ПК 7"
+    );
 
     const participantDraftCard = await participant.requestJson(
       `/approval/participant/cycles/${cycleId}/drafts/${draftStandardId}`
@@ -558,6 +610,10 @@ test(
     assert.equal(participantDraftCard.response.status, 200);
     assert.equal(participantDraftCard.data.currentVersion.id, createdVersion.data.id);
     assert.equal(participantDraftCard.data.draftStandard.title, draftTitle);
+    assert.equal(
+      participantDraftCard.data.draftStandard.responsibleSubcommittee.code,
+      "ПК 7"
+    );
 
     const participantNotifications = await participant.requestJson("/notifications");
     assert.equal(participantNotifications.response.status, 200);

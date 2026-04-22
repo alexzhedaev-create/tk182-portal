@@ -26,10 +26,14 @@ test("секретариат может создать новый цикл и о
     .getByTestId("secretariat-draft-standard-summary")
     .fill("Браузерный сценарий создаёт новый проект стандарта для проверки backoffice.");
   await createDraftForm.getByTestId("secretariat-draft-standard-stage").fill("Подготовка");
+  await createDraftForm
+    .getByTestId("secretariat-draft-standard-subcommittee")
+    .selectOption("subcommittee-pk7");
   await createDraftForm.getByTestId("secretariat-draft-standard-submit").click();
 
   await expect(page).toHaveURL(/\/secretariat\/projects\//);
   await expect(page.getByRole("heading", { name: draftTitle })).toBeVisible();
+  await expect(page.locator("body")).toContainText("ПК 7");
 
   const versionForm = page.getByTestId("secretariat-create-version-form");
   await versionForm.getByTestId("secretariat-version-label").fill("Редакция 0.1");

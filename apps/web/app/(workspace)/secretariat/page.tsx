@@ -109,6 +109,17 @@ export default async function SecretariatWorkspacePage() {
                     </div>
                   </div>
 
+                  <div className="info-grid compact-grid">
+                    <div>
+                      <strong>Ответственный подкомитет</strong>
+                      <p>
+                        {item.draftStandard.responsibleSubcommittee
+                          ? `${item.draftStandard.responsibleSubcommittee.code} — ${item.draftStandard.responsibleSubcommittee.title}`
+                          : "Не указан"}
+                      </p>
+                    </div>
+                  </div>
+
                   <div className="pill-row">
                     <Link
                       className="pill"
@@ -157,6 +168,13 @@ export default async function SecretariatWorkspacePage() {
                       Открыть архивный цикл
                     </Link>
                   </div>
+
+                  <p className="status-note">
+                    Ответственный подкомитет:{" "}
+                    {item.draftStandard.responsibleSubcommittee
+                      ? `${item.draftStandard.responsibleSubcommittee.code} — ${item.draftStandard.responsibleSubcommittee.title}`
+                      : "не указан"}
+                  </p>
                 </div>
               ))
             ) : (

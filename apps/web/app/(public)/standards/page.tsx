@@ -1,21 +1,67 @@
-import { PageTemplate } from "../../../components/page-template";
+import { getPublicStandards } from "../../../lib/api";
 
-export default function StandardsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function StandardsPage() {
+  const standards = await getPublicStandards();
+
   return (
-    <PageTemplate
-      eyebrow="Программа стандартизации"
-      title="Стандарты"
-      intro="Раздел предназначен для публикации каталога проектов стандартов, стадий их прохождения и открытых аннотаций по каждому документу."
-      highlights={[
-        "Каталог проектов и обозначения стандартов",
-        "Статусы жизненного цикла по каждому документу",
-        "Связь с циклами согласования для авторизованных пользователей"
-      ]}
-      nextSteps={[
-        "Подключить список стандартов из API",
-        "Добавить карточки отдельных проектов",
-        "Позднее показать связь с циклами согласования"
-      ]}
-    />
+    <div className="page-frame">
+      <section className="hero-card">
+        <div>
+          <div className="eyebrow">Программа стандартизации</div>
+          <h1 className="page-title">Проекты стандартов</h1>
+          <p className="page-intro">
+            В публичном каталоге показаны действующие проекты стандартов ТК 182,
+            их стадия и ответственный подкомитет.
+          </p>
+        </div>
+
+        <div className="pill-row">
+          <span className="pill">Всего проектов: {standards.length}</span>
+        </div>
+      </section>
+
+      <section className="content-stack">
+        {standards.map((standard) => (
+          <article key={standard.id} className="content-card review-card">
+            <div className="review-card-header">
+              <div>
+                <div className="eyebrow">{standard.code}</div>
+                <h2>{standard.title}</h2>
+                <p>{standard.summary}</p>
+              </div>
+              <div className="pill-row">
+                <span className="pill">Стадия: {standard.stage}</span>
+                <span className="pill">
+                  Ответственный ПК:{" "}
+                  {standard.responsibleSubcommittee
+                    ? standard.responsibleSubcommittee.code
+                    : "не указан"}
+                </span>
+              </div>
+            </div>
+
+            <div className="info-grid compact-grid">
+              <div>
+                <strong>Ответственный подкомитет</strong>
+                <p>
+                  {standard.responsibleSubcommittee
+                    ? `${standard.responsibleSubcommittee.code} — ${standard.responsibleSubcommittee.title}`
+                    : "Не указан"}
+                </p>
+              </div>
+              <div>
+                <strong>Базовая организация</strong>
+                <p>
+                  {standard.responsibleSubcommittee?.hostOrganization.name ??
+                    "Не указана"}
+                </p>
+              </div>
+            </div>
+          </article>
+        ))}
+      </section>
+    </div>
   );
 }

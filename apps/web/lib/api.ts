@@ -3,6 +3,7 @@ import "server-only";
 import type {
   ApprovalAuditEvent,
   AuthenticatedUser,
+  CommitteeStructureResponse,
   DocumentSummary,
   NotificationRecord,
   NotificationUnreadCountDto,
@@ -12,6 +13,8 @@ import type {
   ParticipantDraftStandardCard,
   ParticipantPositionRecord,
   ReviewCommentRecord,
+  StandardSummary,
+  SubcommitteeSummary,
   SecretariatCycleDetail,
   SecretariatDraftStandardDetail,
   SecretariatDraftStandardListItem,
@@ -76,6 +79,18 @@ export function getWorkspaceDocuments(
   area: WorkspaceArea
 ): Promise<PaginatedResult<DocumentSummary>> {
   return fetchFromApi<PaginatedResult<DocumentSummary>>(`/documents/${area}`);
+}
+
+export function getCommitteeStructure(): Promise<CommitteeStructureResponse> {
+  return fetchFromApi<CommitteeStructureResponse>("/committee");
+}
+
+export function getCommitteeSubcommittees(): Promise<SubcommitteeSummary[]> {
+  return fetchFromApi<SubcommitteeSummary[]>("/committee/subcommittees");
+}
+
+export function getPublicStandards(): Promise<StandardSummary[]> {
+  return fetchFromApi<StandardSummary[]>("/standards");
 }
 
 export function getParticipantAssignedCycles(): Promise<ParticipantAssignedReviewCycle[]> {

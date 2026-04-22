@@ -83,6 +83,14 @@ export default async function ParticipantDraftReviewPage({
               <p>{draftCard.cycle.title}</p>
             </div>
             <div>
+              <strong>Ответственный подкомитет</strong>
+              <p>
+                {draftCard.draftStandard.responsibleSubcommittee
+                  ? `${draftCard.draftStandard.responsibleSubcommittee.code} — ${draftCard.draftStandard.responsibleSubcommittee.title}`
+                  : "Не указан"}
+              </p>
+            </div>
+            <div>
               <strong>Описание цикла</strong>
               <p>{draftCard.cycle.description}</p>
             </div>

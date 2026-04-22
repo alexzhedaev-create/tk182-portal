@@ -7,6 +7,7 @@ import { SecretariatDraftStandardForm } from "../../../../../components/secretar
 import { SecretariatVersionForm } from "../../../../../components/secretariat-version-form";
 import { WorkspaceSessionCard } from "../../../../../components/workspace-session-card";
 import {
+  getCommitteeSubcommittees,
   getSecretariatDraftStandardDetail,
   getServerSession
 } from "../../../../../lib/api";
@@ -38,7 +39,10 @@ export default async function SecretariatDraftStandardDetailPage({
     );
   }
 
-  const detail = await getSecretariatDraftStandardDetail(params.draftStandardId);
+  const [detail, subcommittees] = await Promise.all([
+    getSecretariatDraftStandardDetail(params.draftStandardId),
+    getCommitteeSubcommittees()
+  ]);
 
   return (
     <div className="page-frame">
@@ -53,6 +57,12 @@ export default async function SecretariatDraftStandardDetailPage({
           <span className="pill">Стадия: {detail.draftStandard.stage}</span>
           <span className="pill">Версий: {detail.versions.length}</span>
           <span className="pill">Циклов: {detail.cycles.length}</span>
+          <span className="pill">
+            ПК:{" "}
+            {detail.draftStandard.responsibleSubcommittee
+              ? detail.draftStandard.responsibleSubcommittee.code
+              : "не указан"}
+          </span>
           <Link className="pill" href="/secretariat/projects">
             Ко всем проектам
           </Link>
@@ -61,7 +71,10 @@ export default async function SecretariatDraftStandardDetailPage({
 
       <section className="info-grid">
         <WorkspaceSessionCard heading="Текущая сессия" user={session.user} />
-        <SecretariatDraftStandardForm draftStandard={detail.draftStandard} />
+        <SecretariatDraftStandardForm
+          draftStandard={detail.draftStandard}
+          subcommittees={subcommittees}
+        />
       </section>
 
       <section className="info-grid">
@@ -104,6 +117,14 @@ export default async function SecretariatDraftStandardDetailPage({
                     <div>
                       <strong>Описание файла</strong>
                       <p>{version.fileNote}</p>
+                    </div>
+                    <div>
+                      <strong>Ответственный подкомитет</strong>
+                      <p>
+                        {detail.draftStandard.responsibleSubcommittee
+                          ? `${detail.draftStandard.responsibleSubcommittee.code} — ${detail.draftStandard.responsibleSubcommittee.title}`
+                          : "Не указан"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -151,6 +172,17 @@ export default async function SecretariatDraftStandardDetailPage({
                     <div className="metric-card">
                       <strong>Не ответили</strong>
                       <span>{cycle.pendingParticipants}</span>
+                    </div>
+                  </div>
+
+                  <div className="info-grid compact-grid">
+                    <div>
+                      <strong>Ответственный подкомитет</strong>
+                      <p>
+                        {cycle.draftStandard.responsibleSubcommittee
+                          ? `${cycle.draftStandard.responsibleSubcommittee.code} — ${cycle.draftStandard.responsibleSubcommittee.title}`
+                          : "Не указан"}
+                      </p>
                     </div>
                   </div>
 

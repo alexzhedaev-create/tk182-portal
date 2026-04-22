@@ -44,8 +44,38 @@ interface SeedDocument {
 interface SeedDraftStandard {
   code: string;
   id: string;
+  responsibleSubcommitteeId: string;
   stage: string;
   summary: string;
+  title: string;
+}
+
+interface SeedCommitteeRole {
+  category: "leadership" | "deputy" | "secretariat";
+  code: string;
+  id: string;
+  sortOrder: number;
+  title: string;
+}
+
+interface SeedCommitteePerson {
+  fullName: string;
+  id: string;
+  jobTitle: string;
+  organizationId: string;
+}
+
+interface SeedCommitteePersonRole {
+  committeePersonId: string;
+  committeeRoleId: string;
+  id: string;
+  sortOrder: number;
+}
+
+interface SeedSubcommittee {
+  code: string;
+  hostOrganizationId: string;
+  id: string;
   title: string;
 }
 
@@ -147,8 +177,32 @@ interface SeedNotification {
 const organizations: SeedOrganization[] = [
   {
     id: "org-tk182-secretariat",
-    name: "Секретариат ТК 182",
-    shortName: "Секретариат ТК 182",
+    name: 'НИЦ "Курчатовский институт" - ВИАМ',
+    shortName: "ВИАМ",
+    countryCode: "RU"
+  },
+  {
+    id: "org-nauka-i-innovatsii",
+    name: 'АО "Наука и инновации"',
+    shortName: "Наука и инновации",
+    countryCode: "RU"
+  },
+  {
+    id: "org-tvel",
+    name: 'АО "ТВЭЛ"',
+    shortName: "ТВЭЛ",
+    countryCode: "RU"
+  },
+  {
+    id: "org-institut-standartizatsii",
+    name: 'ФГБУ "Институт стандартизации"',
+    shortName: "Институт стандартизации",
+    countryCode: "RU"
+  },
+  {
+    id: "org-rostandart",
+    name: "Управление технического регулирования и стандартизации Росстандарта",
+    shortName: "Росстандарт",
     countryCode: "RU"
   },
   {
@@ -237,6 +291,7 @@ const draftStandards: SeedDraftStandard[] = [
   {
     id: "draft-standard-fire-sensors",
     code: "ТК182-01-2026",
+    responsibleSubcommitteeId: "subcommittee-pk5",
     title: "Умные датчики пожарной безопасности для промышленных объектов",
     summary:
       "Проект стандарта по структуре данных, диагностике и обмену сообщениями для промышленных датчиков пожарной безопасности.",
@@ -245,10 +300,169 @@ const draftStandards: SeedDraftStandard[] = [
   {
     id: "draft-standard-telemetry",
     code: "ТК182-02-2026",
+    responsibleSubcommitteeId: "subcommittee-pk3",
     title: "Протокол передачи телеметрии для распределенных производственных систем",
     summary:
       "Проект стандарта по унифицированной телеметрии, отметкам времени и обмену статусами между производственными узлами.",
     stage: "Архив согласования"
+  }
+];
+
+const committeeRoles: SeedCommitteeRole[] = [
+  {
+    id: "committee-role-co-chair",
+    code: "CO_CHAIR",
+    title: "Сопредседатель",
+    category: "leadership",
+    sortOrder: 10
+  },
+  {
+    id: "committee-role-deputy-co-chair",
+    code: "DEPUTY_CO_CHAIR",
+    title: "Заместитель сопредседателя",
+    category: "deputy",
+    sortOrder: 20
+  },
+  {
+    id: "committee-role-responsible-secretary",
+    code: "RESPONSIBLE_SECRETARY",
+    title: "Ответственный секретарь",
+    category: "secretariat",
+    sortOrder: 30
+  },
+  {
+    id: "committee-role-rostandart-representative",
+    code: "ROSSTANDART_REPRESENTATIVE",
+    title: "Полномочный представитель Росстандарта",
+    category: "secretariat",
+    sortOrder: 40
+  }
+];
+
+const committeePeople: SeedCommitteePerson[] = [
+  {
+    id: "committee-person-yakovlev",
+    fullName: "Яковлев Сергей Викторович",
+    jobTitle: 'Генеральный директор НИЦ "Курчатовский институт" - ВИАМ',
+    organizationId: "org-tk182-secretariat"
+  },
+  {
+    id: "committee-person-dub",
+    fullName: "Дуб Алексей Владимирович",
+    jobTitle: 'Первый заместитель генерального директора АО "Наука и инновации"',
+    organizationId: "org-nauka-i-innovatsii"
+  },
+  {
+    id: "committee-person-pakhomova",
+    fullName: "Пахомова Елена Дмитриевна",
+    jobTitle: 'Начальник лаборатории НИЦ "Курчатовский институт" - ВИАМ',
+    organizationId: "org-tk182-secretariat"
+  },
+  {
+    id: "committee-person-kryukov",
+    fullName: "Крюков Александр Сергеевич",
+    jobTitle: 'Начальник отдела стандартизации и сертификации АО "ТВЭЛ"',
+    organizationId: "org-tvel"
+  },
+  {
+    id: "committee-person-pronin",
+    fullName: "Пронин Илья Андреевич",
+    jobTitle: 'начальник сектора НИЦ "Курчатовский институт" - ВИАМ',
+    organizationId: "org-tk182-secretariat"
+  },
+  {
+    id: "committee-person-evdokimova",
+    fullName: "Евдокимова Анастасия Валериевна",
+    jobTitle:
+      "Главный специалист-эксперт Управления технического регулирования и стандартизации",
+    organizationId: "org-rostandart"
+  }
+];
+
+const committeePersonRoles: SeedCommitteePersonRole[] = [
+  {
+    id: "committee-person-role-yakovlev",
+    committeePersonId: "committee-person-yakovlev",
+    committeeRoleId: "committee-role-co-chair",
+    sortOrder: 10
+  },
+  {
+    id: "committee-person-role-dub",
+    committeePersonId: "committee-person-dub",
+    committeeRoleId: "committee-role-co-chair",
+    sortOrder: 20
+  },
+  {
+    id: "committee-person-role-pakhomova",
+    committeePersonId: "committee-person-pakhomova",
+    committeeRoleId: "committee-role-deputy-co-chair",
+    sortOrder: 10
+  },
+  {
+    id: "committee-person-role-kryukov",
+    committeePersonId: "committee-person-kryukov",
+    committeeRoleId: "committee-role-deputy-co-chair",
+    sortOrder: 20
+  },
+  {
+    id: "committee-person-role-pronin",
+    committeePersonId: "committee-person-pronin",
+    committeeRoleId: "committee-role-responsible-secretary",
+    sortOrder: 10
+  },
+  {
+    id: "committee-person-role-evdokimova",
+    committeePersonId: "committee-person-evdokimova",
+    committeeRoleId: "committee-role-rostandart-representative",
+    sortOrder: 20
+  }
+];
+
+const subcommittees: SeedSubcommittee[] = [
+  {
+    id: "subcommittee-pk1",
+    code: "ПК 1",
+    title: "Материалы для аддитивных технологий",
+    hostOrganizationId: "org-tk182-secretariat"
+  },
+  {
+    id: "subcommittee-pk2",
+    code: "ПК 2",
+    title: "Оборудование и программное обеспечение для аддитивных технологий",
+    hostOrganizationId: "org-nauka-i-innovatsii"
+  },
+  {
+    id: "subcommittee-pk3",
+    code: "ПК 3",
+    title:
+      "Управление жизненным циклом продукции аддитивного производства",
+    hostOrganizationId: "org-nauka-i-innovatsii"
+  },
+  {
+    id: "subcommittee-pk4",
+    code: "ПК 4",
+    title:
+      "Организационно-методические и общетехнические вопросы стандартизации, классификации, терминологии, кодирования и каталогизации",
+    hostOrganizationId: "org-institut-standartizatsii"
+  },
+  {
+    id: "subcommittee-pk5",
+    code: "ПК 5",
+    title:
+      "Неразрушающий контроль изделий, выполненных по аддитивным технологиям",
+    hostOrganizationId: "org-tk182-secretariat"
+  },
+  {
+    id: "subcommittee-pk6",
+    code: "ПК 6",
+    title: "Испытания изделий, выполненных по аддитивным технологиям",
+    hostOrganizationId: "org-tk182-secretariat"
+  },
+  {
+    id: "subcommittee-pk7",
+    code: "ПК 7",
+    title: "Материалы и аддитивные технологии в медицине",
+    hostOrganizationId: "org-nauka-i-innovatsii"
   }
 ];
 
@@ -706,6 +920,9 @@ async function main(): Promise<void> {
 
       await client.query(`DELETE FROM sessions`);
       await client.query(`DELETE FROM notifications`);
+      await client.query(`DELETE FROM committee_person_roles`);
+      await client.query(`DELETE FROM committee_people`);
+      await client.query(`DELETE FROM committee_roles`);
       await client.query(`DELETE FROM participant_positions`);
       await client.query(`DELETE FROM review_comments`);
       await client.query(`DELETE FROM review_assignments`);
@@ -713,19 +930,119 @@ async function main(): Promise<void> {
       await client.query(`DELETE FROM draft_standard_version_files`);
       await client.query(`DELETE FROM draft_standard_versions`);
       await client.query(`DELETE FROM draft_standards`);
+      await client.query(`DELETE FROM subcommittees`);
+
+      for (const role of committeeRoles) {
+        await client.query(
+          `
+            INSERT INTO committee_roles (id, code, title, category, sort_order)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO UPDATE
+            SET
+              code = EXCLUDED.code,
+              title = EXCLUDED.title,
+              category = EXCLUDED.category,
+              sort_order = EXCLUDED.sort_order
+          `,
+          [role.id, role.code, role.title, role.category, role.sortOrder]
+        );
+      }
+
+      for (const person of committeePeople) {
+        await client.query(
+          `
+            INSERT INTO committee_people (
+              id,
+              full_name,
+              job_title,
+              organization_id,
+              updated_at
+            )
+            VALUES ($1, $2, $3, $4, NOW())
+            ON CONFLICT (id) DO UPDATE
+            SET
+              full_name = EXCLUDED.full_name,
+              job_title = EXCLUDED.job_title,
+              organization_id = EXCLUDED.organization_id,
+              updated_at = NOW()
+          `,
+          [person.id, person.fullName, person.jobTitle, person.organizationId]
+        );
+      }
+
+      for (const personRole of committeePersonRoles) {
+        await client.query(
+          `
+            INSERT INTO committee_person_roles (
+              id,
+              committee_person_id,
+              committee_role_id,
+              sort_order
+            )
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (id) DO UPDATE
+            SET
+              committee_person_id = EXCLUDED.committee_person_id,
+              committee_role_id = EXCLUDED.committee_role_id,
+              sort_order = EXCLUDED.sort_order
+          `,
+          [
+            personRole.id,
+            personRole.committeePersonId,
+            personRole.committeeRoleId,
+            personRole.sortOrder
+          ]
+        );
+      }
+
+      for (const subcommittee of subcommittees) {
+        await client.query(
+          `
+            INSERT INTO subcommittees (
+              id,
+              code,
+              title,
+              host_organization_id,
+              updated_at
+            )
+            VALUES ($1, $2, $3, $4, NOW())
+            ON CONFLICT (id) DO UPDATE
+            SET
+              code = EXCLUDED.code,
+              title = EXCLUDED.title,
+              host_organization_id = EXCLUDED.host_organization_id,
+              updated_at = NOW()
+          `,
+          [
+            subcommittee.id,
+            subcommittee.code,
+            subcommittee.title,
+            subcommittee.hostOrganizationId
+          ]
+        );
+      }
 
       for (const draftStandard of draftStandards) {
         await client.query(
           `
-            INSERT INTO draft_standards (id, code, title, summary, stage, updated_at)
-            VALUES ($1, $2, $3, $4, $5, NOW())
+            INSERT INTO draft_standards (
+              id,
+              code,
+              title,
+              summary,
+              stage,
+              responsible_subcommittee_id,
+              updated_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())
           `,
           [
             draftStandard.id,
             draftStandard.code,
             draftStandard.title,
             draftStandard.summary,
-            draftStandard.stage
+            draftStandard.stage,
+            draftStandard.responsibleSubcommitteeId
           ]
         );
       }
