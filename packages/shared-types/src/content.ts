@@ -37,6 +37,10 @@ export type PublicDocumentCategory =
   | "NATIONAL_STANDARDS_PROGRAM";
 
 export type MeetingRecordCategory = "MEETING_MINUTES" | "MEETING_AGENDA";
+export type PublicStandardsSection =
+  | "DRAFT_STANDARDS"
+  | "APPROVED_STANDARDS"
+  | "NATIONAL_STANDARDS_PROGRAM";
 
 export interface ContentFileAttachment {
   description: string | null;
@@ -62,6 +66,34 @@ export interface BackofficeContentListFilters {
 export interface LegacyContentInventoryFilters {
   legacySection?: LegacyContentSection;
   migrationStatus?: LegacyContentInventoryStatus;
+}
+
+export interface PublicNewsFilters {
+  dateFrom?: string;
+  dateTo?: string;
+  q?: string;
+}
+
+export interface PublicDocumentsFilters {
+  category?: PublicDocumentCategory;
+  dateFrom?: string;
+  dateTo?: string;
+  q?: string;
+}
+
+export interface PublicMeetingsFilters {
+  category?: MeetingRecordCategory;
+  dateFrom?: string;
+  dateTo?: string;
+  q?: string;
+}
+
+export interface PublicStandardsFilters {
+  dateFrom?: string;
+  dateTo?: string;
+  q?: string;
+  responsibleSubcommitteeId?: string;
+  section?: PublicStandardsSection;
 }
 
 export interface LinkedPortalEntityReference {

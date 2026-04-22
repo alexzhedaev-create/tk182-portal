@@ -1,46 +1,39 @@
 import Link from "next/link";
 
 import { getPublicApiUrl, getPublicMeetingsPageData } from "../../../lib/api";
-import { formatMeetingRecordCategory } from "../../../lib/content";
+import { formatMeetingRecordCategory, readQueryValue } from "../../../lib/content";
 import { formatDate, formatFileSize } from "../../../lib/review";
 
 export const dynamic = "force-dynamic";
 
+const meetingCategories = ["MEETING_AGENDA", "MEETING_MINUTES"] as const;
+
 interface MeetingsPageProps {
   searchParams?: {
-    q?: string;
+    category?: string | string[];
+    dateFrom?: string | string[];
+    dateTo?: string | string[];
+    q?: string | string[];
   };
 }
 
 export default async function MeetingsPage({ searchParams }: MeetingsPageProps) {
+  const query = readQueryValue(searchParams?.q)?.trim() ?? "";
+  const category = readQueryValue(searchParams?.category)?.trim() ?? "";
+  const dateFrom = readQueryValue(searchParams?.dateFrom)?.trim() ?? "";
+  const dateTo = readQueryValue(searchParams?.dateTo)?.trim() ?? "";
+  const hasFilters = Boolean(query || category || dateFrom || dateTo);
   const [pageData, apiBaseUrl] = await Promise.all([
-    getPublicMeetingsPageData(),
+    getPublicMeetingsPageData({
+      ...(query ? { q: query } : {}),
+      ...(category ? { category: category as (typeof meetingCategories)[number] } : {}),
+      ...(dateFrom ? { dateFrom } : {}),
+      ...(dateTo ? { dateTo } : {})
+    }),
     Promise.resolve(getPublicApiUrl())
   ]);
-  const query = searchParams?.q?.trim() ?? "";
-  const normalizedQuery = query.toLocaleLowerCase("ru");
-  const filteredSections = pageData.sections.map((section) => ({
-    ...section,
-    meetings: normalizedQuery
-      ? section.meetings.filter((meeting) =>
-          [
-            meeting.title,
-            meeting.summary,
-            meeting.body,
-            meeting.location ?? ""
-          ]
-            .join(" ")
-            .toLocaleLowerCase("ru")
-            .includes(normalizedQuery)
-        )
-      : section.meetings
-  }));
 
   const totalMeetings = pageData.sections.reduce(
-    (count, section) => count + section.meetings.length,
-    0
-  );
-  const filteredMeetingsCount = filteredSections.reduce(
     (count, section) => count + section.meetings.length,
     0
   );
@@ -59,13 +52,15 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
         </div>
 
         <div className="pill-row">
-          <span className="pill">Опубликовано записей: {totalMeetings}</span>
-          {query ? <span className="pill">Найдено: {filteredMeetingsCount}</span> : null}
+          <span className="pill">
+            {hasFilters ? "Найдено записей" : "Опубликовано записей"}: {totalMeetings}
+          </span>
         </div>
       </section>
 
       <section className="content-card">
-        <h2>Поиск по заседаниям</h2>
+        <div className="eyebrow">Фильтр</div>
+        <h2>Поиск и фильтр по заседаниям</h2>
         <form className="form-grid" method="get">
           <label>
             <span className="eyebrow">Поиск</span>
@@ -77,13 +72,42 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
               placeholder="Введите тему заседания, дату или место"
             />
           </label>
+          <label>
+            <span className="eyebrow">Раздел</span>
+            <select className="text-input" name="category" defaultValue={category}>
+              <option value="">Все разделы</option>
+              {meetingCategories.map((item) => (
+                <option key={item} value={item}>
+                  {formatMeetingRecordCategory(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="eyebrow">Дата</span>
+            <input
+              className="text-input"
+              type="date"
+              name="dateFrom"
+              defaultValue={dateFrom}
+            />
+          </label>
+          <label>
+            <span className="eyebrow">Дата</span>
+            <input
+              className="text-input"
+              type="date"
+              name="dateTo"
+              defaultValue={dateTo}
+            />
+          </label>
           <div className="pill-row">
             <button className="pill" type="submit">
               Найти
             </button>
-            {query ? (
+            {hasFilters ? (
               <Link className="pill" href="/meetings">
-                Сбросить фильтр
+                Сбросить фильтры
               </Link>
             ) : null}
           </div>
@@ -91,7 +115,7 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
       </section>
 
       <section className="content-stack">
-        {filteredSections.map((section) => (
+        {pageData.sections.map((section) => (
           <article key={section.category} className="content-card">
             <h2>{formatMeetingRecordCategory(section.category)}</h2>
             <div className="content-stack">
@@ -147,7 +171,7 @@ export default async function MeetingsPage({ searchParams }: MeetingsPageProps) 
                 ))
               ) : (
                 <p>
-                  {query
+                  {hasFilters
                     ? "По выбранному фильтру записи не найдены."
                     : "В этом разделе пока нет опубликованных записей."}
                 </p>

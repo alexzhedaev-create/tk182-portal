@@ -5,6 +5,7 @@ import type {
   CreatePublicDocumentDto,
   DocumentSummary,
   PaginatedResult,
+  PublicDocumentsFilters,
   PublicDocumentRecord,
   PublicDocumentsPageData,
   UpdatePublicDocumentDto
@@ -32,8 +33,10 @@ export class DocumentsService {
     private readonly contentService: ContentService
   ) {}
 
-  getPublicDocumentsPageData(): Promise<PublicDocumentsPageData> {
-    return this.contentService.getPublicDocumentsPageData();
+  getPublicDocumentsPageData(
+    filters: PublicDocumentsFilters = {}
+  ): Promise<PublicDocumentsPageData> {
+    return this.contentService.getPublicDocumentsPageData(filters);
   }
 
   getPublicDocument(documentId: string): Promise<PublicDocumentRecord> {

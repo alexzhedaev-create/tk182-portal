@@ -15,6 +15,7 @@ import type {
   CreateNewsItemDto,
   LegacyContentSection,
   NewsItemRecord,
+  PublicNewsFilters,
   UpdateNewsItemDto
 } from "@tk182/shared-types";
 
@@ -29,8 +30,18 @@ export class NewsController {
   constructor(private readonly newsService: NewsService) {}
 
   @Get()
-  listPublishedNewsItems(): Promise<NewsItemRecord[]> {
-    return this.newsService.listPublishedNewsItems();
+  listPublishedNewsItems(
+    @Query("q") q?: string,
+    @Query("dateFrom") dateFrom?: string,
+    @Query("dateTo") dateTo?: string
+  ): Promise<NewsItemRecord[]> {
+    const filters: PublicNewsFilters = {
+      ...(q ? { q } : {}),
+      ...(dateFrom ? { dateFrom } : {}),
+      ...(dateTo ? { dateTo } : {})
+    };
+
+    return this.newsService.listPublishedNewsItems(filters);
   }
 
   @Get("backoffice")

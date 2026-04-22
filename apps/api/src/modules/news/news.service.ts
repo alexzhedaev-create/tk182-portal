@@ -4,6 +4,7 @@ import type {
   BackofficeNewsItemRecord,
   CreateNewsItemDto,
   NewsItemRecord,
+  PublicNewsFilters,
   UpdateNewsItemDto
 } from "@tk182/shared-types";
 
@@ -13,8 +14,8 @@ import { ContentService } from "../content/content.service";
 export class NewsService {
   constructor(private readonly contentService: ContentService) {}
 
-  listPublishedNewsItems(): Promise<NewsItemRecord[]> {
-    return this.contentService.listPublishedNewsItems();
+  listPublishedNewsItems(filters: PublicNewsFilters = {}): Promise<NewsItemRecord[]> {
+    return this.contentService.listPublishedNewsItems(filters);
   }
 
   getPublishedNewsItem(newsId: string): Promise<NewsItemRecord> {

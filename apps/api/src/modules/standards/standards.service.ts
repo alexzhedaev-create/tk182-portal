@@ -4,6 +4,7 @@ import type {
   BackofficeContentListFilters,
   ApprovedStandardRecord,
   CreateApprovedStandardDto,
+  PublicStandardsFilters,
   StandardSummary,
   StandardsPageData,
   UpdateApprovedStandardDto
@@ -35,7 +36,33 @@ export class StandardsService {
     private readonly contentService: ContentService
   ) {}
 
-  async listStandards(): Promise<StandardSummary[]> {
+  async listStandards(
+    filters: Pick<PublicStandardsFilters, "q" | "responsibleSubcommitteeId"> = {}
+  ): Promise<StandardSummary[]> {
+    const conditions: string[] = [];
+    const values: unknown[] = [];
+    const query = filters.q?.trim();
+    const responsibleSubcommitteeId = filters.responsibleSubcommitteeId?.trim();
+
+    if (responsibleSubcommitteeId) {
+      values.push(responsibleSubcommitteeId);
+      conditions.push(`ds.responsible_subcommittee_id = $${values.length}`);
+    }
+
+    if (query) {
+      values.push(`%${query}%`);
+      conditions.push(
+        `(ds.code ILIKE $${values.length}
+          OR ds.title ILIKE $${values.length}
+          OR ds.summary ILIKE $${values.length}
+          OR ds.stage ILIKE $${values.length}
+          OR sc.code ILIKE $${values.length}
+          OR sc.title ILIKE $${values.length}
+          OR host.name ILIKE $${values.length}
+          OR host.short_name ILIKE $${values.length})`
+      );
+    }
+
     const result = await this.databaseService.query<StandardRow>(
       `
         SELECT
@@ -54,8 +81,10 @@ export class StandardsService {
         FROM draft_standards ds
         LEFT JOIN subcommittees sc ON sc.id = ds.responsible_subcommittee_id
         LEFT JOIN organizations host ON host.id = sc.host_organization_id
+        ${conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : ""}
         ORDER BY ds.code ASC
-      `
+      `,
+      values
     );
 
     return result.rows.map((row) => ({
@@ -88,9 +117,11 @@ export class StandardsService {
     }));
   }
 
-  async getPublicStandardsPageData(): Promise<StandardsPageData> {
-    const draftStandards = await this.listStandards();
-    return this.contentService.getStandardsPageData(draftStandards);
+  async getPublicStandardsPageData(
+    filters: PublicStandardsFilters = {}
+  ): Promise<StandardsPageData> {
+    const draftStandards = await this.listStandards(filters);
+    return this.contentService.getStandardsPageData(draftStandards, filters);
   }
 
   getPublicApprovedStandard(standardId: string): Promise<ApprovedStandardRecord> {

@@ -28,8 +28,13 @@ import type {
   MeetingRecordCategory,
   NewsItemRecord,
   PublicDocumentCategory,
+  PublicDocumentsFilters,
   PublicDocumentRecord,
   PublicDocumentsPageData,
+  PublicMeetingsFilters,
+  PublicNewsFilters,
+  PublicStandardsFilters,
+  PublicStandardsSection,
   StandardsPageData,
   UpdateApprovedStandardDto,
   UpdateLegacyContentInventoryDto,
@@ -58,6 +63,12 @@ const PUBLIC_DOCUMENT_CATEGORY_ORDER: readonly PublicDocumentCategory[] = [
 const MEETING_CATEGORY_ORDER: readonly MeetingRecordCategory[] = [
   "MEETING_AGENDA",
   "MEETING_MINUTES"
+];
+
+const PUBLIC_STANDARDS_SECTIONS: readonly PublicStandardsSection[] = [
+  "DRAFT_STANDARDS",
+  "APPROVED_STANDARDS",
+  "NATIONAL_STANDARDS_PROGRAM"
 ];
 
 const MIGRATION_STATUSES: readonly ContentMigrationStatus[] = [
@@ -220,7 +231,14 @@ export class ContentService {
     private readonly contentFileStorageService: ContentFileStorageService
   ) {}
 
-  async listPublishedNewsItems(): Promise<NewsItemRecord[]> {
+  async listPublishedNewsItems(
+    filters: PublicNewsFilters = {}
+  ): Promise<NewsItemRecord[]> {
+    const conditions = ["status = 'published'"];
+    const values: unknown[] = [];
+
+    this.appendPublicNewsFilters(conditions, values, filters);
+
     const result = await this.databaseService.query<NewsRow>(
       `
         SELECT
@@ -236,9 +254,10 @@ export class ContentService {
           migration_status,
           migration_note
         FROM news_items
-        WHERE status = 'published'
+        WHERE ${conditions.join(" AND ")}
         ORDER BY publication_date DESC, created_at DESC
-      `
+      `,
+      values
     );
 
     return result.rows.map((row) => this.mapNewsItem(row));
@@ -474,23 +493,33 @@ export class ContentService {
   }
 
   async listPublishedPublicDocumentsByCategories(
-    categories: readonly PublicDocumentCategory[]
+    categories: readonly PublicDocumentCategory[],
+    filters: PublicDocumentsFilters = {}
   ): Promise<PublicDocumentRecord[]> {
-    const rows = await this.listPublicDocumentRows(true, categories);
+    const rows = await this.listPublicDocumentRows(true, categories, undefined, filters);
     return rows.map((row) => this.mapPublicDocument(row));
   }
 
-  async getPublicDocumentsPageData(): Promise<PublicDocumentsPageData> {
-    const rows = await this.listPublicDocumentRows(true, [
-      "MAIN_DOCUMENTS",
-      "WORK_REPORTS",
-      "WORK_PLANS"
-    ]);
+  async getPublicDocumentsPageData(
+    filters: PublicDocumentsFilters = {}
+  ): Promise<PublicDocumentsPageData> {
+    const selectedCategory = filters.category
+      ? this.parseDocumentCategory(filters.category)
+      : null;
+    const visibleCategories = PUBLIC_DOCUMENT_CATEGORY_ORDER.filter(
+      (category) =>
+        category !== "NATIONAL_STANDARDS_PROGRAM" &&
+        (!selectedCategory || category === selectedCategory)
+    );
+    const rows = await this.listPublicDocumentRows(
+      true,
+      visibleCategories,
+      undefined,
+      filters
+    );
 
     return {
-      sections: PUBLIC_DOCUMENT_CATEGORY_ORDER.filter(
-        (category) => category !== "NATIONAL_STANDARDS_PROGRAM"
-      ).map((category) => ({
+      sections: visibleCategories.map((category) => ({
         category,
         documents: rows
           .filter((row) => row.category === category)
@@ -717,11 +746,19 @@ export class ContentService {
     return this.buildDownload(document.attachment);
   }
 
-  async getMeetingsPageData(): Promise<MeetingsPageData> {
-    const rows = await this.listMeetingRows(true);
+  async getMeetingsPageData(
+    filters: PublicMeetingsFilters = {}
+  ): Promise<MeetingsPageData> {
+    const selectedCategory = filters.category
+      ? this.parseMeetingCategory(filters.category)
+      : null;
+    const visibleCategories = MEETING_CATEGORY_ORDER.filter(
+      (category) => !selectedCategory || category === selectedCategory
+    );
+    const rows = await this.listMeetingRows(true, undefined, filters);
 
     return {
-      sections: MEETING_CATEGORY_ORDER.map((category) => ({
+      sections: visibleCategories.map((category) => ({
         category,
         meetings: rows
           .filter((row) => row.category === category)
@@ -960,8 +997,10 @@ export class ContentService {
     return this.buildDownload(meeting.attachment);
   }
 
-  async listPublishedApprovedStandards(): Promise<ApprovedStandardRecord[]> {
-    const rows = await this.listApprovedStandardRows(true);
+  async listPublishedApprovedStandards(
+    filters: PublicStandardsFilters = {}
+  ): Promise<ApprovedStandardRecord[]> {
+    const rows = await this.listApprovedStandardRows(true, undefined, filters);
     return rows.map((row) => this.mapApprovedStandard(row));
   }
 
@@ -1209,14 +1248,39 @@ export class ContentService {
     return this.buildDownload(standard.attachment);
   }
 
-  async getStandardsPageData(draftStandards: StandardsPageData["draftStandards"]): Promise<StandardsPageData> {
+  async getStandardsPageData(
+    draftStandards: StandardsPageData["draftStandards"],
+    filters: PublicStandardsFilters = {}
+  ): Promise<StandardsPageData> {
+    const selectedSection = filters.section
+      ? this.parsePublicStandardsSection(filters.section)
+      : null;
+    const includeDraftStandards = !selectedSection || selectedSection === "DRAFT_STANDARDS";
+    const includeApprovedStandards =
+      !selectedSection || selectedSection === "APPROVED_STANDARDS";
+    const includeProgramDocuments =
+      !selectedSection || selectedSection === "NATIONAL_STANDARDS_PROGRAM";
+    const draftStandardsForPublic = this.filterDraftStandardsForPublic(
+      draftStandards,
+      filters
+    );
     const [approvedStandards, nationalStandardsProgramDocuments] = await Promise.all([
-      this.listPublishedApprovedStandards(),
-      this.listPublishedPublicDocumentsByCategories(["NATIONAL_STANDARDS_PROGRAM"])
+      includeApprovedStandards ? this.listPublishedApprovedStandards(filters) : [],
+      includeProgramDocuments
+        ? this.listPublishedPublicDocumentsByCategories(
+            ["NATIONAL_STANDARDS_PROGRAM"],
+            {
+              ...(filters.q ? { q: filters.q } : {}),
+              ...(filters.dateFrom ? { dateFrom: filters.dateFrom } : {}),
+              ...(filters.dateTo ? { dateTo: filters.dateTo } : {}),
+              category: "NATIONAL_STANDARDS_PROGRAM"
+            }
+          )
+        : []
     ]);
 
     return {
-      draftStandards,
+      draftStandards: includeDraftStandards ? draftStandardsForPublic : [],
       approvedStandards,
       nationalStandardsProgramDocuments
     };
@@ -1851,7 +1915,8 @@ export class ContentService {
   private async listPublicDocumentRows(
     publishedOnly: boolean,
     categories?: readonly PublicDocumentCategory[],
-    filters: BackofficeContentListFilters = {}
+    backofficeFilters?: BackofficeContentListFilters,
+    publicFilters?: PublicDocumentsFilters
   ): Promise<PublicDocumentRow[]> {
     const conditions: string[] = [];
     const values: unknown[] = [];
@@ -1865,8 +1930,10 @@ export class ContentService {
       conditions.push(`pd.category = ANY($${values.length}::text[])`);
     }
 
-    if (!publishedOnly) {
-      this.appendMigrationFilters(conditions, values, filters, "pd");
+    if (publishedOnly) {
+      this.appendPublicDocumentsFilters(conditions, values, publicFilters ?? {}, "pd");
+    } else {
+      this.appendMigrationFilters(conditions, values, backofficeFilters ?? {}, "pd");
     }
 
     const result = await this.databaseService.query<PublicDocumentRow>(
@@ -1912,15 +1979,17 @@ export class ContentService {
 
   private async listMeetingRows(
     publishedOnly: boolean,
-    filters: BackofficeContentListFilters = {}
+    backofficeFilters?: BackofficeContentListFilters,
+    publicFilters?: PublicMeetingsFilters
   ): Promise<MeetingRow[]> {
     const conditions: string[] = [];
     const values: unknown[] = [];
 
     if (publishedOnly) {
       conditions.push("mr.status = 'published'");
+      this.appendPublicMeetingsFilters(conditions, values, publicFilters ?? {}, "mr");
     } else {
-      this.appendMigrationFilters(conditions, values, filters, "mr");
+      this.appendMigrationFilters(conditions, values, backofficeFilters ?? {}, "mr");
     }
 
     const result = await this.databaseService.query<MeetingRow>(
@@ -1967,15 +2036,22 @@ export class ContentService {
 
   private async listApprovedStandardRows(
     publishedOnly: boolean,
-    filters: BackofficeContentListFilters = {}
+    backofficeFilters?: BackofficeContentListFilters,
+    publicFilters?: PublicStandardsFilters
   ): Promise<ApprovedStandardRow[]> {
     const conditions: string[] = [];
     const values: unknown[] = [];
 
     if (publishedOnly) {
       conditions.push("aps.status = 'published'");
+      this.appendPublicApprovedStandardsFilters(
+        conditions,
+        values,
+        publicFilters ?? {},
+        "aps"
+      );
     } else {
-      this.appendMigrationFilters(conditions, values, filters, "aps");
+      this.appendMigrationFilters(conditions, values, backofficeFilters ?? {}, "aps");
     }
 
     const result = await this.databaseService.query<ApprovedStandardRow>(
@@ -2988,6 +3064,231 @@ export class ContentService {
     throw new BadRequestException("Выберите корректный тип связанной записи портала.");
   }
 
+  private filterDraftStandardsForPublic(
+    draftStandards: StandardsPageData["draftStandards"],
+    filters: PublicStandardsFilters
+  ): StandardsPageData["draftStandards"] {
+    const query = this.normalizeOptionalText(filters.q)?.toLocaleLowerCase("ru") ?? null;
+    const responsibleSubcommitteeId = this.normalizeOptionalText(
+      filters.responsibleSubcommitteeId
+    );
+    const hasDateFilter = Boolean(
+      this.normalizeOptionalText(filters.dateFrom) || this.normalizeOptionalText(filters.dateTo)
+    );
+
+    if (hasDateFilter) {
+      return [];
+    }
+
+    return draftStandards.filter((standard) => {
+      if (
+        responsibleSubcommitteeId &&
+        standard.responsibleSubcommittee?.id !== responsibleSubcommitteeId
+      ) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      return [
+        standard.code,
+        standard.title,
+        standard.summary,
+        standard.stage,
+        standard.responsibleSubcommittee?.code ?? "",
+        standard.responsibleSubcommittee?.title ?? "",
+        standard.responsibleSubcommittee?.hostOrganization.name ?? ""
+      ]
+        .join(" ")
+        .toLocaleLowerCase("ru")
+        .includes(query);
+    });
+  }
+
+  private appendPublicNewsFilters(
+    conditions: string[],
+    values: unknown[],
+    filters: PublicNewsFilters
+  ): void {
+    this.appendPublicTextSearchFilter(conditions, values, filters.q, [
+      "title",
+      "excerpt",
+      "body"
+    ]);
+    this.appendPublicDateRangeFilters(
+      conditions,
+      values,
+      filters.dateFrom,
+      filters.dateTo,
+      "publication_date",
+      "Укажите корректную начальную дату фильтра новостей.",
+      "Укажите корректную конечную дату фильтра новостей."
+    );
+  }
+
+  private appendPublicDocumentsFilters(
+    conditions: string[],
+    values: unknown[],
+    filters: PublicDocumentsFilters,
+    tableAlias: string
+  ): void {
+    if (filters.category) {
+      values.push(this.parseDocumentCategory(filters.category));
+      conditions.push(`${tableAlias}.category = $${values.length}`);
+    }
+
+    this.appendPublicTextSearchFilter(conditions, values, filters.q, [
+      `${tableAlias}.title`,
+      `${tableAlias}.summary`,
+      `${tableAlias}.file_original_name`,
+      `${tableAlias}.file_description`
+    ]);
+    this.appendPublicDateRangeFilters(
+      conditions,
+      values,
+      filters.dateFrom,
+      filters.dateTo,
+      `${tableAlias}.publication_date`,
+      "Укажите корректную начальную дату фильтра документов.",
+      "Укажите корректную конечную дату фильтра документов."
+    );
+  }
+
+  private appendPublicMeetingsFilters(
+    conditions: string[],
+    values: unknown[],
+    filters: PublicMeetingsFilters,
+    tableAlias: string
+  ): void {
+    if (filters.category) {
+      values.push(this.parseMeetingCategory(filters.category));
+      conditions.push(`${tableAlias}.category = $${values.length}`);
+    }
+
+    this.appendPublicTextSearchFilter(conditions, values, filters.q, [
+      `${tableAlias}.title`,
+      `${tableAlias}.summary`,
+      `${tableAlias}.body`,
+      `${tableAlias}.location`,
+      `${tableAlias}.file_original_name`,
+      `${tableAlias}.file_description`
+    ]);
+    this.appendPublicDateRangeFilters(
+      conditions,
+      values,
+      filters.dateFrom,
+      filters.dateTo,
+      `${tableAlias}.meeting_date`,
+      "Укажите корректную начальную дату фильтра заседаний.",
+      "Укажите корректную конечную дату фильтра заседаний."
+    );
+  }
+
+  private appendPublicApprovedStandardsFilters(
+    conditions: string[],
+    values: unknown[],
+    filters: PublicStandardsFilters,
+    tableAlias: string
+  ): void {
+    const responsibleSubcommitteeId = this.normalizeOptionalText(
+      filters.responsibleSubcommitteeId
+    );
+
+    if (responsibleSubcommitteeId) {
+      values.push(responsibleSubcommitteeId);
+      conditions.push(`${tableAlias}.responsible_subcommittee_id = $${values.length}`);
+    }
+
+    this.appendPublicTextSearchFilter(conditions, values, filters.q, [
+      `${tableAlias}.code`,
+      `${tableAlias}.title`,
+      `${tableAlias}.summary`,
+      "sc.code",
+      "sc.title",
+      "host.name",
+      "host.short_name"
+    ]);
+    this.appendPublicDateRangeFilters(
+      conditions,
+      values,
+      filters.dateFrom,
+      filters.dateTo,
+      `${tableAlias}.publication_date`,
+      "Укажите корректную начальную дату фильтра стандартов.",
+      "Укажите корректную конечную дату фильтра стандартов."
+    );
+  }
+
+  private appendPublicTextSearchFilter(
+    conditions: string[],
+    values: unknown[],
+    query: string | null | undefined,
+    columns: readonly string[]
+  ): void {
+    const normalizedQuery = this.normalizeOptionalText(query);
+
+    if (!normalizedQuery) {
+      return;
+    }
+
+    values.push(`%${normalizedQuery}%`);
+    const placeholder = `$${values.length}`;
+    conditions.push(
+      `(${columns.map((column) => `${column} ILIKE ${placeholder}`).join(" OR ")})`
+    );
+  }
+
+  private appendPublicDateRangeFilters(
+    conditions: string[],
+    values: unknown[],
+    dateFrom: string | null | undefined,
+    dateTo: string | null | undefined,
+    column: string,
+    fromErrorMessage: string,
+    toErrorMessage: string
+  ): void {
+    const normalizedDateFrom = this.parsePublicFilterDateBoundary(
+      dateFrom,
+      fromErrorMessage,
+      false
+    );
+    const normalizedDateTo = this.parsePublicFilterDateBoundary(
+      dateTo,
+      toErrorMessage,
+      true
+    );
+
+    if (
+      normalizedDateFrom &&
+      normalizedDateTo &&
+      new Date(normalizedDateFrom).getTime() > new Date(normalizedDateTo).getTime()
+    ) {
+      throw new BadRequestException(
+        "Дата окончания фильтра не может быть раньше даты начала."
+      );
+    }
+
+    if (normalizedDateFrom) {
+      values.push(normalizedDateFrom);
+      conditions.push(`${column} >= $${values.length}`);
+    }
+
+    if (normalizedDateTo) {
+      values.push(normalizedDateTo);
+      conditions.push(`${column} <= $${values.length}`);
+    }
+  }
+
+  private parsePublicStandardsSection(value: string): PublicStandardsSection {
+    if (PUBLIC_STANDARDS_SECTIONS.includes(value as PublicStandardsSection)) {
+      return value as PublicStandardsSection;
+    }
+
+    throw new BadRequestException("Выберите корректный раздел стандартов.");
+  }
+
   private buildMigrationWhereClause(
     filters: BackofficeContentListFilters,
     tableName: string
@@ -3058,6 +3359,34 @@ export class ContentService {
 
     if (Number.isNaN(parsed.getTime())) {
       throw new BadRequestException(errorMessage);
+    }
+
+    return parsed.toISOString();
+  }
+
+  private parsePublicFilterDateBoundary(
+    value: string | null | undefined,
+    errorMessage: string,
+    endOfDay: boolean
+  ): string | null {
+    const normalized = this.normalizeOptionalText(value);
+
+    if (!normalized) {
+      return null;
+    }
+
+    const parsed = new Date(normalized);
+
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException(errorMessage);
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/u.test(normalized)) {
+      if (endOfDay) {
+        parsed.setUTCHours(23, 59, 59, 999);
+      } else {
+        parsed.setUTCHours(0, 0, 0, 0);
+      }
     }
 
     return parsed.toISOString();

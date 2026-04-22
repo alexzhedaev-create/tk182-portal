@@ -24,6 +24,10 @@ import type {
   ParticipantAssignedReviewCycle,
   ParticipantDraftStandardCard,
   ParticipantPositionRecord,
+  PublicDocumentsFilters,
+  PublicMeetingsFilters,
+  PublicNewsFilters,
+  PublicStandardsFilters,
   ReviewCommentRecord,
   PublicDocumentRecord,
   PublicDocumentsPageData,
@@ -108,24 +112,34 @@ export function getCommitteeBackofficeData(): Promise<CommitteeBackofficeData> {
   return fetchFromApi<CommitteeBackofficeData>("/committee/backoffice");
 }
 
-export function getPublicStandards(): Promise<StandardSummary[]> {
-  return fetchFromApi<StandardSummary[]>("/standards");
+export function getPublicStandards(
+  filters: Pick<PublicStandardsFilters, "q" | "responsibleSubcommitteeId"> = {}
+): Promise<StandardSummary[]> {
+  return fetchFromApi<StandardSummary[]>(`/standards${buildPublicQuery(filters)}`);
 }
 
-export function getPublicStandardsPageData(): Promise<StandardsPageData> {
-  return fetchFromApi<StandardsPageData>("/standards/public-content");
+export function getPublicStandardsPageData(
+  filters: PublicStandardsFilters = {}
+): Promise<StandardsPageData> {
+  return fetchFromApi<StandardsPageData>(
+    `/standards/public-content${buildPublicQuery(filters)}`
+  );
 }
 
-export function getPublicNewsItems(): Promise<NewsItemRecord[]> {
-  return fetchFromApi<NewsItemRecord[]>("/news");
+export function getPublicNewsItems(
+  filters: PublicNewsFilters = {}
+): Promise<NewsItemRecord[]> {
+  return fetchFromApi<NewsItemRecord[]>(`/news${buildPublicQuery(filters)}`);
 }
 
 export function getPublicNewsItem(newsId: string): Promise<NewsItemRecord> {
   return fetchFromApi<NewsItemRecord>(`/news/${encodeURIComponent(newsId)}`);
 }
 
-export function getPublicDocumentsPageData(): Promise<PublicDocumentsPageData> {
-  return fetchFromApi<PublicDocumentsPageData>("/documents");
+export function getPublicDocumentsPageData(
+  filters: PublicDocumentsFilters = {}
+): Promise<PublicDocumentsPageData> {
+  return fetchFromApi<PublicDocumentsPageData>(`/documents${buildPublicQuery(filters)}`);
 }
 
 export function getPublicDocument(documentId: string): Promise<PublicDocumentRecord> {
@@ -134,8 +148,10 @@ export function getPublicDocument(documentId: string): Promise<PublicDocumentRec
   );
 }
 
-export function getPublicMeetingsPageData(): Promise<MeetingsPageData> {
-  return fetchFromApi<MeetingsPageData>("/meetings");
+export function getPublicMeetingsPageData(
+  filters: PublicMeetingsFilters = {}
+): Promise<MeetingsPageData> {
+  return fetchFromApi<MeetingsPageData>(`/meetings${buildPublicQuery(filters)}`);
 }
 
 export function getPublicMeeting(meetingId: string): Promise<MeetingRecord> {
@@ -260,6 +276,43 @@ function buildContentFilterQuery(filters: BackofficeContentListFilters = {}): st
 
   if (filters.legacySection) {
     searchParams.set("legacySection", filters.legacySection);
+  }
+
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
+
+function buildPublicQuery(
+  filters:
+    | PublicNewsFilters
+    | PublicDocumentsFilters
+    | PublicMeetingsFilters
+    | PublicStandardsFilters = {}
+): string {
+  const searchParams = new URLSearchParams();
+
+  if ("q" in filters && filters.q) {
+    searchParams.set("q", filters.q);
+  }
+
+  if ("dateFrom" in filters && filters.dateFrom) {
+    searchParams.set("dateFrom", filters.dateFrom);
+  }
+
+  if ("dateTo" in filters && filters.dateTo) {
+    searchParams.set("dateTo", filters.dateTo);
+  }
+
+  if ("category" in filters && filters.category) {
+    searchParams.set("category", filters.category);
+  }
+
+  if ("section" in filters && filters.section) {
+    searchParams.set("section", filters.section);
+  }
+
+  if ("responsibleSubcommitteeId" in filters && filters.responsibleSubcommitteeId) {
+    searchParams.set("responsibleSubcommitteeId", filters.responsibleSubcommitteeId);
   }
 
   const query = searchParams.toString();

@@ -1,28 +1,29 @@
 import Link from "next/link";
 
 import { getPublicNewsItems } from "../../../lib/api";
+import { readQueryValue } from "../../../lib/content";
 import { formatDate } from "../../../lib/review";
 
 export const dynamic = "force-dynamic";
 
 interface NewsPageProps {
   searchParams?: {
-    q?: string;
+    dateFrom?: string | string[];
+    dateTo?: string | string[];
+    q?: string | string[];
   };
 }
 
 export default async function NewsPage({ searchParams }: NewsPageProps) {
-  const newsItems = await getPublicNewsItems();
-  const query = searchParams?.q?.trim() ?? "";
-  const normalizedQuery = query.toLocaleLowerCase("ru");
-  const filteredItems = normalizedQuery
-    ? newsItems.filter((item) =>
-        [item.title, item.excerpt, item.body]
-          .join(" ")
-          .toLocaleLowerCase("ru")
-          .includes(normalizedQuery)
-      )
-    : newsItems;
+  const query = readQueryValue(searchParams?.q)?.trim() ?? "";
+  const dateFrom = readQueryValue(searchParams?.dateFrom)?.trim() ?? "";
+  const dateTo = readQueryValue(searchParams?.dateTo)?.trim() ?? "";
+  const hasFilters = Boolean(query || dateFrom || dateTo);
+  const newsItems = await getPublicNewsItems({
+    ...(query ? { q: query } : {}),
+    ...(dateFrom ? { dateFrom } : {}),
+    ...(dateTo ? { dateTo } : {})
+  });
 
   return (
     <div className="page-frame">
@@ -37,13 +38,15 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
         </div>
 
         <div className="pill-row">
-          <span className="pill">Опубликовано новостей: {newsItems.length}</span>
-          {query ? <span className="pill">Найдено: {filteredItems.length}</span> : null}
+          <span className="pill">
+            {hasFilters ? "Найдено новостей" : "Опубликовано новостей"}: {newsItems.length}
+          </span>
         </div>
       </section>
 
       <section className="content-card">
-        <h2>Поиск по новостям</h2>
+        <div className="eyebrow">Фильтр</div>
+        <h2>Поиск и фильтр по новостям</h2>
         <form className="form-grid" method="get">
           <label>
             <span className="eyebrow">Поиск</span>
@@ -55,13 +58,31 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
               placeholder="Введите заголовок или фрагмент текста"
             />
           </label>
+          <label>
+            <span className="eyebrow">Дата</span>
+            <input
+              className="text-input"
+              type="date"
+              name="dateFrom"
+              defaultValue={dateFrom}
+            />
+          </label>
+          <label>
+            <span className="eyebrow">Дата</span>
+            <input
+              className="text-input"
+              type="date"
+              name="dateTo"
+              defaultValue={dateTo}
+            />
+          </label>
           <div className="pill-row">
             <button className="pill" type="submit">
               Найти
             </button>
-            {query ? (
+            {hasFilters ? (
               <Link className="pill" href="/news">
-                Сбросить фильтр
+                Сбросить фильтры
               </Link>
             ) : null}
           </div>
@@ -69,8 +90,8 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
       </section>
 
       <section className="content-stack">
-        {filteredItems.length > 0 ? (
-          filteredItems.map((item) => (
+        {newsItems.length > 0 ? (
+          newsItems.map((item) => (
             <article key={item.id} className="content-card review-card">
               <div className="review-card-header">
                 <div>
@@ -93,7 +114,7 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
         ) : (
           <article className="content-card">
             <p>
-              {query
+              {hasFilters
                 ? "По вашему запросу новости не найдены."
                 : "Опубликованных новостей пока нет."}
             </p>

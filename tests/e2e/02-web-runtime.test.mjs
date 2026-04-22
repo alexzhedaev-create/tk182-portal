@@ -87,6 +87,14 @@ test(
     assert.match(newsHtml, /новый публичный контур публикаций/u);
     assert.match(newsHtml, /Открыть новость/u);
 
+    const filteredNewsPage = await fetch(
+      `${webBaseUrl}/news?q=%D0%BA%D0%BE%D0%BD%D1%82%D1%83%D1%80&dateFrom=2026-04-18&dateTo=2026-04-18`
+    );
+    const filteredNewsHtml = await filteredNewsPage.text();
+    assert.equal(filteredNewsPage.status, 200);
+    assert.match(filteredNewsHtml, /Найдено новостей/u);
+    assert.match(filteredNewsHtml, /Сбросить фильтры/u);
+
     const newsDetailPage = await fetch(`${webBaseUrl}/news/news-portal-content-launch`);
     const newsDetailHtml = await newsDetailPage.text();
     assert.equal(newsDetailPage.status, 200);
@@ -100,6 +108,15 @@ test(
     assert.match(documentsHtml, /Положение о ТК 182/u);
     assert.match(documentsHtml, /Скачать/u);
     assert.match(documentsHtml, /Открыть карточку/u);
+
+    const filteredDocumentsPage = await fetch(
+      `${webBaseUrl}/documents?q=%D0%9F%D0%BE%D0%BB%D0%BE%D0%B6%D0%B5%D0%BD%D0%B8%D0%B5&category=MAIN_DOCUMENTS&dateFrom=2026-01-01&dateTo=2026-01-31`
+    );
+    const filteredDocumentsHtml = await filteredDocumentsPage.text();
+    assert.equal(filteredDocumentsPage.status, 200);
+    assert.match(filteredDocumentsHtml, /Найдено документов/u);
+    assert.match(filteredDocumentsHtml, /Положение о ТК 182/u);
+    assert.ok(!/Отчет о работе ТК 182 за 2025 год/u.test(filteredDocumentsHtml));
 
     const documentDetailPage = await fetch(
       `${webBaseUrl}/documents/public-document-main-regulation`
@@ -117,6 +134,15 @@ test(
     assert.match(meetingsHtml, /Уведомление и повестка заседания ТК 182/u);
     assert.match(meetingsHtml, /Протокол заседания ТК 182/u);
 
+    const filteredMeetingsPage = await fetch(
+      `${webBaseUrl}/meetings?q=%D0%BF%D0%BE%D0%B2%D0%B5%D1%81%D1%82%D0%BA%D0%B0&category=MEETING_AGENDA&dateFrom=2026-04-01&dateTo=2026-04-30`
+    );
+    const filteredMeetingsHtml = await filteredMeetingsPage.text();
+    assert.equal(filteredMeetingsPage.status, 200);
+    assert.match(filteredMeetingsHtml, /Найдено записей/u);
+    assert.match(filteredMeetingsHtml, /Уведомление и повестка заседания ТК 182/u);
+    assert.ok(!/Протокол заседания ТК 182/u.test(filteredMeetingsHtml));
+
     const meetingDetailPage = await fetch(`${webBaseUrl}/meetings/meeting-agenda-q2-2026`);
     const meetingDetailHtml = await meetingDetailPage.text();
     assert.equal(meetingDetailPage.status, 200);
@@ -132,6 +158,15 @@ test(
     assert.match(standardsHtml, /ПК 5/u);
     assert.match(standardsHtml, /ТК182-01-2026/u);
     assert.match(standardsHtml, /ГОСТ Р 70518-2025/u);
+
+    const filteredStandardsPage = await fetch(
+      `${webBaseUrl}/standards?q=70518&section=APPROVED_STANDARDS&responsibleSubcommitteeId=subcommittee-pk5&dateFrom=2026-02-01&dateTo=2026-02-28`
+    );
+    const filteredStandardsHtml = await filteredStandardsPage.text();
+    assert.equal(filteredStandardsPage.status, 200);
+    assert.match(filteredStandardsHtml, /Найдено:/u);
+    assert.match(filteredStandardsHtml, /ГОСТ Р 70518-2025/u);
+    assert.ok(!/ГОСТ Р 70501-2025/u.test(filteredStandardsHtml));
 
     const standardDetailPage = await fetch(
       `${webBaseUrl}/standards/approved-standard-ndt-2025`

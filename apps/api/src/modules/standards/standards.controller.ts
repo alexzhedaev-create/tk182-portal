@@ -22,6 +22,8 @@ import type {
   ContentMigrationStatus,
   CreateApprovedStandardDto,
   LegacyContentSection,
+  PublicStandardsFilters,
+  PublicStandardsSection,
   StandardSummary,
   StandardsPageData,
   UpdateApprovedStandardDto
@@ -39,13 +41,42 @@ export class StandardsController {
   constructor(private readonly standardsService: StandardsService) {}
 
   @Get()
-  listStandards(): Promise<StandardSummary[]> {
-    return this.standardsService.listStandards();
+  listStandards(
+    @Query("q") q?: string,
+    @Query("responsibleSubcommitteeId") responsibleSubcommitteeId?: string
+  ): Promise<StandardSummary[]> {
+    return this.standardsService.listStandards({
+      ...(q ? { q } : {}),
+      ...(responsibleSubcommitteeId ? { responsibleSubcommitteeId } : {})
+    });
   }
 
   @Get("public-content")
-  getPublicStandardsPageData(): Promise<StandardsPageData> {
-    return this.standardsService.getPublicStandardsPageData();
+  getPublicStandardsPageData(
+    @Query("q") q?: string,
+    @Query("section") section?: string,
+    @Query("dateFrom") dateFrom?: string,
+    @Query("dateTo") dateTo?: string,
+    @Query("responsibleSubcommitteeId") responsibleSubcommitteeId?: string
+  ): Promise<StandardsPageData> {
+    const filters: PublicStandardsFilters = {};
+    if (q) {
+      filters.q = q;
+    }
+    if (section) {
+      filters.section = section as PublicStandardsSection;
+    }
+    if (dateFrom) {
+      filters.dateFrom = dateFrom;
+    }
+    if (dateTo) {
+      filters.dateTo = dateTo;
+    }
+    if (responsibleSubcommitteeId) {
+      filters.responsibleSubcommitteeId = responsibleSubcommitteeId;
+    }
+
+    return this.standardsService.getPublicStandardsPageData(filters);
   }
 
   @Get("approved/:standardId")

@@ -22,7 +22,9 @@ import type {
   CreateMeetingRecordDto,
   LegacyContentSection,
   MeetingRecord,
+  MeetingRecordCategory,
   MeetingsPageData,
+  PublicMeetingsFilters,
   UpdateMeetingRecordDto
 } from "@tk182/shared-types";
 
@@ -38,8 +40,27 @@ export class MeetingsController {
   constructor(private readonly meetingsService: MeetingsService) {}
 
   @Get()
-  getMeetingsPageData(): Promise<MeetingsPageData> {
-    return this.meetingsService.getMeetingsPageData();
+  getMeetingsPageData(
+    @Query("q") q?: string,
+    @Query("category") category?: string,
+    @Query("dateFrom") dateFrom?: string,
+    @Query("dateTo") dateTo?: string
+  ): Promise<MeetingsPageData> {
+    const filters: PublicMeetingsFilters = {};
+    if (q) {
+      filters.q = q;
+    }
+    if (category) {
+      filters.category = category as MeetingRecordCategory;
+    }
+    if (dateFrom) {
+      filters.dateFrom = dateFrom;
+    }
+    if (dateTo) {
+      filters.dateTo = dateTo;
+    }
+
+    return this.meetingsService.getMeetingsPageData(filters);
   }
 
   @Get("public/:meetingId")

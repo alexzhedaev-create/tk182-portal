@@ -23,6 +23,8 @@ import type {
   DocumentSummary,
   LegacyContentSection,
   PaginatedResult,
+  PublicDocumentCategory,
+  PublicDocumentsFilters,
   PublicDocumentRecord,
   PublicDocumentsPageData,
   UpdatePublicDocumentDto
@@ -40,8 +42,27 @@ export class DocumentsController {
   constructor(private readonly documentsService: DocumentsService) {}
 
   @Get()
-  getPublicDocuments(): Promise<PublicDocumentsPageData> {
-    return this.documentsService.getPublicDocumentsPageData();
+  getPublicDocuments(
+    @Query("q") q?: string,
+    @Query("category") category?: string,
+    @Query("dateFrom") dateFrom?: string,
+    @Query("dateTo") dateTo?: string
+  ): Promise<PublicDocumentsPageData> {
+    const filters: PublicDocumentsFilters = {};
+    if (q) {
+      filters.q = q;
+    }
+    if (category) {
+      filters.category = category as PublicDocumentCategory;
+    }
+    if (dateFrom) {
+      filters.dateFrom = dateFrom;
+    }
+    if (dateTo) {
+      filters.dateTo = dateTo;
+    }
+
+    return this.documentsService.getPublicDocumentsPageData(filters);
   }
 
   @Get("public/:documentId")

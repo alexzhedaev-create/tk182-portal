@@ -1,41 +1,40 @@
 import Link from "next/link";
 
 import { getPublicApiUrl, getPublicDocumentsPageData } from "../../../lib/api";
-import { formatPublicDocumentCategory } from "../../../lib/content";
+import { formatPublicDocumentCategory, readQueryValue } from "../../../lib/content";
 import { formatDate, formatFileSize } from "../../../lib/review";
 
 export const dynamic = "force-dynamic";
 
+const documentCategories = ["MAIN_DOCUMENTS", "WORK_REPORTS", "WORK_PLANS"] as const;
+
 interface DocumentsPageProps {
   searchParams?: {
-    q?: string;
+    category?: string | string[];
+    dateFrom?: string | string[];
+    dateTo?: string | string[];
+    q?: string | string[];
   };
 }
 
 export default async function DocumentsPage({ searchParams }: DocumentsPageProps) {
+  const query = readQueryValue(searchParams?.q)?.trim() ?? "";
+  const category = readQueryValue(searchParams?.category)?.trim() ?? "";
+  const dateFrom = readQueryValue(searchParams?.dateFrom)?.trim() ?? "";
+  const dateTo = readQueryValue(searchParams?.dateTo)?.trim() ?? "";
+  const hasFilters = Boolean(query || category || dateFrom || dateTo);
   const [pageData, apiBaseUrl] = await Promise.all([
-    getPublicDocumentsPageData(),
+    getPublicDocumentsPageData({
+      ...(query ? { q: query } : {}),
+      ...(category
+        ? { category: category as (typeof documentCategories)[number] }
+        : {}),
+      ...(dateFrom ? { dateFrom } : {}),
+      ...(dateTo ? { dateTo } : {})
+    }),
     Promise.resolve(getPublicApiUrl())
   ]);
-  const query = searchParams?.q?.trim() ?? "";
-  const normalizedQuery = query.toLocaleLowerCase("ru");
-  const filteredSections = pageData.sections.map((section) => ({
-    ...section,
-    documents: normalizedQuery
-      ? section.documents.filter((document) =>
-          [document.title, document.summary]
-            .join(" ")
-            .toLocaleLowerCase("ru")
-            .includes(normalizedQuery)
-        )
-      : section.documents
-  }));
-
   const totalDocuments = pageData.sections.reduce(
-    (count, section) => count + section.documents.length,
-    0
-  );
-  const filteredDocumentsCount = filteredSections.reduce(
     (count, section) => count + section.documents.length,
     0
   );
@@ -54,13 +53,16 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
         </div>
 
         <div className="pill-row">
-          <span className="pill">Опубликовано документов: {totalDocuments}</span>
-          {query ? <span className="pill">Найдено: {filteredDocumentsCount}</span> : null}
+          <span className="pill">
+            {hasFilters ? "Найдено документов" : "Опубликовано документов"}:{" "}
+            {totalDocuments}
+          </span>
         </div>
       </section>
 
       <section className="content-card">
-        <h2>Поиск по документам</h2>
+        <div className="eyebrow">Фильтр</div>
+        <h2>Поиск и фильтр по документам</h2>
         <form className="form-grid" method="get">
           <label>
             <span className="eyebrow">Поиск</span>
@@ -72,13 +74,42 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
               placeholder="Введите название или описание документа"
             />
           </label>
+          <label>
+            <span className="eyebrow">Раздел</span>
+            <select className="text-input" name="category" defaultValue={category}>
+              <option value="">Все разделы</option>
+              {documentCategories.map((item) => (
+                <option key={item} value={item}>
+                  {formatPublicDocumentCategory(item)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span className="eyebrow">Дата</span>
+            <input
+              className="text-input"
+              type="date"
+              name="dateFrom"
+              defaultValue={dateFrom}
+            />
+          </label>
+          <label>
+            <span className="eyebrow">Дата</span>
+            <input
+              className="text-input"
+              type="date"
+              name="dateTo"
+              defaultValue={dateTo}
+            />
+          </label>
           <div className="pill-row">
             <button className="pill" type="submit">
               Найти
             </button>
-            {query ? (
+            {hasFilters ? (
               <Link className="pill" href="/documents">
-                Сбросить фильтр
+                Сбросить фильтры
               </Link>
             ) : null}
           </div>
@@ -86,7 +117,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
       </section>
 
       <section className="content-stack">
-        {filteredSections.map((section) => (
+        {pageData.sections.map((section) => (
           <article key={section.category} className="content-card">
             <h2>{formatPublicDocumentCategory(section.category)}</h2>
             <div className="content-stack">
@@ -143,7 +174,7 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
                 ))
               ) : (
                 <p>
-                  {query
+                  {hasFilters
                     ? "По выбранному фильтру документы не найдены."
                     : "В этом разделе пока нет опубликованных документов."}
                 </p>

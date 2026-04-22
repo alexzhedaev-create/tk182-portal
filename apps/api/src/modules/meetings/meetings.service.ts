@@ -5,6 +5,7 @@ import type {
   CreateMeetingRecordDto,
   MeetingRecord,
   MeetingsPageData,
+  PublicMeetingsFilters,
   UpdateMeetingRecordDto
 } from "@tk182/shared-types";
 
@@ -15,8 +16,10 @@ import type { UploadedBinaryFile } from "../content/content-file-storage.service
 export class MeetingsService {
   constructor(private readonly contentService: ContentService) {}
 
-  getMeetingsPageData(): Promise<MeetingsPageData> {
-    return this.contentService.getMeetingsPageData();
+  getMeetingsPageData(
+    filters: PublicMeetingsFilters = {}
+  ): Promise<MeetingsPageData> {
+    return this.contentService.getMeetingsPageData(filters);
   }
 
   getPublicMeeting(meetingId: string): Promise<MeetingRecord> {

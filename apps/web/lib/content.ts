@@ -5,7 +5,8 @@ import type {
   LegacyContentSection,
   LinkedPortalEntityType,
   MeetingRecordCategory,
-  PublicDocumentCategory
+  PublicDocumentCategory,
+  PublicStandardsSection
 } from "@tk182/shared-types";
 
 export function formatPublicationStatus(status: ContentPublicationStatus): string {
@@ -111,4 +112,27 @@ export function formatMeetingRecordCategory(category: MeetingRecordCategory): st
     default:
       return category;
   }
+}
+
+export function formatPublicStandardsSection(section: PublicStandardsSection): string {
+  switch (section) {
+    case "DRAFT_STANDARDS":
+      return "Проекты стандартов";
+    case "APPROVED_STANDARDS":
+      return "Утвержденные стандарты";
+    case "NATIONAL_STANDARDS_PROGRAM":
+      return "Программа разработки национальных стандартов";
+    default:
+      return section;
+  }
+}
+
+export function readQueryValue(
+  value: string | string[] | undefined
+): string | undefined {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+
+  return value;
 }

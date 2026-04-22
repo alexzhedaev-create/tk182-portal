@@ -193,6 +193,18 @@ Each public section now also has real detail pages backed by persisted content:
 
 The MVP uses stable public IDs in these routes so migrated materials can be linked and verified safely without introducing a separate slug-management layer yet.
 
+Public list pages also support practical browsing filters with URL-preserved query parameters:
+
+- `/news`: text search and publication date range
+- `/documents`: text search, section filter, and publication date range
+- `/meetings`: text search, section filter, and publication date range
+- `/standards`: text search, section filter, responsible-subcommittee filter, and publication date range for published materials
+
+Current MVP limitation for standards browsing:
+
+- the date filter applies to approved standards and public program documents
+- draft standards do not yet have a separate public publication-date index, so when a date filter is used the draft-standard block is intentionally narrowed out
+
 Manual migration from the old `viam.ru/tk182` site is intentionally supported through secretariat backoffice rather than scraping:
 
 - create or update public records in `http://127.0.0.1:3000/secretariat/content`
@@ -311,8 +323,9 @@ The seed script recreates several demo text attachments for the active and archi
    - `Протоколы заседаний`
 9. In `Утвержденные стандарты`, create the public standard card, choose the responsible subcommittee, and upload the file if needed
 10. Open `/news`, `/documents`, `/meetings`, and `/standards` to verify public visibility
-11. Open the corresponding public detail page from the list and verify metadata, Russian labels, and file links
-12. Check `Журнал изменений контента` to review create, update, publish, and unpublish actions
+11. Use `Поиск`, `Раздел`, `Дата` and `Ответственный подкомитет` where available to check public filtering
+12. Open the corresponding public detail page from the filtered list and verify metadata, Russian labels, and file links
+13. Check `Журнал изменений контента` to review create, update, publish, and unpublish actions
 
 Recommended manual migration workflow from the old TK 182 site:
 
@@ -322,8 +335,9 @@ Recommended manual migration workflow from the old TK 182 site:
 4. Set `Источник на старом сайте` to the exact legacy URL.
 5. Save the record with `Статус переноса = Не перенесено` or `Перенесено`.
 6. Publish the record and open its public list card.
-7. Open the public detail page, review metadata, description, and file link in the new portal.
-8. When the migrated card and file are verified, switch `Статус переноса` to `Проверено`.
+7. Use the public search and section filters to find the migrated record by title, date, category, or responsible subcommittee.
+8. Open the public detail page, review metadata, description, and file link in the new portal.
+9. When the migrated card and file are verified, switch `Статус переноса` to `Проверено`.
 
 Current MVP constraints for public content:
 
@@ -404,6 +418,7 @@ The MVP now includes integration/e2e coverage for the current core flows:
 - seeded TK 182 leadership, secretariat, subcommittee, and standard-to-subcommittee API coverage
 - committee structure backoffice CRUD, audit creation, and public-structure reflection
 - public list/detail retrieval for news, documents, meetings, and approved standards
+- public search/filtering for news, documents, meetings, and standards
 - production-like `next start` checks for the current Russian UI
 - browser-level Playwright scenarios for the current Russian UI
 

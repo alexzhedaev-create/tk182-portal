@@ -189,6 +189,57 @@ test(
 );
 
 test(
+  "public content endpoints support search and filters",
+  { timeout: 120000 },
+  async () => {
+    const publicClient = new SessionClient(apiBaseUrl);
+
+    const filteredNews = await publicClient.requestJson(
+      "/news?q=%D0%BA%D0%BE%D0%BD%D1%82%D1%83%D1%80&dateFrom=2026-04-18&dateTo=2026-04-18"
+    );
+    assert.equal(filteredNews.response.status, 200);
+    assert.equal(filteredNews.data.length, 1);
+    assert.equal(filteredNews.data[0].id, "news-portal-content-launch");
+
+    const filteredDocuments = await publicClient.requestJson(
+      "/documents?q=%D0%9F%D0%BE%D0%BB%D0%BE%D0%B6%D0%B5%D0%BD%D0%B8%D0%B5&category=MAIN_DOCUMENTS&dateFrom=2026-01-01&dateTo=2026-01-31"
+    );
+    assert.equal(filteredDocuments.response.status, 200);
+    assert.equal(filteredDocuments.data.sections.length, 1);
+    assert.equal(filteredDocuments.data.sections[0].category, "MAIN_DOCUMENTS");
+    assert.equal(filteredDocuments.data.sections[0].documents.length, 1);
+    assert.equal(
+      filteredDocuments.data.sections[0].documents[0].id,
+      "public-document-main-regulation"
+    );
+
+    const filteredMeetings = await publicClient.requestJson(
+      "/meetings?q=%D0%BF%D0%BE%D0%B2%D0%B5%D1%81%D1%82%D0%BA%D0%B0&category=MEETING_AGENDA&dateFrom=2026-04-01&dateTo=2026-04-30"
+    );
+    assert.equal(filteredMeetings.response.status, 200);
+    assert.equal(filteredMeetings.data.sections.length, 1);
+    assert.equal(filteredMeetings.data.sections[0].category, "MEETING_AGENDA");
+    assert.equal(filteredMeetings.data.sections[0].meetings.length, 1);
+    assert.equal(
+      filteredMeetings.data.sections[0].meetings[0].id,
+      "meeting-agenda-q2-2026"
+    );
+
+    const filteredStandards = await publicClient.requestJson(
+      "/standards/public-content?q=70518&section=APPROVED_STANDARDS&responsibleSubcommitteeId=subcommittee-pk5&dateFrom=2026-02-01&dateTo=2026-02-28"
+    );
+    assert.equal(filteredStandards.response.status, 200);
+    assert.equal(filteredStandards.data.approvedStandards.length, 1);
+    assert.equal(
+      filteredStandards.data.approvedStandards[0].id,
+      "approved-standard-ndt-2025"
+    );
+    assert.equal(filteredStandards.data.draftStandards.length, 0);
+    assert.equal(filteredStandards.data.nationalStandardsProgramDocuments.length, 0);
+  }
+);
+
+test(
   "secretariat can create public content and published items become visible on public endpoints",
   { timeout: 120000 },
   async () => {
