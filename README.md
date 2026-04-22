@@ -5,7 +5,7 @@ TK182 Portal is the local MVP monorepo for the official Technical Committee 182 
 The repository now includes a real first review workflow on top of the existing auth and PostgreSQL foundation:
 - public website in Russian
 - participant workspace for reviewing assigned draft standards
-- secretariat workspace for tracking cycle progress, participant responses, comment statuses, and version files
+- secretariat workspace for creating projects, versions, review cycles, participant assignments, and tracking cycle progress
 - participant notification center for important workflow events
 
 The MVP remains local-only. There are no cloud integrations, no external auth providers, and no multilingual infrastructure yet. User-facing UI is Russian only in this phase.
@@ -115,6 +115,7 @@ The current seed demonstrates the first real draft standard review slice:
 - persistent audit trail for core review and file actions
 - persistent in-portal notifications for participant-facing workflow events
 - local version-file storage with DB metadata and role-based download access
+- secretariat backoffice flow for creating draft standards, versions, cycles, and assignments
 
 Core persisted entities now include:
 
@@ -170,24 +171,50 @@ The seed script recreates several demo text attachments for the active and archi
 2. Sign in as `secretariat@tk182.local`
 3. Open `Циклы согласования`
 4. Verify active and archived cycles
-5. Open an active cycle
-6. Check:
+5. Перейдите в `Проекты стандартов`
+6. При необходимости создайте:
+   - новый проект стандарта
+   - новую версию
+   - новый цикл согласования
+7. Откройте созданный или существующий цикл
+8. Назначьте участника на цикл
+9. Откройте цикл для участников кнопкой `Открыть цикл`
+10. Check:
    - total participants
    - responded participants
    - pending participants
-7. In `Файлы версии`, upload a new file for the current version
-8. Update file description or visibility if needed
-9. Download the file and, if needed, delete it
-10. Review participant positions
-11. Update a comment status to one of:
+11. In `Файлы версии`, upload a new file for the current version
+12. Update file description or visibility if needed
+13. Download the file and, if needed, delete it
+14. Review participant positions
+15. Update a comment status to one of:
    - `Получено`
    - `На рассмотрении`
    - `Принято`
    - `Принято частично`
    - `Отклонено`
    - `Нужно уточнение`
-12. Add or update the secretariat response text
-13. Check `Журнал изменений` on the cycle page to review recorded actions
+16. Add or update the secretariat response text
+17. Check `Журнал изменений` on the cycle page to review recorded actions
+
+### Secretariat backoffice flow
+
+1. Sign in as `secretariat@tk182.local` or `admin@tk182.local`
+2. Open `http://127.0.0.1:3000/secretariat/projects`
+3. In `Новый проект стандарта`, create a draft standard card
+4. Open the created project
+5. In `Новая версия`, add the first version metadata
+6. In `Новый цикл согласования`, create a cycle and attach the version
+7. Open the created cycle page
+8. In `Назначения участников`, choose a seeded participant and save the assignment
+9. In `Параметры цикла`, click `Открыть цикл`
+10. Sign in as the participant and confirm that the new active cycle is now visible in `На согласовании`
+
+New cycles created in the backoffice are connected to the existing participant workflow:
+
+- draft cycle + assignment does not yet expose the cycle to participants
+- once the cycle is opened, assigned participants see it in `На согласовании`
+- opening a cycle also creates participant notifications for the assignment
 
 ### File upload and download checks
 
@@ -219,6 +246,7 @@ The MVP now includes integration/e2e coverage for the current core flows:
 - forbidden participant download of secretariat-only files
 - audit trail creation for participant and secretariat review actions
 - participant notification creation and read/unread state updates
+- secretariat backoffice creation of draft standards, versions, cycles, assignments, and cycle activation
 - production-like `next start` checks for the current Russian UI
 - browser-level Playwright scenarios for the current Russian UI
 
@@ -268,6 +296,7 @@ The Playwright suite covers:
 - secretariat comment status update and response editing through the browser UI
 - secretariat file upload through the browser UI
 - secretariat audit-trail visibility in `Журнал изменений`
+- secretariat backoffice creation of a new project, version, cycle, assignment, and participant visibility
 - unauthenticated redirects to `/login`
 - wrong-role access to the secretariat area for a participant
 
@@ -358,6 +387,10 @@ What is intentionally out of scope for now:
 
 The MVP audit trail covers persistent workflow events for:
 
+- draft standard creation and metadata updates
+- draft standard version creation
+- review cycle creation, metadata updates, opening, and closing
+- participant assignment to a cycle
 - participant comment creation
 - participant comment editing
 - participant comment deletion
@@ -403,6 +436,7 @@ Implemented now:
 - local credential auth with hashed passwords and httpOnly sessions
 - participant review endpoints and UI
 - secretariat review management endpoints and UI
+- secretariat backoffice endpoints and UI for projects, versions, cycles, and assignments
 - local upload/download pipeline for draft standard version files
 - persistent audit trail for the current review workflow actions
 - persistent participant notifications with unread/read flow inside the portal

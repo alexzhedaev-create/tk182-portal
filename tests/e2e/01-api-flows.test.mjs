@@ -435,3 +435,184 @@ test(
     );
   }
 );
+
+test(
+  "secretariat backoffice can create a project, version, cycle, assignment, and open it for a participant",
+  { timeout: 120000 },
+  async () => {
+    const secretariat = new SessionClient(apiBaseUrl);
+    const participant = new SessionClient(apiBaseUrl);
+    await loginAs(secretariat, secretariatCredentials);
+    await loginAs(participant, participantCredentials);
+
+    const uniqueMarker = `${Date.now()}`;
+    const draftCode = `ТК182-AUTO-${uniqueMarker}`;
+    const draftTitle = `Автотестовый проект стандарта ${uniqueMarker}`;
+    const cycleTitle = `Автотестовый цикл ${uniqueMarker}`;
+
+    const createdDraftStandard = await secretariat.requestJson(
+      "/approval/secretariat/draft-standards",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          code: draftCode,
+          title: draftTitle,
+          summary: "Автотестовое описание проекта стандарта для проверки backoffice-flow.",
+          stage: "Подготовка"
+        })
+      }
+    );
+    assertCreatedOrOk(
+      createdDraftStandard.response.status,
+      createdDraftStandard.text
+    );
+    assert.equal(createdDraftStandard.data.draftStandard.code, draftCode);
+    const draftStandardId = createdDraftStandard.data.draftStandard.id;
+
+    const createdVersion = await secretariat.requestJson(
+      `/approval/secretariat/draft-standards/${draftStandardId}/versions`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          versionLabel: "Редакция 0.1",
+          revisionSummary: "Автотестовая первая редакция для нового проекта.",
+          fileName: `autotest-${uniqueMarker}.docx`,
+          fileNote: "Основной файл автотестовой версии.",
+          publishedAt: "2026-04-22T10:00:00.000Z"
+        })
+      }
+    );
+    assertCreatedOrOk(createdVersion.response.status, createdVersion.text);
+    assert.equal(createdVersion.data.versionLabel, "Редакция 0.1");
+
+    const createdCycle = await secretariat.requestJson(
+      `/approval/secretariat/draft-standards/${draftStandardId}/cycles`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          draftStandardVersionId: createdVersion.data.id,
+          title: cycleTitle,
+          description: "Автотестовый цикл согласования для проверки назначения.",
+          opensAt: "2026-04-22T10:00:00.000Z",
+          deadlineAt: "2026-05-22T10:00:00.000Z"
+        })
+      }
+    );
+    assertCreatedOrOk(createdCycle.response.status, createdCycle.text);
+    assert.equal(createdCycle.data.cycle.cycle.status, "draft");
+    const cycleId = createdCycle.data.cycle.cycle.id;
+
+    const initialAssignments = await secretariat.requestJson(
+      `/approval/secretariat/cycles/${cycleId}/assignments`
+    );
+    assert.equal(initialAssignments.response.status, 200);
+    assert.equal(initialAssignments.data.length, 0);
+
+    const createdAssignment = await secretariat.requestJson(
+      `/approval/secretariat/cycles/${cycleId}/assignments`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          userId: "user-participant",
+          organizationId: "org-ural-techmash"
+        })
+      }
+    );
+    assertCreatedOrOk(createdAssignment.response.status, createdAssignment.text);
+    assert.equal(createdAssignment.data.userId, "user-participant");
+    assert.equal(createdAssignment.data.organizationId, "org-ural-techmash");
+
+    const activatedCycle = await secretariat.requestJson(
+      `/approval/secretariat/cycles/${cycleId}/activate`,
+      {
+        method: "POST"
+      }
+    );
+    assertCreatedOrOk(activatedCycle.response.status, activatedCycle.text);
+    assert.equal(activatedCycle.data.cycle.cycle.status, "open");
+
+    const participantCycles = await participant.requestJson("/approval/participant/cycles");
+    assert.equal(participantCycles.response.status, 200);
+    const createdParticipantCycle = participantCycles.data.find(
+      (item) => item.cycle.id === cycleId
+    );
+    assert.ok(createdParticipantCycle);
+    assert.equal(createdParticipantCycle.draftStandard.id, draftStandardId);
+    assert.equal(createdParticipantCycle.draftStandard.title, draftTitle);
+
+    const participantDraftCard = await participant.requestJson(
+      `/approval/participant/cycles/${cycleId}/drafts/${draftStandardId}`
+    );
+    assert.equal(participantDraftCard.response.status, 200);
+    assert.equal(participantDraftCard.data.currentVersion.id, createdVersion.data.id);
+    assert.equal(participantDraftCard.data.draftStandard.title, draftTitle);
+
+    const participantNotifications = await participant.requestJson("/notifications");
+    assert.equal(participantNotifications.response.status, 200);
+    assert.ok(
+      participantNotifications.data.some(
+        (notification) =>
+          notification.type === "ASSIGNED_TO_ACTIVE_CYCLE" &&
+          notification.relatedCycleId === cycleId
+      )
+    );
+
+    const draftAudit = await secretariat.requestJson(
+      `/audit/draft-standards/${draftStandardId}/events`
+    );
+    assert.equal(draftAudit.response.status, 200);
+    assert.ok(
+      draftAudit.data.some(
+        (event) =>
+          event.actionType === "DRAFT_STANDARD_CREATED" &&
+          event.entityType === "DRAFT_STANDARD"
+      )
+    );
+    assert.ok(
+      draftAudit.data.some(
+        (event) =>
+          event.actionType === "VERSION_CREATED" &&
+          event.entityType === "DRAFT_STANDARD_VERSION"
+      )
+    );
+    assert.ok(
+      draftAudit.data.some(
+        (event) =>
+          event.actionType === "REVIEW_CYCLE_CREATED" &&
+          event.entityType === "REVIEW_CYCLE" &&
+          event.relatedCycleId === cycleId
+      )
+    );
+
+    const cycleAudit = await secretariat.requestJson(
+      `/audit/review-cycles/${cycleId}/events`
+    );
+    assert.equal(cycleAudit.response.status, 200);
+    assert.ok(
+      cycleAudit.data.some(
+        (event) =>
+          event.actionType === "REVIEW_ASSIGNMENT_CREATED" &&
+          event.entityType === "REVIEW_ASSIGNMENT"
+      )
+    );
+    assert.ok(
+      cycleAudit.data.some(
+        (event) =>
+          event.actionType === "REVIEW_CYCLE_ACTIVATED" &&
+          event.entityType === "REVIEW_CYCLE"
+      )
+    );
+  }
+);

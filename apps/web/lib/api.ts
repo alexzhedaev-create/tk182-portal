@@ -2,15 +2,20 @@ import "server-only";
 
 import type {
   ApprovalAuditEvent,
+  AuthenticatedUser,
   DocumentSummary,
   NotificationRecord,
   NotificationUnreadCountDto,
+  OrganizationSummary,
   PaginatedResult,
   ParticipantAssignedReviewCycle,
   ParticipantDraftStandardCard,
   ParticipantPositionRecord,
   ReviewCommentRecord,
   SecretariatCycleDetail,
+  SecretariatDraftStandardDetail,
+  SecretariatDraftStandardListItem,
+  SecretariatReviewAssignmentRecord,
   SecretariatReviewCycleListItem,
   SessionResponseDto
 } from "@tk182/shared-types";
@@ -111,11 +116,33 @@ export function getSecretariatCycles(): Promise<SecretariatReviewCycleListItem[]
   return fetchFromApi<SecretariatReviewCycleListItem[]>("/approval/secretariat/cycles");
 }
 
+export function getSecretariatDraftStandards(): Promise<SecretariatDraftStandardListItem[]> {
+  return fetchFromApi<SecretariatDraftStandardListItem[]>(
+    "/approval/secretariat/draft-standards"
+  );
+}
+
+export function getSecretariatDraftStandardDetail(
+  draftStandardId: string
+): Promise<SecretariatDraftStandardDetail> {
+  return fetchFromApi<SecretariatDraftStandardDetail>(
+    `/approval/secretariat/draft-standards/${encodeURIComponent(draftStandardId)}`
+  );
+}
+
 export function getSecretariatCycleDetail(
   cycleId: string
 ): Promise<SecretariatCycleDetail> {
   return fetchFromApi<SecretariatCycleDetail>(
     `/approval/secretariat/cycles/${encodeURIComponent(cycleId)}`
+  );
+}
+
+export function getSecretariatCycleAssignments(
+  cycleId: string
+): Promise<SecretariatReviewAssignmentRecord[]> {
+  return fetchFromApi<SecretariatReviewAssignmentRecord[]>(
+    `/approval/secretariat/cycles/${encodeURIComponent(cycleId)}/assignments`
   );
 }
 
@@ -125,6 +152,14 @@ export function getReviewCycleAuditEvents(
   return fetchFromApi<ApprovalAuditEvent[]>(
     `/audit/review-cycles/${encodeURIComponent(cycleId)}/events`
   );
+}
+
+export function getUsers(): Promise<AuthenticatedUser[]> {
+  return fetchFromApi<AuthenticatedUser[]>("/users");
+}
+
+export function getOrganizations(): Promise<OrganizationSummary[]> {
+  return fetchFromApi<OrganizationSummary[]>("/organizations");
 }
 
 export function getMyNotifications(): Promise<NotificationRecord[]> {

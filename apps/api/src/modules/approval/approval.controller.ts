@@ -18,6 +18,10 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type {
+  AssignReviewParticipantDto,
+  CreateDraftStandardDto,
+  CreateDraftStandardVersionDto,
+  CreateReviewCycleDto,
   CreateVersionFileDto,
   CreateReviewCommentDto,
   MutationResponseDto,
@@ -26,9 +30,15 @@ import type {
   ParticipantPositionRecord,
   ReviewAttachmentSummary,
   ReviewCommentRecord,
+  SecretariatDraftStandardDetail,
+  SecretariatDraftStandardListItem,
+  SecretariatDraftStandardVersionRecord,
+  SecretariatReviewAssignmentRecord,
   SecretariatCycleDetail,
   SecretariatReviewCycleListItem,
   SubmitParticipantPositionDto,
+  UpdateDraftStandardDto,
+  UpdateReviewCycleDto,
   UpdateVersionFileDto,
   UpdateReviewCommentDto,
   UpdateReviewCommentStatusDto
@@ -48,6 +58,89 @@ export class ApprovalController {
   @Get()
   getSummary() {
     return this.approvalService.getSummary();
+  }
+
+  @Get("secretariat/draft-standards")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  listSecretariatDraftStandards(): Promise<SecretariatDraftStandardListItem[]> {
+    return this.approvalService.listSecretariatDraftStandards();
+  }
+
+  @Post("secretariat/draft-standards")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  createSecretariatDraftStandard(
+    @Req() request: AuthenticatedRequest,
+    @Body() payload: CreateDraftStandardDto
+  ): Promise<SecretariatDraftStandardDetail> {
+    return this.approvalService.createSecretariatDraftStandard(
+      request.authSession!.user.id,
+      payload
+    );
+  }
+
+  @Get("secretariat/draft-standards/:draftStandardId")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  getSecretariatDraftStandardDetail(
+    @Param("draftStandardId") draftStandardId: string
+  ): Promise<SecretariatDraftStandardDetail> {
+    return this.approvalService.getSecretariatDraftStandardDetail(draftStandardId);
+  }
+
+  @Patch("secretariat/draft-standards/:draftStandardId")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  updateSecretariatDraftStandard(
+    @Req() request: AuthenticatedRequest,
+    @Param("draftStandardId") draftStandardId: string,
+    @Body() payload: UpdateDraftStandardDto
+  ): Promise<SecretariatDraftStandardDetail> {
+    return this.approvalService.updateSecretariatDraftStandard(
+      request.authSession!.user.id,
+      draftStandardId,
+      payload
+    );
+  }
+
+  @Get("secretariat/draft-standards/:draftStandardId/versions")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  listSecretariatDraftStandardVersions(
+    @Param("draftStandardId") draftStandardId: string
+  ): Promise<SecretariatDraftStandardVersionRecord[]> {
+    return this.approvalService.listSecretariatDraftStandardVersions(draftStandardId);
+  }
+
+  @Post("secretariat/draft-standards/:draftStandardId/versions")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  createSecretariatDraftStandardVersion(
+    @Req() request: AuthenticatedRequest,
+    @Param("draftStandardId") draftStandardId: string,
+    @Body() payload: CreateDraftStandardVersionDto
+  ): Promise<SecretariatDraftStandardVersionRecord> {
+    return this.approvalService.createSecretariatDraftStandardVersion(
+      request.authSession!.user.id,
+      draftStandardId,
+      payload
+    );
+  }
+
+  @Post("secretariat/draft-standards/:draftStandardId/cycles")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  createSecretariatReviewCycle(
+    @Req() request: AuthenticatedRequest,
+    @Param("draftStandardId") draftStandardId: string,
+    @Body() payload: CreateReviewCycleDto
+  ): Promise<SecretariatCycleDetail> {
+    return this.approvalService.createSecretariatReviewCycle(
+      request.authSession!.user.id,
+      draftStandardId,
+      payload
+    );
   }
 
   @Get("participant/cycles")
@@ -218,6 +311,71 @@ export class ApprovalController {
     @Param("cycleId") cycleId: string
   ): Promise<SecretariatCycleDetail> {
     return this.approvalService.getSecretariatCycleDetail(cycleId);
+  }
+
+  @Patch("secretariat/cycles/:cycleId")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  updateSecretariatCycle(
+    @Req() request: AuthenticatedRequest,
+    @Param("cycleId") cycleId: string,
+    @Body() payload: UpdateReviewCycleDto
+  ): Promise<SecretariatCycleDetail> {
+    return this.approvalService.updateSecretariatReviewCycle(
+      request.authSession!.user.id,
+      cycleId,
+      payload
+    );
+  }
+
+  @Get("secretariat/cycles/:cycleId/assignments")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  listSecretariatCycleAssignments(
+    @Param("cycleId") cycleId: string
+  ): Promise<SecretariatReviewAssignmentRecord[]> {
+    return this.approvalService.listSecretariatCycleAssignments(cycleId);
+  }
+
+  @Post("secretariat/cycles/:cycleId/assignments")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  createSecretariatCycleAssignment(
+    @Req() request: AuthenticatedRequest,
+    @Param("cycleId") cycleId: string,
+    @Body() payload: AssignReviewParticipantDto
+  ): Promise<SecretariatReviewAssignmentRecord> {
+    return this.approvalService.assignParticipantToCycle(
+      request.authSession!.user.id,
+      cycleId,
+      payload
+    );
+  }
+
+  @Post("secretariat/cycles/:cycleId/activate")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  activateSecretariatCycle(
+    @Req() request: AuthenticatedRequest,
+    @Param("cycleId") cycleId: string
+  ): Promise<SecretariatCycleDetail> {
+    return this.approvalService.activateSecretariatReviewCycle(
+      request.authSession!.user.id,
+      cycleId
+    );
+  }
+
+  @Post("secretariat/cycles/:cycleId/close")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  closeSecretariatCycle(
+    @Req() request: AuthenticatedRequest,
+    @Param("cycleId") cycleId: string
+  ): Promise<SecretariatCycleDetail> {
+    return this.approvalService.closeSecretariatReviewCycle(
+      request.authSession!.user.id,
+      cycleId
+    );
   }
 
   @Get("secretariat/versions/:versionId/files")

@@ -1,14 +1,19 @@
 import { redirect } from "next/navigation";
 
 import { AccessDeniedCard } from "../../../../../components/access-denied-card";
+import { SecretariatAssignmentPanel } from "../../../../../components/secretariat-assignment-panel";
 import { SecretariatAuditTrail } from "../../../../../components/secretariat-audit-trail";
+import { SecretariatCycleManagementPanel } from "../../../../../components/secretariat-cycle-management-panel";
 import { SecretariatCommentsPanel } from "../../../../../components/secretariat-comments-panel";
 import { SecretariatVersionFilesPanel } from "../../../../../components/secretariat-version-files-panel";
 import { WorkspaceSessionCard } from "../../../../../components/workspace-session-card";
 import {
+  getSecretariatCycleAssignments,
   getReviewCycleAuditEvents,
   getSecretariatCycleDetail,
-  getServerSession
+  getSecretariatDraftStandardDetail,
+  getServerSession,
+  getUsers
 } from "../../../../../lib/api";
 import { canAccessWorkspace } from "../../../../../lib/auth";
 import {
@@ -43,10 +48,15 @@ export default async function SecretariatCycleDetailPage({
     );
   }
 
-  const [detail, auditEvents] = await Promise.all([
+  const [detail, auditEvents, assignments, users] = await Promise.all([
     getSecretariatCycleDetail(params.cycleId),
-    getReviewCycleAuditEvents(params.cycleId)
+    getReviewCycleAuditEvents(params.cycleId),
+    getSecretariatCycleAssignments(params.cycleId),
+    getUsers()
   ]);
+  const draftStandardDetail = await getSecretariatDraftStandardDetail(
+    detail.cycle.draftStandard.id
+  );
 
   return (
     <div className="page-frame">
@@ -73,7 +83,7 @@ export default async function SecretariatCycleDetailPage({
         <WorkspaceSessionCard heading="Текущая сессия" user={session.user} />
 
         <article className="content-card">
-          <h2>Параметры цикла</h2>
+          <h2>Текущая версия и публикация</h2>
           <div className="content-stack">
             <div>
               <strong>Редакция</strong>
@@ -115,6 +125,20 @@ export default async function SecretariatCycleDetailPage({
             </div>
           </div>
         </article>
+      </section>
+
+      <section className="info-grid">
+        <SecretariatCycleManagementPanel
+          cycleId={params.cycleId}
+          currentCycle={detail.cycle}
+          description={detail.description}
+          versions={draftStandardDetail.versions}
+        />
+        <SecretariatAssignmentPanel
+          assignments={assignments}
+          cycleId={params.cycleId}
+          participants={users}
+        />
       </section>
 
       <SecretariatVersionFilesPanel

@@ -28,6 +28,14 @@ export type NotificationType =
   | "VERSION_FILE_UPLOADED";
 
 export type AuditActionType =
+  | "DRAFT_STANDARD_CREATED"
+  | "DRAFT_STANDARD_UPDATED"
+  | "VERSION_CREATED"
+  | "REVIEW_CYCLE_CREATED"
+  | "REVIEW_CYCLE_UPDATED"
+  | "REVIEW_CYCLE_ACTIVATED"
+  | "REVIEW_CYCLE_CLOSED"
+  | "REVIEW_ASSIGNMENT_CREATED"
   | "COMMENT_CREATED"
   | "COMMENT_UPDATED"
   | "COMMENT_DELETED"
@@ -40,6 +48,10 @@ export type AuditActionType =
   | "FILE_DELETED";
 
 export type AuditEntityType =
+  | "DRAFT_STANDARD"
+  | "DRAFT_STANDARD_VERSION"
+  | "REVIEW_CYCLE"
+  | "REVIEW_ASSIGNMENT"
   | "REVIEW_COMMENT"
   | "PARTICIPANT_POSITION"
   | "VERSION_FILE";
@@ -59,6 +71,25 @@ export interface DraftStandardVersionSummary {
   fileName: string;
   fileNote: string;
   publishedAt: string;
+}
+
+export interface SecretariatDraftStandardRecord extends DraftStandardSummary {
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SecretariatDraftStandardListItem {
+  draftStandard: SecretariatDraftStandardRecord;
+  versionsCount: number;
+  cyclesCount: number;
+  activeCyclesCount: number;
+  latestVersionLabel: string | null;
+}
+
+export interface SecretariatDraftStandardVersionRecord
+  extends DraftStandardVersionSummary {
+  draftStandardId: string;
+  attachmentsCount: number;
 }
 
 export interface ReviewAttachmentSummary {
@@ -146,9 +177,28 @@ export interface SecretariatParticipantResponse {
 
 export interface SecretariatCycleDetail {
   cycle: SecretariatReviewCycleListItem;
+  description: string;
   participants: SecretariatParticipantResponse[];
   comments: ReviewCommentRecord[];
   versionFiles: ReviewAttachmentSummary[];
+}
+
+export interface SecretariatReviewAssignmentRecord {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  organizationShortName: string;
+  userId: string;
+  userDisplayName: string;
+  userEmail: string;
+  assignedAt: string;
+  respondedAt: string | null;
+}
+
+export interface SecretariatDraftStandardDetail {
+  draftStandard: SecretariatDraftStandardRecord;
+  versions: SecretariatDraftStandardVersionRecord[];
+  cycles: SecretariatReviewCycleListItem[];
 }
 
 export interface ApprovalAuditEvent {
@@ -205,6 +255,49 @@ export interface CreateVersionFileDto {
 export interface UpdateVersionFileDto {
   description?: string | null;
   visibility?: ReviewFileVisibility | null;
+}
+
+export interface CreateDraftStandardDto {
+  code: string;
+  title: string;
+  summary: string;
+  stage: string;
+}
+
+export interface UpdateDraftStandardDto {
+  code: string;
+  title: string;
+  summary: string;
+  stage: string;
+}
+
+export interface CreateDraftStandardVersionDto {
+  versionLabel: string;
+  revisionSummary: string;
+  fileName: string;
+  fileNote: string;
+  publishedAt: string;
+}
+
+export interface CreateReviewCycleDto {
+  draftStandardVersionId: string;
+  title: string;
+  description: string;
+  opensAt: string;
+  deadlineAt: string;
+}
+
+export interface UpdateReviewCycleDto {
+  draftStandardVersionId?: string | null;
+  title: string;
+  description: string;
+  opensAt: string;
+  deadlineAt: string;
+}
+
+export interface AssignReviewParticipantDto {
+  userId: string;
+  organizationId: string;
 }
 
 export interface MutationResponseDto {

@@ -7,6 +7,10 @@ import {
   NotFoundException
 } from "@nestjs/common";
 import type {
+  AssignReviewParticipantDto,
+  CreateDraftStandardDto,
+  CreateDraftStandardVersionDto,
+  CreateReviewCycleDto,
   CreateVersionFileDto,
   CreateReviewCommentDto,
   MutationResponseDto,
@@ -20,9 +24,16 @@ import type {
   ReviewCommentStatus,
   ReviewFileVisibility,
   SecretariatCycleDetail,
+  SecretariatDraftStandardDetail,
+  SecretariatDraftStandardListItem,
+  SecretariatDraftStandardRecord,
+  SecretariatDraftStandardVersionRecord,
   SecretariatParticipantResponse,
+  SecretariatReviewAssignmentRecord,
   SecretariatReviewCycleListItem,
   SubmitParticipantPositionDto,
+  UpdateDraftStandardDto,
+  UpdateReviewCycleDto,
   UpdateVersionFileDto,
   UpdateReviewCommentDto,
   UpdateReviewCommentStatusDto
@@ -196,6 +207,84 @@ interface VersionFileDownloadPayload {
   streamPath: string;
 }
 
+interface DraftStandardListRow {
+  active_cycles_count: string;
+  code: string;
+  created_at: string;
+  cycles_count: string;
+  id: string;
+  latest_version_label: string | null;
+  stage: string;
+  summary: string;
+  title: string;
+  updated_at: string;
+  versions_count: string;
+}
+
+interface DraftStandardRow {
+  code: string;
+  created_at: string;
+  id: string;
+  stage: string;
+  summary: string;
+  title: string;
+  updated_at: string;
+}
+
+interface DraftStandardVersionRow {
+  attachments_count: string;
+  draft_standard_id: string;
+  file_name: string;
+  file_note: string;
+  id: string;
+  published_at: string;
+  revision_summary: string;
+  version_label: string;
+}
+
+interface ReviewCycleManagementRow {
+  created_by_user_id: string | null;
+  deadline_at: string;
+  description: string;
+  draft_standard_id: string;
+  draft_standard_version_id: string;
+  id: string;
+  opens_at: string;
+  status: "draft" | "open" | "closed";
+  title: string;
+}
+
+interface ReviewAssignmentRow {
+  assigned_at: string;
+  id: string;
+  organization_id: string;
+  organization_name: string;
+  organization_short_name: string;
+  responded_at: string | null;
+  user_display_name: string;
+  user_email: string;
+  user_id: string;
+}
+
+interface AssignableParticipantRow {
+  organization_id: string | null;
+  organization_name: string | null;
+  organization_short_name: string | null;
+  role: "ADMIN" | "SECRETARIAT" | "PARTICIPANT";
+  user_display_name: string;
+  user_email: string;
+  user_id: string;
+}
+
+interface CycleNotificationRecipientRow {
+  cycle_deadline_at: string;
+  cycle_id: string;
+  cycle_title: string;
+  draft_standard_id: string;
+  draft_standard_title: string;
+  user_id: string;
+}
+
 const REVIEW_COMMENT_STATUSES: readonly ReviewCommentStatus[] = [
   "RECEIVED",
   "IN_REVIEW",
@@ -235,6 +324,592 @@ export class ApprovalService {
       ),
       status: "active" as const
     };
+  }
+
+  async listSecretariatDraftStandards(): Promise<SecretariatDraftStandardListItem[]> {
+    const result = await this.databaseService.query<DraftStandardListRow>(
+      `
+        SELECT
+          ds.id,
+          ds.code,
+          ds.title,
+          ds.summary,
+          ds.stage,
+          ds.created_at,
+          ds.updated_at,
+          (
+            SELECT COUNT(*)::text
+            FROM draft_standard_versions dsv
+            WHERE dsv.draft_standard_id = ds.id
+          ) AS versions_count,
+          (
+            SELECT COUNT(*)::text
+            FROM review_cycles rc
+            WHERE rc.draft_standard_id = ds.id
+          ) AS cycles_count,
+          (
+            SELECT COUNT(*)::text
+            FROM review_cycles rc
+            WHERE rc.draft_standard_id = ds.id
+              AND rc.status = 'open'
+          ) AS active_cycles_count,
+          (
+            SELECT dsv.version_label
+            FROM draft_standard_versions dsv
+            WHERE dsv.draft_standard_id = ds.id
+            ORDER BY dsv.published_at DESC, dsv.created_at DESC
+            LIMIT 1
+          ) AS latest_version_label
+        FROM draft_standards ds
+        ORDER BY ds.updated_at DESC, ds.code ASC
+      `
+    );
+
+    return result.rows.map((row) => ({
+      draftStandard: this.mapDraftStandard(row),
+      versionsCount: Number.parseInt(row.versions_count, 10),
+      cyclesCount: Number.parseInt(row.cycles_count, 10),
+      activeCyclesCount: Number.parseInt(row.active_cycles_count, 10),
+      latestVersionLabel: row.latest_version_label
+    }));
+  }
+
+  async createSecretariatDraftStandard(
+    userId: string,
+    payload: CreateDraftStandardDto
+  ): Promise<SecretariatDraftStandardDetail> {
+    const normalized = this.normalizeDraftStandardPayload(payload);
+    const draftStandardId = `draft-standard-${randomUUID()}`;
+
+    try {
+      await this.databaseService.query(
+        `
+          INSERT INTO draft_standards (
+            id,
+            code,
+            title,
+            summary,
+            stage
+          )
+          VALUES ($1, $2, $3, $4, $5)
+        `,
+        [
+          draftStandardId,
+          normalized.code,
+          normalized.title,
+          normalized.summary,
+          normalized.stage
+        ]
+      );
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        throw new BadRequestException(
+          "Проект стандарта с таким кодом уже существует."
+        );
+      }
+
+      throw error;
+    }
+
+    const createdDraftStandard = await this.getDraftStandardRowById(draftStandardId);
+
+    await this.auditService.recordEvent({
+      actorUserId: userId,
+      actionType: "DRAFT_STANDARD_CREATED",
+      entityType: "DRAFT_STANDARD",
+      entityId: draftStandardId,
+      relatedDraftStandardId: draftStandardId,
+      message: `Создан проект стандарта «${createdDraftStandard.title}».`,
+      metadata: this.buildDraftStandardAuditMetadata(createdDraftStandard)
+    });
+
+    return this.getSecretariatDraftStandardDetail(draftStandardId);
+  }
+
+  async getSecretariatDraftStandardDetail(
+    draftStandardId: string
+  ): Promise<SecretariatDraftStandardDetail> {
+    const draftStandard = this.mapDraftStandard(
+      await this.getDraftStandardRowById(draftStandardId)
+    );
+    const [versions, cycles] = await Promise.all([
+      this.listSecretariatDraftStandardVersions(draftStandardId),
+      this.listSecretariatReviewCyclesByDraftStandard(draftStandardId)
+    ]);
+
+    return {
+      draftStandard,
+      versions,
+      cycles
+    };
+  }
+
+  async updateSecretariatDraftStandard(
+    userId: string,
+    draftStandardId: string,
+    payload: UpdateDraftStandardDto
+  ): Promise<SecretariatDraftStandardDetail> {
+    const existing = await this.getDraftStandardRowById(draftStandardId);
+    const normalized = this.normalizeDraftStandardPayload(payload);
+
+    try {
+      await this.databaseService.query(
+        `
+          UPDATE draft_standards
+          SET
+            code = $2,
+            title = $3,
+            summary = $4,
+            stage = $5,
+            updated_at = NOW()
+          WHERE id = $1
+        `,
+        [
+          draftStandardId,
+          normalized.code,
+          normalized.title,
+          normalized.summary,
+          normalized.stage
+        ]
+      );
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        throw new BadRequestException(
+          "Проект стандарта с таким кодом уже существует."
+        );
+      }
+
+      throw error;
+    }
+
+    const updated = await this.getDraftStandardRowById(draftStandardId);
+
+    if (
+      existing.code !== updated.code ||
+      existing.title !== updated.title ||
+      existing.summary !== updated.summary ||
+      existing.stage !== updated.stage
+    ) {
+      await this.auditService.recordEvent({
+        actorUserId: userId,
+        actionType: "DRAFT_STANDARD_UPDATED",
+        entityType: "DRAFT_STANDARD",
+        entityId: draftStandardId,
+        relatedDraftStandardId: draftStandardId,
+        message: `Обновлены сведения о проекте стандарта «${updated.title}».`,
+        metadata: {
+          ...this.buildDraftStandardAuditMetadata(updated),
+          previousCode: existing.code,
+          previousTitle: existing.title,
+          previousSummary: existing.summary,
+          previousStage: existing.stage
+        }
+      });
+    }
+
+    return this.getSecretariatDraftStandardDetail(draftStandardId);
+  }
+
+  async listSecretariatDraftStandardVersions(
+    draftStandardId: string
+  ): Promise<SecretariatDraftStandardVersionRecord[]> {
+    await this.getDraftStandardRowById(draftStandardId);
+
+    const result = await this.databaseService.query<DraftStandardVersionRow>(
+      `
+        SELECT
+          dsv.id,
+          dsv.draft_standard_id,
+          dsv.version_label,
+          dsv.revision_summary,
+          dsv.file_name,
+          dsv.file_note,
+          dsv.published_at,
+          COUNT(vf.id)::text AS attachments_count
+        FROM draft_standard_versions dsv
+        LEFT JOIN draft_standard_version_files vf ON vf.version_id = dsv.id
+        WHERE dsv.draft_standard_id = $1
+        GROUP BY dsv.id
+        ORDER BY dsv.published_at DESC, dsv.created_at DESC
+      `,
+      [draftStandardId]
+    );
+
+    return result.rows.map((row) => this.mapDraftStandardVersion(row));
+  }
+
+  async createSecretariatDraftStandardVersion(
+    userId: string,
+    draftStandardId: string,
+    payload: CreateDraftStandardVersionDto
+  ): Promise<SecretariatDraftStandardVersionRecord> {
+    const draftStandard = await this.getDraftStandardRowById(draftStandardId);
+    const normalized = this.normalizeDraftStandardVersionPayload(payload);
+    const versionId = `draft-standard-version-${randomUUID()}`;
+
+    await this.databaseService.query(
+      `
+        INSERT INTO draft_standard_versions (
+          id,
+          draft_standard_id,
+          version_label,
+          revision_summary,
+          file_name,
+          file_note,
+          published_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `,
+      [
+        versionId,
+        draftStandardId,
+        normalized.versionLabel,
+        normalized.revisionSummary,
+        normalized.fileName,
+        normalized.fileNote,
+        normalized.publishedAt.toISOString()
+      ]
+    );
+
+    const createdVersion = await this.getDraftStandardVersionRecord(versionId);
+
+    await this.auditService.recordEvent({
+      actorUserId: userId,
+      actionType: "VERSION_CREATED",
+      entityType: "DRAFT_STANDARD_VERSION",
+      entityId: versionId,
+      relatedDraftStandardId: draftStandardId,
+      message: `Создана версия «${createdVersion.versionLabel}» для проекта стандарта «${draftStandard.title}».`,
+      metadata: this.buildDraftStandardVersionAuditMetadata(createdVersion)
+    });
+
+    return createdVersion;
+  }
+
+  async createSecretariatReviewCycle(
+    userId: string,
+    draftStandardId: string,
+    payload: CreateReviewCycleDto
+  ): Promise<SecretariatCycleDetail> {
+    const draftStandard = await this.getDraftStandardRowById(draftStandardId);
+    const normalized = await this.normalizeReviewCyclePayload(
+      draftStandardId,
+      payload
+    );
+    const cycleId = `review-cycle-${randomUUID()}`;
+
+    await this.databaseService.query(
+      `
+        INSERT INTO review_cycles (
+          id,
+          draft_standard_id,
+          draft_standard_version_id,
+          title,
+          description,
+          status,
+          opens_at,
+          deadline_at,
+          created_by_user_id
+        )
+        VALUES ($1, $2, $3, $4, $5, 'draft', $6, $7, $8)
+      `,
+      [
+        cycleId,
+        draftStandardId,
+        normalized.draftStandardVersionId,
+        normalized.title,
+        normalized.description,
+        normalized.opensAt.toISOString(),
+        normalized.deadlineAt.toISOString(),
+        userId
+      ]
+    );
+
+    const createdCycle = await this.getReviewCycleManagementRow(cycleId);
+
+    await this.auditService.recordEvent({
+      actorUserId: userId,
+      actionType: "REVIEW_CYCLE_CREATED",
+      entityType: "REVIEW_CYCLE",
+      entityId: cycleId,
+      relatedCycleId: cycleId,
+      relatedDraftStandardId: draftStandardId,
+      message: `Создан цикл согласования «${createdCycle.title}» для проекта стандарта «${draftStandard.title}».`,
+      metadata: this.buildReviewCycleAuditMetadata(createdCycle)
+    });
+
+    return this.getSecretariatCycleDetail(cycleId);
+  }
+
+  async updateSecretariatReviewCycle(
+    userId: string,
+    cycleId: string,
+    payload: UpdateReviewCycleDto
+  ): Promise<SecretariatCycleDetail> {
+    const existing = await this.getReviewCycleManagementRow(cycleId);
+
+    if (existing.status === "closed") {
+      throw new ForbiddenException(
+        "Закрытый цикл нельзя редактировать. Создайте новый цикл при необходимости."
+      );
+    }
+
+    const normalized = await this.normalizeReviewCyclePayload(
+      existing.draft_standard_id,
+      payload,
+      existing.draft_standard_version_id
+    );
+
+    await this.databaseService.query(
+      `
+        UPDATE review_cycles
+        SET
+          draft_standard_version_id = $2,
+          title = $3,
+          description = $4,
+          opens_at = $5,
+          deadline_at = $6,
+          updated_at = NOW()
+        WHERE id = $1
+      `,
+      [
+        cycleId,
+        normalized.draftStandardVersionId,
+        normalized.title,
+        normalized.description,
+        normalized.opensAt.toISOString(),
+        normalized.deadlineAt.toISOString()
+      ]
+    );
+
+    const updated = await this.getReviewCycleManagementRow(cycleId);
+
+    if (
+      existing.draft_standard_version_id !== updated.draft_standard_version_id ||
+      existing.title !== updated.title ||
+      existing.description !== updated.description ||
+      existing.opens_at !== updated.opens_at ||
+      existing.deadline_at !== updated.deadline_at
+    ) {
+      await this.auditService.recordEvent({
+        actorUserId: userId,
+        actionType: "REVIEW_CYCLE_UPDATED",
+        entityType: "REVIEW_CYCLE",
+        entityId: cycleId,
+        relatedCycleId: cycleId,
+        relatedDraftStandardId: existing.draft_standard_id,
+        message: `Обновлены параметры цикла согласования «${updated.title}».`,
+        metadata: {
+          ...this.buildReviewCycleAuditMetadata(updated),
+          previousDraftStandardVersionId: existing.draft_standard_version_id,
+          previousTitle: existing.title,
+          previousDescription: existing.description,
+          previousOpensAt: new Date(existing.opens_at).toISOString(),
+          previousDeadlineAt: new Date(existing.deadline_at).toISOString()
+        }
+      });
+    }
+
+    return this.getSecretariatCycleDetail(cycleId);
+  }
+
+  async listSecretariatCycleAssignments(
+    cycleId: string
+  ): Promise<SecretariatReviewAssignmentRecord[]> {
+    await this.getReviewCycleManagementRow(cycleId);
+
+    const result = await this.databaseService.query<ReviewAssignmentRow>(
+      `
+        SELECT
+          ra.id,
+          ra.assigned_at,
+          ra.responded_at,
+          o.id AS organization_id,
+          o.name AS organization_name,
+          o.short_name AS organization_short_name,
+          u.id AS user_id,
+          u.display_name AS user_display_name,
+          u.email AS user_email
+        FROM review_assignments ra
+        INNER JOIN organizations o ON o.id = ra.organization_id
+        INNER JOIN users u ON u.id = ra.user_id
+        WHERE ra.review_cycle_id = $1
+        ORDER BY o.name ASC, u.display_name ASC
+      `,
+      [cycleId]
+    );
+
+    return result.rows.map((row) => this.mapReviewAssignment(row));
+  }
+
+  async assignParticipantToCycle(
+    userId: string,
+    cycleId: string,
+    payload: AssignReviewParticipantDto
+  ): Promise<SecretariatReviewAssignmentRecord> {
+    const cycle = await this.getReviewCycleManagementRow(cycleId);
+
+    if (cycle.status === "closed") {
+      throw new ForbiddenException(
+        "Нельзя назначить участника на закрытый цикл согласования."
+      );
+    }
+
+    const participant = await this.getAssignableParticipant(payload.userId);
+    const organizationId = this.normalizeAssignmentOrganization(
+      payload.organizationId,
+      participant.organization_id
+    );
+    const assignmentId = `review-assignment-${randomUUID()}`;
+
+    try {
+      await this.databaseService.query(
+        `
+          INSERT INTO review_assignments (
+            id,
+            review_cycle_id,
+            organization_id,
+            user_id
+          )
+          VALUES ($1, $2, $3, $4)
+        `,
+        [assignmentId, cycleId, organizationId, participant.user_id]
+      );
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        throw new BadRequestException(
+          "Этот участник уже назначен на выбранный цикл согласования."
+        );
+      }
+
+      throw error;
+    }
+
+    const assignment = await this.getReviewAssignmentById(assignmentId);
+
+    await this.auditService.recordEvent({
+      actorUserId: userId,
+      actionType: "REVIEW_ASSIGNMENT_CREATED",
+      entityType: "REVIEW_ASSIGNMENT",
+      entityId: assignmentId,
+      relatedCycleId: cycleId,
+      relatedDraftStandardId: cycle.draft_standard_id,
+      message: `Участник «${assignment.userDisplayName}» назначен на цикл «${cycle.title}».`,
+      metadata: this.buildReviewAssignmentAuditMetadata(assignment)
+    });
+
+    if (cycle.status === "open") {
+      await this.notificationsService.createNotification({
+        recipientUserId: assignment.userId,
+        type: "ASSIGNED_TO_ACTIVE_CYCLE",
+        title: "Вы назначены на активный цикл согласования",
+        message: `Вам назначен цикл «${cycle.title}». Срок ответа — ${this.formatDateLabel(
+          cycle.deadline_at
+        )}.`,
+        relatedCycleId: cycle.id,
+        relatedDraftStandardId: cycle.draft_standard_id,
+        targetRoute: this.buildParticipantCycleRoute(
+          cycle.id,
+          cycle.draft_standard_id
+        )
+      });
+    }
+
+    return assignment;
+  }
+
+  async activateSecretariatReviewCycle(
+    userId: string,
+    cycleId: string
+  ): Promise<SecretariatCycleDetail> {
+    const cycle = await this.getReviewCycleManagementRow(cycleId);
+
+    if (cycle.status === "closed") {
+      throw new ForbiddenException(
+        "Закрытый цикл нельзя повторно открыть в MVP. Создайте новый цикл."
+      );
+    }
+
+    if (cycle.status === "open") {
+      return this.getSecretariatCycleDetail(cycleId);
+    }
+
+    const assignments = await this.listSecretariatCycleAssignments(cycleId);
+
+    if (assignments.length < 1) {
+      throw new BadRequestException(
+        "Нельзя открыть цикл без хотя бы одного назначенного участника."
+      );
+    }
+
+    await this.databaseService.query(
+      `
+        UPDATE review_cycles
+        SET
+          status = 'open',
+          closed_at = NULL,
+          updated_at = NOW()
+        WHERE id = $1
+      `,
+      [cycleId]
+    );
+
+    await this.auditService.recordEvent({
+      actorUserId: userId,
+      actionType: "REVIEW_CYCLE_ACTIVATED",
+      entityType: "REVIEW_CYCLE",
+      entityId: cycleId,
+      relatedCycleId: cycleId,
+      relatedDraftStandardId: cycle.draft_standard_id,
+      message: `Цикл согласования «${cycle.title}» открыт для участников.`,
+      metadata: this.buildReviewCycleAuditMetadata({
+        ...cycle,
+        status: "open"
+      })
+    });
+
+    await this.createCycleAssignmentNotifications(cycleId);
+
+    return this.getSecretariatCycleDetail(cycleId);
+  }
+
+  async closeSecretariatReviewCycle(
+    userId: string,
+    cycleId: string
+  ): Promise<SecretariatCycleDetail> {
+    const cycle = await this.getReviewCycleManagementRow(cycleId);
+
+    if (cycle.status === "closed") {
+      return this.getSecretariatCycleDetail(cycleId);
+    }
+
+    await this.databaseService.query(
+      `
+        UPDATE review_cycles
+        SET
+          status = 'closed',
+          closed_at = NOW(),
+          updated_at = NOW()
+        WHERE id = $1
+      `,
+      [cycleId]
+    );
+
+    await this.auditService.recordEvent({
+      actorUserId: userId,
+      actionType: "REVIEW_CYCLE_CLOSED",
+      entityType: "REVIEW_CYCLE",
+      entityId: cycleId,
+      relatedCycleId: cycleId,
+      relatedDraftStandardId: cycle.draft_standard_id,
+      message: `Цикл согласования «${cycle.title}» закрыт.`,
+      metadata: this.buildReviewCycleAuditMetadata({
+        ...cycle,
+        status: "closed"
+      })
+    });
+
+    return this.getSecretariatCycleDetail(cycleId);
   }
 
   async listAssignedActiveReviewCycles(
@@ -944,13 +1619,17 @@ export class ApprovalService {
   }
 
   async getSecretariatCycleDetail(cycleId: string): Promise<SecretariatCycleDetail> {
-    const cycle = await this.getSecretariatCycle(cycleId);
+    const [cycle, management] = await Promise.all([
+      this.getSecretariatCycle(cycleId),
+      this.getReviewCycleManagementRow(cycleId)
+    ]);
     const participants = await this.getSecretariatParticipants(cycleId);
     const comments = await this.getSecretariatComments(cycleId);
     const versionFiles = await this.listSecretariatVersionFiles(cycle.currentVersion.id);
 
     return {
       cycle,
+      description: management.description,
       participants,
       comments,
       versionFiles
@@ -1062,6 +1741,254 @@ export class ApprovalService {
     }
 
     return updatedComment;
+  }
+
+  private async listSecretariatReviewCyclesByDraftStandard(
+    draftStandardId: string
+  ): Promise<SecretariatReviewCycleListItem[]> {
+    const result = await this.databaseService.query<SecretariatCycleRow>(
+      `
+        SELECT
+          rc.id AS cycle_id,
+          rc.title AS cycle_title,
+          rc.status AS cycle_status,
+          rc.opens_at AS cycle_opened_at,
+          rc.deadline_at AS cycle_deadline_at,
+          rc.closed_at,
+          ds.id AS draft_standard_id,
+          ds.code AS draft_standard_code,
+          ds.title AS draft_standard_title,
+          ds.summary AS draft_standard_summary,
+          ds.stage AS draft_standard_stage,
+          dsv.id AS version_id,
+          dsv.version_label,
+          dsv.revision_summary AS version_revision_summary,
+          dsv.file_name AS version_file_name,
+          dsv.file_note AS version_file_note,
+          dsv.published_at AS version_published_at,
+          COUNT(ra.id)::text AS total_participants,
+          COUNT(pp.id)::text AS responded_participants
+        FROM review_cycles rc
+        INNER JOIN draft_standards ds ON ds.id = rc.draft_standard_id
+        INNER JOIN draft_standard_versions dsv ON dsv.id = rc.draft_standard_version_id
+        LEFT JOIN review_assignments ra ON ra.review_cycle_id = rc.id
+        LEFT JOIN participant_positions pp ON pp.review_assignment_id = ra.id
+        WHERE rc.draft_standard_id = $1
+        GROUP BY
+          rc.id,
+          ds.id,
+          dsv.id
+        ORDER BY
+          CASE rc.status
+            WHEN 'open' THEN 0
+            WHEN 'draft' THEN 1
+            ELSE 2
+          END,
+          rc.deadline_at DESC
+      `,
+      [draftStandardId]
+    );
+
+    return result.rows.map((row) => this.mapSecretariatCycle(row));
+  }
+
+  private async getDraftStandardRowById(
+    draftStandardId: string
+  ): Promise<DraftStandardRow> {
+    const result = await this.databaseService.query<DraftStandardRow>(
+      `
+        SELECT
+          id,
+          code,
+          title,
+          summary,
+          stage,
+          created_at,
+          updated_at
+        FROM draft_standards
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [draftStandardId]
+    );
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new NotFoundException("Проект стандарта не найден.");
+    }
+
+    return row;
+  }
+
+  private async getDraftStandardVersionRecord(
+    versionId: string
+  ): Promise<SecretariatDraftStandardVersionRecord> {
+    const result = await this.databaseService.query<DraftStandardVersionRow>(
+      `
+        SELECT
+          dsv.id,
+          dsv.draft_standard_id,
+          dsv.version_label,
+          dsv.revision_summary,
+          dsv.file_name,
+          dsv.file_note,
+          dsv.published_at,
+          COUNT(vf.id)::text AS attachments_count
+        FROM draft_standard_versions dsv
+        LEFT JOIN draft_standard_version_files vf ON vf.version_id = dsv.id
+        WHERE dsv.id = $1
+        GROUP BY dsv.id
+        LIMIT 1
+      `,
+      [versionId]
+    );
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new NotFoundException("Версия проекта стандарта не найдена.");
+    }
+
+    return this.mapDraftStandardVersion(row);
+  }
+
+  private async getReviewCycleManagementRow(
+    cycleId: string
+  ): Promise<ReviewCycleManagementRow> {
+    const result = await this.databaseService.query<ReviewCycleManagementRow>(
+      `
+        SELECT
+          id,
+          draft_standard_id,
+          draft_standard_version_id,
+          title,
+          description,
+          status,
+          opens_at,
+          deadline_at,
+          created_by_user_id
+        FROM review_cycles
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [cycleId]
+    );
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new NotFoundException("Цикл согласования не найден.");
+    }
+
+    return row;
+  }
+
+  private async getReviewAssignmentById(
+    assignmentId: string
+  ): Promise<SecretariatReviewAssignmentRecord> {
+    const result = await this.databaseService.query<ReviewAssignmentRow>(
+      `
+        SELECT
+          ra.id,
+          ra.assigned_at,
+          ra.responded_at,
+          o.id AS organization_id,
+          o.name AS organization_name,
+          o.short_name AS organization_short_name,
+          u.id AS user_id,
+          u.display_name AS user_display_name,
+          u.email AS user_email
+        FROM review_assignments ra
+        INNER JOIN organizations o ON o.id = ra.organization_id
+        INNER JOIN users u ON u.id = ra.user_id
+        WHERE ra.id = $1
+        LIMIT 1
+      `,
+      [assignmentId]
+    );
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new NotFoundException("Назначение участника не найдено.");
+    }
+
+    return this.mapReviewAssignment(row);
+  }
+
+  private async getAssignableParticipant(
+    userId: string
+  ): Promise<AssignableParticipantRow> {
+    const result = await this.databaseService.query<AssignableParticipantRow>(
+      `
+        SELECT
+          u.id AS user_id,
+          u.display_name AS user_display_name,
+          u.email AS user_email,
+          u.role,
+          o.id AS organization_id,
+          o.name AS organization_name,
+          o.short_name AS organization_short_name
+        FROM users u
+        LEFT JOIN organizations o ON o.id = u.organization_id
+        WHERE u.id = $1
+        LIMIT 1
+      `,
+      [userId]
+    );
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new NotFoundException("Участник для назначения не найден.");
+    }
+
+    if (row.role !== "PARTICIPANT") {
+      throw new BadRequestException(
+        "Назначать на цикл согласования можно только пользователей с ролью участника."
+      );
+    }
+
+    if (!row.organization_id) {
+      throw new BadRequestException(
+        "У выбранного участника не указана организация."
+      );
+    }
+
+    return row;
+  }
+
+  private async createCycleAssignmentNotifications(cycleId: string): Promise<void> {
+    const result = await this.databaseService.query<CycleNotificationRecipientRow>(
+      `
+        SELECT
+          ra.user_id,
+          rc.id AS cycle_id,
+          rc.title AS cycle_title,
+          rc.deadline_at AS cycle_deadline_at,
+          rc.draft_standard_id,
+          ds.title AS draft_standard_title
+        FROM review_assignments ra
+        INNER JOIN review_cycles rc ON rc.id = ra.review_cycle_id
+        INNER JOIN draft_standards ds ON ds.id = rc.draft_standard_id
+        WHERE ra.review_cycle_id = $1
+        ORDER BY ra.assigned_at ASC
+      `,
+      [cycleId]
+    );
+
+    await this.notificationsService.createNotifications(
+      result.rows.map((row) => ({
+        recipientUserId: row.user_id,
+        type: "ASSIGNED_TO_ACTIVE_CYCLE" as const,
+        title: "Открыт новый цикл согласования",
+        message: `Для вас открыт цикл «${row.cycle_title}» по проекту стандарта «${row.draft_standard_title}». Срок ответа — ${this.formatDateLabel(
+          row.cycle_deadline_at
+        )}.`,
+        relatedCycleId: row.cycle_id,
+        relatedDraftStandardId: row.draft_standard_id,
+        targetRoute: this.buildParticipantCycleRoute(
+          row.cycle_id,
+          row.draft_standard_id
+        )
+      }))
+    );
   }
 
   private async getParticipantCycleRow(
@@ -1762,6 +2689,163 @@ export class ApprovalService {
     };
   }
 
+  private mapDraftStandard(
+    row: DraftStandardRow | DraftStandardListRow
+  ): SecretariatDraftStandardRecord {
+    return {
+      id: row.id,
+      code: row.code,
+      title: row.title,
+      summary: row.summary,
+      stage: row.stage,
+      createdAt: new Date(row.created_at).toISOString(),
+      updatedAt: new Date(row.updated_at).toISOString()
+    };
+  }
+
+  private mapDraftStandardVersion(
+    row: DraftStandardVersionRow
+  ): SecretariatDraftStandardVersionRecord {
+    return {
+      id: row.id,
+      draftStandardId: row.draft_standard_id,
+      versionLabel: row.version_label,
+      revisionSummary: row.revision_summary,
+      fileName: row.file_name,
+      fileNote: row.file_note,
+      publishedAt: new Date(row.published_at).toISOString(),
+      attachmentsCount: Number.parseInt(row.attachments_count, 10)
+    };
+  }
+
+  private mapReviewAssignment(
+    row: ReviewAssignmentRow
+  ): SecretariatReviewAssignmentRecord {
+    return {
+      id: row.id,
+      organizationId: row.organization_id,
+      organizationName: row.organization_name,
+      organizationShortName: row.organization_short_name,
+      userId: row.user_id,
+      userDisplayName: row.user_display_name,
+      userEmail: row.user_email,
+      assignedAt: new Date(row.assigned_at).toISOString(),
+      respondedAt: row.responded_at ? new Date(row.responded_at).toISOString() : null
+    };
+  }
+
+  private normalizeDraftStandardPayload(
+    payload: CreateDraftStandardDto | UpdateDraftStandardDto
+  ): Required<UpdateDraftStandardDto> {
+    const code = payload.code.trim();
+    const title = payload.title.trim();
+    const summary = payload.summary.trim();
+    const stage = payload.stage.trim();
+
+    if (!code || !title || !summary || !stage) {
+      throw new BadRequestException(
+        "Заполните код, название, краткое описание и стадию проекта стандарта."
+      );
+    }
+
+    return {
+      code,
+      title,
+      summary,
+      stage
+    };
+  }
+
+  private normalizeDraftStandardVersionPayload(
+    payload: CreateDraftStandardVersionDto
+  ): {
+    fileName: string;
+    fileNote: string;
+    publishedAt: Date;
+    revisionSummary: string;
+    versionLabel: string;
+  } {
+    const versionLabel = payload.versionLabel.trim();
+    const revisionSummary = payload.revisionSummary.trim();
+    const fileName = payload.fileName.trim();
+    const fileNote = payload.fileNote.trim();
+    const publishedAt = this.parseRequiredDate(
+      payload.publishedAt,
+      "Укажите корректную дату публикации версии."
+    );
+
+    if (!versionLabel || !revisionSummary || !fileName || !fileNote) {
+      throw new BadRequestException(
+        "Заполните метку версии, описание изменений, имя файла и описание файла."
+      );
+    }
+
+    return {
+      versionLabel,
+      revisionSummary,
+      fileName,
+      fileNote,
+      publishedAt
+    };
+  }
+
+  private async normalizeReviewCyclePayload(
+    draftStandardId: string,
+    payload: CreateReviewCycleDto | UpdateReviewCycleDto,
+    fallbackVersionId?: string
+  ): Promise<{
+    deadlineAt: Date;
+    description: string;
+    draftStandardVersionId: string;
+    opensAt: Date;
+    title: string;
+  }> {
+    const draftStandardVersionId =
+      payload.draftStandardVersionId ?? fallbackVersionId ?? null;
+    const title = payload.title.trim();
+    const description = payload.description.trim();
+    const opensAt = this.parseRequiredDate(
+      payload.opensAt,
+      "Укажите корректную дату начала согласования."
+    );
+    const deadlineAt = this.parseRequiredDate(
+      payload.deadlineAt,
+      "Укажите корректный срок согласования."
+    );
+
+    if (!draftStandardVersionId) {
+      throw new BadRequestException("Выберите версию проекта стандарта для цикла.");
+    }
+
+    if (!title || !description) {
+      throw new BadRequestException(
+        "Заполните название и описание цикла согласования."
+      );
+    }
+
+    if (deadlineAt.getTime() < opensAt.getTime()) {
+      throw new BadRequestException(
+        "Срок согласования не может быть раньше даты начала цикла."
+      );
+    }
+
+    const version = await this.getDraftStandardVersionById(draftStandardVersionId);
+
+    if (version.draft_standard_id !== draftStandardId) {
+      throw new BadRequestException(
+        "Выбранная версия не относится к указанному проекту стандарта."
+      );
+    }
+
+    return {
+      draftStandardVersionId,
+      title,
+      description,
+      opensAt,
+      deadlineAt
+    };
+  }
+
   private normalizeCommentPayload(
     payload: CreateReviewCommentDto | UpdateReviewCommentDto
   ): Required<CreateReviewCommentDto> {
@@ -1836,10 +2920,45 @@ export class ApprovalService {
     };
   }
 
+  private normalizeAssignmentOrganization(
+    organizationId: string,
+    participantOrganizationId: string | null
+  ): string {
+    const normalizedOrganizationId = organizationId.trim();
+
+    if (!normalizedOrganizationId) {
+      throw new BadRequestException("Укажите организацию для назначения участника.");
+    }
+
+    if (!participantOrganizationId) {
+      throw new BadRequestException(
+        "У выбранного участника не определена организация."
+      );
+    }
+
+    if (normalizedOrganizationId !== participantOrganizationId) {
+      throw new BadRequestException(
+        "Указанная организация не совпадает с организацией выбранного участника."
+      );
+    }
+
+    return normalizedOrganizationId;
+  }
+
   private normalizeOptionalText(value: string | null | undefined): string | null {
     const trimmed = value?.trim();
 
     return trimmed ? trimmed : null;
+  }
+
+  private parseRequiredDate(value: string, message: string): Date {
+    const parsed = new Date(value);
+
+    if (Number.isNaN(parsed.getTime())) {
+      throw new BadRequestException(message);
+    }
+
+    return parsed;
   }
 
   private buildCommentAuditMetadata(comment: {
@@ -1857,6 +2976,77 @@ export class ApprovalService {
       remark: comment.remark ?? null,
       proposedText: comment.proposedText ?? null,
       rationale: comment.rationale ?? null
+    };
+  }
+
+  private buildDraftStandardAuditMetadata(draftStandard: {
+    code: string;
+    stage: string;
+    summary: string;
+    title: string;
+  }): Record<string, unknown> {
+    return {
+      code: draftStandard.code,
+      title: draftStandard.title,
+      summary: draftStandard.summary,
+      stage: draftStandard.stage
+    };
+  }
+
+  private buildDraftStandardVersionAuditMetadata(version: {
+    attachmentsCount: number;
+    draftStandardId: string;
+    fileName: string;
+    fileNote: string;
+    publishedAt: string;
+    revisionSummary: string;
+    versionLabel: string;
+  }): Record<string, unknown> {
+    return {
+      draftStandardId: version.draftStandardId,
+      versionLabel: version.versionLabel,
+      revisionSummary: version.revisionSummary,
+      fileName: version.fileName,
+      fileNote: version.fileNote,
+      publishedAt: version.publishedAt,
+      attachmentsCount: version.attachmentsCount
+    };
+  }
+
+  private buildReviewCycleAuditMetadata(cycle: {
+    deadline_at?: string;
+    deadlineAt?: string;
+    description: string;
+    draft_standard_version_id: string;
+    opens_at?: string;
+    opensAt?: string;
+    status: "draft" | "open" | "closed";
+    title: string;
+  }): Record<string, unknown> {
+    const opensAt = cycle.opensAt ?? cycle.opens_at ?? null;
+    const deadlineAt = cycle.deadlineAt ?? cycle.deadline_at ?? null;
+
+    return {
+      title: cycle.title,
+      description: cycle.description,
+      status: cycle.status,
+      statusLabel: this.formatReviewCycleStatusLabel(cycle.status),
+      draftStandardVersionId: cycle.draft_standard_version_id,
+      opensAt: opensAt ? new Date(opensAt).toISOString() : null,
+      deadlineAt: deadlineAt ? new Date(deadlineAt).toISOString() : null
+    };
+  }
+
+  private buildReviewAssignmentAuditMetadata(
+    assignment: SecretariatReviewAssignmentRecord
+  ): Record<string, unknown> {
+    return {
+      organizationId: assignment.organizationId,
+      organizationName: assignment.organizationName,
+      userId: assignment.userId,
+      userDisplayName: assignment.userDisplayName,
+      userEmail: assignment.userEmail,
+      assignedAt: assignment.assignedAt
     };
   }
 
@@ -1929,6 +3119,19 @@ export class ApprovalService {
     }
   }
 
+  private formatReviewCycleStatusLabel(status: "draft" | "open" | "closed"): string {
+    switch (status) {
+      case "draft":
+        return "Черновик";
+      case "open":
+        return "Открыт";
+      case "closed":
+        return "Закрыт";
+      default:
+        return status;
+    }
+  }
+
   private formatFileVisibilityLabel(visibility: ReviewFileVisibility): string {
     switch (visibility) {
       case "ASSIGNED_PARTICIPANTS":
@@ -1938,6 +3141,12 @@ export class ApprovalService {
       default:
         return visibility;
     }
+  }
+
+  private formatDateLabel(value: string | Date): string {
+    return new Intl.DateTimeFormat("ru-RU", {
+      dateStyle: "medium"
+    }).format(new Date(value));
   }
 
   private buildParticipantCycleRoute(
@@ -1962,5 +3171,14 @@ export class ApprovalService {
         "Срок согласования уже истек. Изменение замечаний и позиции недоступно."
       );
     }
+  }
+
+  private isUniqueViolation(error: unknown): boolean {
+    return (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "23505"
+    );
   }
 }

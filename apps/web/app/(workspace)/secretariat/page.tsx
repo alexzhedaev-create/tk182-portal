@@ -53,10 +53,21 @@ export default async function SecretariatWorkspacePage() {
         <article className="content-card">
           <h2>Что можно сделать</h2>
           <ul>
+            <li>Создать новый проект стандарта, версию и цикл согласования.</li>
             <li>Просмотреть прогресс по каждому циклу согласования.</li>
             <li>Проверить замечания и итоговые позиции участников.</li>
             <li>Обновить статус замечания и добавить ответ секретариата.</li>
           </ul>
+
+          <div className="pill-row">
+            <Link
+              className="pill"
+              data-testid="secretariat-projects-link"
+              href="/secretariat/projects"
+            >
+              Открыть проекты стандартов
+            </Link>
+          </div>
         </article>
       </section>
 

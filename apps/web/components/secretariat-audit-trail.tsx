@@ -40,6 +40,48 @@ function formatRelatedObject(event: ApprovalAuditEvent): string {
 
       return originalName ? `Файл: ${originalName}` : "Файл версии";
     }
+    case "DRAFT_STANDARD": {
+      const code = pickTextValue(event.metadata, "code");
+      const title = pickTextValue(event.metadata, "title");
+
+      if (code && title) {
+        return `Проект стандарта: ${code} • ${title}`;
+      }
+
+      return title ? `Проект стандарта: ${title}` : "Проект стандарта";
+    }
+    case "DRAFT_STANDARD_VERSION": {
+      const versionLabel = pickTextValue(event.metadata, "versionLabel");
+      const fileName = pickTextValue(event.metadata, "fileName");
+
+      if (versionLabel && fileName) {
+        return `Версия: ${versionLabel} • ${fileName}`;
+      }
+
+      return versionLabel ? `Версия: ${versionLabel}` : "Версия проекта стандарта";
+    }
+    case "REVIEW_CYCLE": {
+      const title = pickTextValue(event.metadata, "title");
+      const statusLabel = pickTextValue(event.metadata, "statusLabel");
+
+      if (title && statusLabel) {
+        return `Цикл: ${title} • ${statusLabel}`;
+      }
+
+      return title ? `Цикл: ${title}` : "Цикл согласования";
+    }
+    case "REVIEW_ASSIGNMENT": {
+      const userDisplayName = pickTextValue(event.metadata, "userDisplayName");
+      const organizationName = pickTextValue(event.metadata, "organizationName");
+
+      if (userDisplayName && organizationName) {
+        return `Назначение: ${userDisplayName} • ${organizationName}`;
+      }
+
+      return userDisplayName
+        ? `Назначение: ${userDisplayName}`
+        : "Назначение участника";
+    }
     default:
       return event.entityId;
   }
