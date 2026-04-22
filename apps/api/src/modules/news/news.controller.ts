@@ -88,4 +88,9 @@ export class NewsController {
   ): Promise<BackofficeNewsItemRecord> {
     return this.newsService.unpublishNewsItem(request.authSession!.user.id, newsId);
   }
+
+  @Get(":newsId")
+  getPublishedNewsItem(@Param("newsId") newsId: string): Promise<NewsItemRecord> {
+    return this.newsService.getPublishedNewsItem(newsId);
+  }
 }

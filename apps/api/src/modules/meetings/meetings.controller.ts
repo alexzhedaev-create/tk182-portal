@@ -42,6 +42,11 @@ export class MeetingsController {
     return this.meetingsService.getMeetingsPageData();
   }
 
+  @Get("public/:meetingId")
+  getPublicMeeting(@Param("meetingId") meetingId: string): Promise<MeetingRecord> {
+    return this.meetingsService.getPublicMeeting(meetingId);
+  }
+
   @Get("public/:meetingId/download")
   async downloadPublicMeeting(
     @Param("meetingId") meetingId: string,

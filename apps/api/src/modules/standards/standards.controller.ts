@@ -48,6 +48,13 @@ export class StandardsController {
     return this.standardsService.getPublicStandardsPageData();
   }
 
+  @Get("approved/:standardId")
+  getPublicApprovedStandard(
+    @Param("standardId") standardId: string
+  ): Promise<ApprovedStandardRecord> {
+    return this.standardsService.getPublicApprovedStandard(standardId);
+  }
+
   @Get("approved/:standardId/download")
   async downloadPublicApprovedStandard(
     @Param("standardId") standardId: string,

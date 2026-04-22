@@ -17,6 +17,10 @@ export class NewsService {
     return this.contentService.listPublishedNewsItems();
   }
 
+  getPublishedNewsItem(newsId: string): Promise<NewsItemRecord> {
+    return this.contentService.getPublishedNewsItem(newsId);
+  }
+
   listBackofficeNewsItems(
     filters: BackofficeContentListFilters = {}
   ): Promise<BackofficeNewsItemRecord[]> {

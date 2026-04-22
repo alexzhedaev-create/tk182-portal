@@ -244,6 +244,37 @@ export class ContentService {
     return result.rows.map((row) => this.mapNewsItem(row));
   }
 
+  async getPublishedNewsItem(newsId: string): Promise<NewsItemRecord> {
+    const result = await this.databaseService.query<NewsRow>(
+      `
+        SELECT
+          id,
+          title,
+          excerpt,
+          body,
+          status,
+          publication_date,
+          published_at,
+          legacy_source_url,
+          legacy_section,
+          migration_status,
+          migration_note
+        FROM news_items
+        WHERE id = $1
+          AND status = 'published'
+        LIMIT 1
+      `,
+      [newsId]
+    );
+    const row = result.rows[0];
+
+    if (!row) {
+      throw new NotFoundException("Новость не найдена.");
+    }
+
+    return this.mapNewsItem(row);
+  }
+
   async listBackofficeNewsItems(
     filters: BackofficeContentListFilters = {}
   ): Promise<BackofficeNewsItemRecord[]> {
@@ -676,6 +707,11 @@ export class ContentService {
     return this.buildDownload(document.attachment);
   }
 
+  async getPublicDocument(documentId: string): Promise<PublicDocumentRecord> {
+    const stored = await this.getStoredPublicDocumentById(documentId, true);
+    return this.stripStoredDocument(stored);
+  }
+
   async getBackofficePublicDocumentDownload(documentId: string): Promise<ContentDownload> {
     const document = await this.getStoredPublicDocumentById(documentId);
     return this.buildDownload(document.attachment);
@@ -912,6 +948,11 @@ export class ContentService {
   async getPublicMeetingDownload(meetingId: string): Promise<ContentDownload> {
     const meeting = await this.getStoredMeetingRecordById(meetingId, true);
     return this.buildDownload(meeting.attachment);
+  }
+
+  async getPublicMeeting(meetingId: string): Promise<MeetingRecord> {
+    const stored = await this.getStoredMeetingRecordById(meetingId, true);
+    return this.stripStoredMeeting(stored);
   }
 
   async getBackofficeMeetingDownload(meetingId: string): Promise<ContentDownload> {
@@ -1152,6 +1193,13 @@ export class ContentService {
   async getPublicApprovedStandardDownload(standardId: string): Promise<ContentDownload> {
     const standard = await this.getStoredApprovedStandardById(standardId, true);
     return this.buildDownload(standard.attachment);
+  }
+
+  async getPublicApprovedStandard(
+    standardId: string
+  ): Promise<ApprovedStandardRecord> {
+    const stored = await this.getStoredApprovedStandardById(standardId, true);
+    return this.stripStoredApprovedStandard(stored);
   }
 
   async getBackofficeApprovedStandardDownload(

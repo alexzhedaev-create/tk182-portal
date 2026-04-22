@@ -240,6 +240,35 @@ test(
       )
     );
 
+    const newsDetail = await publicClient.requestJson("/news/news-portal-content-launch");
+    assert.equal(newsDetail.response.status, 200);
+    assert.equal(newsDetail.data.id, "news-portal-content-launch");
+    assert.match(newsDetail.data.title, /публичный контур публикаций/u);
+
+    const documentDetail = await publicClient.requestJson(
+      "/documents/public/public-document-main-regulation"
+    );
+    assert.equal(documentDetail.response.status, 200);
+    assert.equal(documentDetail.data.id, "public-document-main-regulation");
+    assert.equal(documentDetail.data.category, "MAIN_DOCUMENTS");
+    assert.equal(documentDetail.data.attachment.originalName, "Polozhenie_o_TK_182.txt");
+
+    const meetingDetail = await publicClient.requestJson(
+      "/meetings/public/meeting-agenda-q2-2026"
+    );
+    assert.equal(meetingDetail.response.status, 200);
+    assert.equal(meetingDetail.data.id, "meeting-agenda-q2-2026");
+    assert.equal(meetingDetail.data.category, "MEETING_AGENDA");
+    assert.match(meetingDetail.data.location, /ВИАМ/u);
+
+    const standardDetail = await publicClient.requestJson(
+      "/standards/approved/approved-standard-ndt-2025"
+    );
+    assert.equal(standardDetail.response.status, 200);
+    assert.equal(standardDetail.data.id, "approved-standard-ndt-2025");
+    assert.equal(standardDetail.data.code, "ГОСТ Р 70518-2025");
+    assert.equal(standardDetail.data.responsibleSubcommittee.code, "ПК 5");
+
     const createdNews = await secretariat.requestJson("/news/backoffice", {
       method: "POST",
       headers: {

@@ -44,6 +44,13 @@ export class DocumentsController {
     return this.documentsService.getPublicDocumentsPageData();
   }
 
+  @Get("public/:documentId")
+  getPublicDocument(
+    @Param("documentId") documentId: string
+  ): Promise<PublicDocumentRecord> {
+    return this.documentsService.getPublicDocument(documentId);
+  }
+
   @Get("public/:documentId/download")
   async downloadPublicDocument(
     @Param("documentId") documentId: string,

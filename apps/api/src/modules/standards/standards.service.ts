@@ -93,6 +93,10 @@ export class StandardsService {
     return this.contentService.getStandardsPageData(draftStandards);
   }
 
+  getPublicApprovedStandard(standardId: string): Promise<ApprovedStandardRecord> {
+    return this.contentService.getPublicApprovedStandard(standardId);
+  }
+
   listBackofficeApprovedStandards(
     filters: BackofficeContentListFilters = {}
   ): Promise<BackofficeApprovedStandardRecord[]> {

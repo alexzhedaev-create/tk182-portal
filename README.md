@@ -88,10 +88,14 @@ pnpm --filter @tk182/web start
 Public site: http://127.0.0.1:3000
 Committee structure: http://127.0.0.1:3000/about
 News: http://127.0.0.1:3000/news
+News detail example: http://127.0.0.1:3000/news/news-portal-content-launch
 Documents: http://127.0.0.1:3000/documents
+Document detail example: http://127.0.0.1:3000/documents/public-document-main-regulation
 Meetings: http://127.0.0.1:3000/meetings
+Meeting detail example: http://127.0.0.1:3000/meetings/meeting-agenda-q2-2026
 Organizations: http://127.0.0.1:3000/organizations
 Public standards: http://127.0.0.1:3000/standards
+Approved standard detail example: http://127.0.0.1:3000/standards/approved-standard-ndt-2025
 Login page: http://127.0.0.1:3000/login
 Participant workspace: http://127.0.0.1:3000/participant
 Secretariat workspace: http://127.0.0.1:3000/secretariat
@@ -179,6 +183,15 @@ Public pages are now backed by PostgreSQL records and optional local file attach
 - `/documents`
 - `/meetings`
 - `/standards`
+
+Each public section now also has real detail pages backed by persisted content:
+
+- `/news/:id`
+- `/documents/:id`
+- `/meetings/:id`
+- `/standards/:id`
+
+The MVP uses stable public IDs in these routes so migrated materials can be linked and verified safely without introducing a separate slug-management layer yet.
 
 Manual migration from the old `viam.ru/tk182` site is intentionally supported through secretariat backoffice rather than scraping:
 
@@ -298,7 +311,8 @@ The seed script recreates several demo text attachments for the active and archi
    - `Протоколы заседаний`
 9. In `Утвержденные стандарты`, create the public standard card, choose the responsible subcommittee, and upload the file if needed
 10. Open `/news`, `/documents`, `/meetings`, and `/standards` to verify public visibility
-11. Check `Журнал изменений контента` to review create, update, publish, and unpublish actions
+11. Open the corresponding public detail page from the list and verify metadata, Russian labels, and file links
+12. Check `Журнал изменений контента` to review create, update, publish, and unpublish actions
 
 Recommended manual migration workflow from the old TK 182 site:
 
@@ -307,8 +321,9 @@ Recommended manual migration workflow from the old TK 182 site:
 3. Create the target record in `Контент портала`.
 4. Set `Источник на старом сайте` to the exact legacy URL.
 5. Save the record with `Статус переноса = Не перенесено` or `Перенесено`.
-6. Review the rendered public page and downloaded file in the new portal.
-7. When the migrated card and file are verified, switch `Статус переноса` to `Проверено`.
+6. Publish the record and open its public list card.
+7. Open the public detail page, review metadata, description, and file link in the new portal.
+8. When the migrated card and file are verified, switch `Статус переноса` to `Проверено`.
 
 Current MVP constraints for public content:
 
@@ -388,6 +403,7 @@ The MVP now includes integration/e2e coverage for the current core flows:
 - secretariat backoffice creation of draft standards, versions, cycles, assignments, and cycle activation
 - seeded TK 182 leadership, secretariat, subcommittee, and standard-to-subcommittee API coverage
 - committee structure backoffice CRUD, audit creation, and public-structure reflection
+- public list/detail retrieval for news, documents, meetings, and approved standards
 - production-like `next start` checks for the current Russian UI
 - browser-level Playwright scenarios for the current Russian UI
 
@@ -427,6 +443,7 @@ pnpm test:e2e:browser
 
 The Playwright suite covers:
 
+- public browsing from list pages into real detail pages for news, documents, meetings, and approved standards
 - participant login through the real Russian login form
 - participant redirect into `На согласовании`
 - participant notification block visibility on the real Russian workspace page

@@ -120,12 +120,34 @@ export function getPublicNewsItems(): Promise<NewsItemRecord[]> {
   return fetchFromApi<NewsItemRecord[]>("/news");
 }
 
+export function getPublicNewsItem(newsId: string): Promise<NewsItemRecord> {
+  return fetchFromApi<NewsItemRecord>(`/news/${encodeURIComponent(newsId)}`);
+}
+
 export function getPublicDocumentsPageData(): Promise<PublicDocumentsPageData> {
   return fetchFromApi<PublicDocumentsPageData>("/documents");
 }
 
+export function getPublicDocument(documentId: string): Promise<PublicDocumentRecord> {
+  return fetchFromApi<PublicDocumentRecord>(
+    `/documents/public/${encodeURIComponent(documentId)}`
+  );
+}
+
 export function getPublicMeetingsPageData(): Promise<MeetingsPageData> {
   return fetchFromApi<MeetingsPageData>("/meetings");
+}
+
+export function getPublicMeeting(meetingId: string): Promise<MeetingRecord> {
+  return fetchFromApi<MeetingRecord>(`/meetings/public/${encodeURIComponent(meetingId)}`);
+}
+
+export function getPublicApprovedStandard(
+  standardId: string
+): Promise<ApprovedStandardRecord> {
+  return fetchFromApi<ApprovedStandardRecord>(
+    `/standards/approved/${encodeURIComponent(standardId)}`
+  );
 }
 
 export function getParticipantAssignedCycles(): Promise<ParticipantAssignedReviewCycle[]> {
@@ -298,4 +320,8 @@ export function getMyNotifications(): Promise<NotificationRecord[]> {
 
 export function getMyUnreadNotificationCount(): Promise<NotificationUnreadCountDto> {
   return fetchFromApi<NotificationUnreadCountDto>("/notifications/unread-count");
+}
+
+export function isApiNotFoundError(error: unknown): boolean {
+  return error instanceof Error && /status 404\b/u.test(error.message);
 }

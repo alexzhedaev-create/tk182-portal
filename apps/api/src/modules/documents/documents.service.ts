@@ -36,6 +36,10 @@ export class DocumentsService {
     return this.contentService.getPublicDocumentsPageData();
   }
 
+  getPublicDocument(documentId: string): Promise<PublicDocumentRecord> {
+    return this.contentService.getPublicDocument(documentId);
+  }
+
   listBackofficePublicDocuments(
     filters: BackofficeContentListFilters = {}
   ): Promise<BackofficePublicDocumentRecord[]> {

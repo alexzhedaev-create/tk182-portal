@@ -85,6 +85,13 @@ test(
     assert.equal(newsPage.status, 200);
     assert.match(newsHtml, /Новости/u);
     assert.match(newsHtml, /новый публичный контур публикаций/u);
+    assert.match(newsHtml, /Открыть новость/u);
+
+    const newsDetailPage = await fetch(`${webBaseUrl}/news/news-portal-content-launch`);
+    const newsDetailHtml = await newsDetailPage.text();
+    assert.equal(newsDetailPage.status, 200);
+    assert.match(newsDetailHtml, /Текст публикации/u);
+    assert.match(newsDetailHtml, /новый публичный контур публикаций/u);
 
     const documentsPage = await fetch(`${webBaseUrl}/documents`);
     const documentsHtml = await documentsPage.text();
@@ -92,6 +99,16 @@ test(
     assert.match(documentsHtml, /Основные документы/u);
     assert.match(documentsHtml, /Положение о ТК 182/u);
     assert.match(documentsHtml, /Скачать/u);
+    assert.match(documentsHtml, /Открыть карточку/u);
+
+    const documentDetailPage = await fetch(
+      `${webBaseUrl}/documents/public-document-main-regulation`
+    );
+    const documentDetailHtml = await documentDetailPage.text();
+    assert.equal(documentDetailPage.status, 200);
+    assert.match(documentDetailHtml, /Файл документа/u);
+    assert.match(documentDetailHtml, /Основные сведения/u);
+    assert.match(documentDetailHtml, /Polozhenie_o_TK_182\.txt/u);
 
     const meetingsPage = await fetch(`${webBaseUrl}/meetings`);
     const meetingsHtml = await meetingsPage.text();
@@ -99,6 +116,13 @@ test(
     assert.match(meetingsHtml, /Заседания/u);
     assert.match(meetingsHtml, /Уведомление и повестка заседания ТК 182/u);
     assert.match(meetingsHtml, /Протокол заседания ТК 182/u);
+
+    const meetingDetailPage = await fetch(`${webBaseUrl}/meetings/meeting-agenda-q2-2026`);
+    const meetingDetailHtml = await meetingDetailPage.text();
+    assert.equal(meetingDetailPage.status, 200);
+    assert.match(meetingDetailHtml, /Сведения о заседании/u);
+    assert.match(meetingDetailHtml, /Место проведения/u);
+    assert.match(meetingDetailHtml, /Содержание/u);
 
     const standardsPage = await fetch(`${webBaseUrl}/standards`);
     const standardsHtml = await standardsPage.text();
@@ -108,6 +132,15 @@ test(
     assert.match(standardsHtml, /ПК 5/u);
     assert.match(standardsHtml, /ТК182-01-2026/u);
     assert.match(standardsHtml, /ГОСТ Р 70518-2025/u);
+
+    const standardDetailPage = await fetch(
+      `${webBaseUrl}/standards/approved-standard-ndt-2025`
+    );
+    const standardDetailHtml = await standardDetailPage.text();
+    assert.equal(standardDetailPage.status, 200);
+    assert.match(standardDetailHtml, /Сведения о стандарте/u);
+    assert.match(standardDetailHtml, /Ответственный подкомитет/u);
+    assert.match(standardDetailHtml, /ГОСТ Р 70518-2025/u);
 
     const organizationsPage = await fetch(`${webBaseUrl}/organizations`);
     const organizationsHtml = await organizationsPage.text();

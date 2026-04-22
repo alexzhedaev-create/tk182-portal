@@ -6,13 +6,36 @@ import { formatDate, formatFileSize } from "../../../lib/review";
 
 export const dynamic = "force-dynamic";
 
-export default async function DocumentsPage() {
+interface DocumentsPageProps {
+  searchParams?: {
+    q?: string;
+  };
+}
+
+export default async function DocumentsPage({ searchParams }: DocumentsPageProps) {
   const [pageData, apiBaseUrl] = await Promise.all([
     getPublicDocumentsPageData(),
     Promise.resolve(getPublicApiUrl())
   ]);
+  const query = searchParams?.q?.trim() ?? "";
+  const normalizedQuery = query.toLocaleLowerCase("ru");
+  const filteredSections = pageData.sections.map((section) => ({
+    ...section,
+    documents: normalizedQuery
+      ? section.documents.filter((document) =>
+          [document.title, document.summary]
+            .join(" ")
+            .toLocaleLowerCase("ru")
+            .includes(normalizedQuery)
+        )
+      : section.documents
+  }));
 
   const totalDocuments = pageData.sections.reduce(
+    (count, section) => count + section.documents.length,
+    0
+  );
+  const filteredDocumentsCount = filteredSections.reduce(
     (count, section) => count + section.documents.length,
     0
   );
@@ -32,11 +55,38 @@ export default async function DocumentsPage() {
 
         <div className="pill-row">
           <span className="pill">Опубликовано документов: {totalDocuments}</span>
+          {query ? <span className="pill">Найдено: {filteredDocumentsCount}</span> : null}
         </div>
       </section>
 
+      <section className="content-card">
+        <h2>Поиск по документам</h2>
+        <form className="form-grid" method="get">
+          <label>
+            <span className="eyebrow">Поиск</span>
+            <input
+              className="text-input"
+              type="search"
+              name="q"
+              defaultValue={query}
+              placeholder="Введите название или описание документа"
+            />
+          </label>
+          <div className="pill-row">
+            <button className="pill" type="submit">
+              Найти
+            </button>
+            {query ? (
+              <Link className="pill" href="/documents">
+                Сбросить фильтр
+              </Link>
+            ) : null}
+          </div>
+        </form>
+      </section>
+
       <section className="content-stack">
-        {pageData.sections.map((section) => (
+        {filteredSections.map((section) => (
           <article key={section.category} className="content-card">
             <h2>{formatPublicDocumentCategory(section.category)}</h2>
             <div className="content-stack">
@@ -45,7 +95,9 @@ export default async function DocumentsPage() {
                   <div key={document.id} className="review-card">
                     <div className="review-card-header">
                       <div>
-                        <strong>{document.title}</strong>
+                        <strong>
+                          <Link href={`/documents/${document.id}`}>{document.title}</Link>
+                        </strong>
                         <p>{document.summary}</p>
                       </div>
                       <span className="pill">
@@ -74,20 +126,27 @@ export default async function DocumentsPage() {
                       </div>
                     ) : null}
 
-                    {document.attachment ? (
-                      <div className="pill-row">
+                    <div className="pill-row">
+                      <Link className="pill" href={`/documents/${document.id}`}>
+                        Открыть карточку
+                      </Link>
+                      {document.attachment ? (
                         <Link
                           className="pill"
                           href={`${apiBaseUrl}/documents/public/${document.id}/download`}
                         >
                           Скачать
                         </Link>
-                      </div>
-                    ) : null}
+                      ) : null}
+                    </div>
                   </div>
                 ))
               ) : (
-                <p>В этом разделе пока нет опубликованных документов.</p>
+                <p>
+                  {query
+                    ? "По выбранному фильтру документы не найдены."
+                    : "В этом разделе пока нет опубликованных документов."}
+                </p>
               )}
             </div>
           </article>

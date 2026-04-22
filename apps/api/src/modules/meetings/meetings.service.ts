@@ -19,6 +19,10 @@ export class MeetingsService {
     return this.contentService.getMeetingsPageData();
   }
 
+  getPublicMeeting(meetingId: string): Promise<MeetingRecord> {
+    return this.contentService.getPublicMeeting(meetingId);
+  }
+
   listBackofficeMeetingRecords(
     filters: BackofficeContentListFilters = {}
   ): Promise<BackofficeMeetingRecord[]> {
