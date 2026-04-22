@@ -3,18 +3,18 @@ import { PageTemplate } from "../../../components/page-template";
 export default function StandardsPage() {
   return (
     <PageTemplate
-      eyebrow="Standards program"
-      title="Standards"
-      intro="This section will publish the committee's standard catalogue, current stage markers, and public summaries for each work item."
+      eyebrow="Программа стандартизации"
+      title="Стандарты"
+      intro="Раздел предназначен для публикации каталога проектов стандартов, стадий их прохождения и открытых аннотаций по каждому документу."
       highlights={[
-        "Standard catalogue and identifiers",
-        "Lifecycle status for each work item",
-        "Future links into review-cycle context"
+        "Каталог проектов и обозначения стандартов",
+        "Статусы жизненного цикла по каждому документу",
+        "Связь с циклами согласования для авторизованных пользователей"
       ]}
       nextSteps={[
-        "Connect standards listing data from the API",
-        "Add standard detail pages",
-        "Link review-cycle metadata for authorized users later"
+        "Подключить список стандартов из API",
+        "Добавить карточки отдельных проектов",
+        "Позднее показать связь с циклами согласования"
       ]}
     />
   );

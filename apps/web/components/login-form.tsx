@@ -7,8 +7,6 @@ import type { AuthRole, LoginResponseDto } from "@tk182/shared-types";
 
 import { canAccessWorkspace, getDefaultWorkspacePath } from "../lib/auth";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:3001";
-
 function getLoginDestination(role: AuthRole, requestedPath: string | null): string {
   if (requestedPath === "/participant" && canAccessWorkspace(role, "participant")) {
     return requestedPath;
@@ -34,7 +32,7 @@ export function LoginForm() {
     setErrorMessage(null);
     setIsPending(true);
 
-    const response = await fetch(`${apiBaseUrl}/auth/login`, {
+    const response = await fetch("/api/auth/login", {
       method: "POST",
       headers: {
         "content-type": "application/json"
@@ -52,27 +50,31 @@ export function LoginForm() {
       | null;
 
     if (!response.ok || !payload || !("user" in payload)) {
-      setErrorMessage(payload?.message ?? "Login failed. Please check your credentials.");
+      setErrorMessage(
+        payload?.message ?? "Не удалось выполнить вход. Проверьте логин и пароль."
+      );
       setIsPending(false);
       return;
     }
 
     startTransition(() => {
-      router.push(getLoginDestination(payload.user.role, searchParams.get("next")));
+      router.push(
+        getLoginDestination(payload.user.role, searchParams?.get("next") ?? null)
+      );
       router.refresh();
     });
   }
 
   return (
     <form className="content-card form-card" onSubmit={handleSubmit}>
-      <h2>Sign in</h2>
+      <h2>Вход в систему</h2>
       <p>
-        Use one of the seeded local accounts to enter the participant or
-        secretariat workspace.
+        Используйте один из локальных демо-аккаунтов, чтобы открыть кабинет
+        участника или секретариата.
       </p>
 
       <label className="field-label">
-        <span>Email</span>
+        <span>Электронная почта</span>
         <input
           className="text-input"
           type="email"
@@ -82,13 +84,13 @@ export function LoginForm() {
           onChange={(event) => {
             setEmail(event.target.value);
           }}
-          placeholder="name@tk182.local"
+          placeholder="participant@tk182.local"
           required
         />
       </label>
 
       <label className="field-label">
-        <span>Password</span>
+        <span>Пароль</span>
         <input
           className="text-input"
           type="password"
@@ -98,14 +100,14 @@ export function LoginForm() {
           onChange={(event) => {
             setPassword(event.target.value);
           }}
-          placeholder="Enter your password"
+          placeholder="Введите пароль"
           required
         />
       </label>
 
       <div className="stack-actions">
         <button className="pill pill-button" type="submit" disabled={isPending}>
-          {isPending ? "Signing in..." : "Sign in"}
+          {isPending ? "Вход..." : "Войти"}
         </button>
       </div>
 

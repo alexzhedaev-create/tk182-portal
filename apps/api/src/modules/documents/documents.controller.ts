@@ -17,7 +17,7 @@ export class DocumentsController {
 
   @Get("participant")
   @UseGuards(SessionAuthGuard, RolesGuard)
-  @Roles("PARTICIPANT", "ADMIN")
+  @Roles("PARTICIPANT")
   getParticipantDocuments(): Promise<PaginatedResult<DocumentSummary>> {
     return this.documentsService.listParticipantDocuments();
   }

@@ -33,7 +33,9 @@ body {
 }
 
 button,
-input {
+input,
+select,
+textarea {
   font: inherit;
 }
 
@@ -369,7 +371,31 @@ a {
   color: var(--ink);
 }
 
+.text-area {
+  width: 100%;
+  min-height: 132px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  resize: vertical;
+}
+
+.file-input {
+  padding: 10px 14px;
+}
+
+.file-description-area {
+  min-height: 96px;
+}
+
 .text-input:focus-visible {
+  outline: 2px solid rgba(15, 60, 102, 0.28);
+  outline-offset: 2px;
+}
+
+.text-area:focus-visible {
   outline: 2px solid rgba(15, 60, 102, 0.28);
   outline-offset: 2px;
 }
@@ -411,6 +437,68 @@ a {
 .document-card strong {
   display: block;
   margin-bottom: 6px;
+}
+
+.form-grid,
+.metric-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.compact-grid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.review-card {
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.review-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.metric-card {
+  display: grid;
+  gap: 6px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.metric-card strong {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.metric-card span {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.radio-group {
+  display: grid;
+  gap: 12px;
+}
+
+.radio-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
 }
 
 @media (max-width: 720px) {

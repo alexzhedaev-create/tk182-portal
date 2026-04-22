@@ -1,6 +1,16 @@
 import "server-only";
 
-import type { DocumentSummary, PaginatedResult, SessionResponseDto } from "@tk182/shared-types";
+import type {
+  DocumentSummary,
+  PaginatedResult,
+  ParticipantAssignedReviewCycle,
+  ParticipantDraftStandardCard,
+  ParticipantPositionRecord,
+  ReviewCommentRecord,
+  SecretariatCycleDetail,
+  SecretariatReviewCycleListItem,
+  SessionResponseDto
+} from "@tk182/shared-types";
 import { cookies } from "next/headers";
 
 import type { WorkspaceArea } from "./auth";
@@ -41,7 +51,13 @@ async function fetchFromApi<T>(path: string): Promise<T> {
     throw new Error(`API request to ${path} failed with status ${response.status}.`);
   }
 
-  return (await response.json()) as T;
+  const responseText = await response.text();
+
+  if (!responseText.trim()) {
+    return null as T;
+  }
+
+  return JSON.parse(responseText) as T;
 }
 
 export function getServerSession(): Promise<SessionResponseDto> {
@@ -52,4 +68,50 @@ export function getWorkspaceDocuments(
   area: WorkspaceArea
 ): Promise<PaginatedResult<DocumentSummary>> {
   return fetchFromApi<PaginatedResult<DocumentSummary>>(`/documents/${area}`);
+}
+
+export function getParticipantAssignedCycles(): Promise<ParticipantAssignedReviewCycle[]> {
+  return fetchFromApi<ParticipantAssignedReviewCycle[]>("/approval/participant/cycles");
+}
+
+export function getParticipantDraftCard(
+  cycleId: string,
+  draftStandardId: string
+): Promise<ParticipantDraftStandardCard> {
+  return fetchFromApi<ParticipantDraftStandardCard>(
+    `/approval/participant/cycles/${encodeURIComponent(cycleId)}/drafts/${encodeURIComponent(
+      draftStandardId
+    )}`
+  );
+}
+
+export function getParticipantComments(
+  cycleId: string,
+  draftStandardId: string
+): Promise<ReviewCommentRecord[]> {
+  return fetchFromApi<ReviewCommentRecord[]>(
+    `/approval/participant/cycles/${encodeURIComponent(
+      cycleId
+    )}/drafts/${encodeURIComponent(draftStandardId)}/comments`
+  );
+}
+
+export function getParticipantPosition(
+  cycleId: string
+): Promise<ParticipantPositionRecord | null> {
+  return fetchFromApi<ParticipantPositionRecord | null>(
+    `/approval/participant/cycles/${encodeURIComponent(cycleId)}/position`
+  );
+}
+
+export function getSecretariatCycles(): Promise<SecretariatReviewCycleListItem[]> {
+  return fetchFromApi<SecretariatReviewCycleListItem[]>("/approval/secretariat/cycles");
+}
+
+export function getSecretariatCycleDetail(
+  cycleId: string
+): Promise<SecretariatCycleDetail> {
+  return fetchFromApi<SecretariatCycleDetail>(
+    `/approval/secretariat/cycles/${encodeURIComponent(cycleId)}`
+  );
 }

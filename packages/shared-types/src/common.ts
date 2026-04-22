@@ -17,7 +17,7 @@ export interface ModuleStubResponse {
 }
 
 export interface ApiEndpointSummary {
-  method: "GET" | "POST";
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   path: string;
   areas: PortalArea[];
   description: string;

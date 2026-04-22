@@ -31,6 +31,7 @@ function loadWorkspaceEnvFile(envPath) {
 }
 
 const workspaceEnvPath = resolve(workspaceRoot, ".env");
+const distDirectory = process.env.NEXT_DIST_DIR?.trim() || ".next";
 
 if (existsSync(workspaceEnvPath)) {
   loadWorkspaceEnvFile(workspaceEnvPath);
@@ -38,9 +39,7 @@ if (existsSync(workspaceEnvPath)) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    externalDir: true
-  },
+  distDir: distDirectory,
   transpilePackages: ["@tk182/shared-types"]
 };
 

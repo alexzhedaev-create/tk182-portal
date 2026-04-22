@@ -15,27 +15,26 @@ export default async function LoginPage() {
     <div className="page-frame">
       <section className="hero-card">
         <div>
-          <div className="eyebrow">Internal access</div>
-          <h1 className="page-title">Participant and secretariat login</h1>
+          <div className="eyebrow">Локальный доступ</div>
+          <h1 className="page-title">Вход в рабочие кабинеты</h1>
           <p className="page-intro">
-            Local credential authentication is now active for the private
-            committee workspaces, using hashed passwords and persisted
-            httpOnly sessions.
+            Для рабочих кабинетов ТК 182 включена локальная авторизация с
+            хэшированием паролей и постоянной httpOnly-сессией.
           </p>
         </div>
 
         <div className="pill-row">
           <Link className="pill" href={`${apiBaseUrl}/auth`}>
-            Auth summary
+            Сводка auth API
           </Link>
           <Link className="pill" href={`${apiBaseUrl}/auth/session`}>
-            API session
+            Сессия API
           </Link>
           <Link className="pill" href="/participant">
-            Participant workspace
+            Кабинет участника
           </Link>
           <Link className="pill" href="/secretariat">
-            Secretariat workspace
+            Кабинет секретариата
           </Link>
         </div>
       </section>
@@ -43,28 +42,28 @@ export default async function LoginPage() {
       <section className="info-grid">
         {session.authenticated && session.user ? (
           <>
-            <WorkspaceSessionCard heading="Current session" user={session.user} />
+            <WorkspaceSessionCard heading="Текущая сессия" user={session.user} />
             <article className="content-card">
-              <h2>Active workspace access</h2>
+              <h2>Доступные разделы</h2>
               <p>
-                You are already signed in as {session.user.displayName} with the{" "}
-                {formatRole(session.user.role)} role.
+                Вы уже вошли как {session.user.displayName}. Текущая роль:{" "}
+                {formatRole(session.user.role)}.
               </p>
               <div className="pill-row">
                 <Link
                   className="pill"
                   href={getDefaultWorkspacePath(session.user.role)}
                 >
-                  Open your default workspace
+                  Открыть основной кабинет
                 </Link>
                 {canAccessWorkspace(session.user.role, "participant") ? (
                   <Link className="pill" href="/participant">
-                    Participant workspace
+                    Кабинет участника
                   </Link>
                 ) : null}
                 {canAccessWorkspace(session.user.role, "secretariat") ? (
                   <Link className="pill" href="/secretariat">
-                    Secretariat workspace
+                    Кабинет секретариата
                   </Link>
                 ) : null}
               </div>
@@ -74,11 +73,11 @@ export default async function LoginPage() {
           <>
             <LoginForm />
             <article className="content-card">
-              <h2>Session behavior</h2>
+              <h2>Как работает сессия</h2>
               <p>
-                Successful login stores an httpOnly cookie, `/auth/session`
-                returns live user details, and protected workspace routes enforce
-                role boundaries on both the web and API sides.
+                После входа сохраняется httpOnly-cookie, `/auth/session`
+                возвращает актуальную информацию о пользователе, а защищенные
+                маршруты проверяют роль и в вебе, и в API.
               </p>
             </article>
           </>

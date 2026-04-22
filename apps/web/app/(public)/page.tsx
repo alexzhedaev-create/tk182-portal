@@ -7,55 +7,50 @@ export default function HomePage() {
     <div className="page-frame">
       <section className="hero-card">
         <div>
-          <div className="eyebrow">Local MVP</div>
-          <h1 className="hero-title">
-            A clear foundation for the official TK182 portal.
-          </h1>
+          <div className="eyebrow">Локальный MVP</div>
+          <h1 className="hero-title">Рабочий портал ТК 182 для согласования проектов стандартов.</h1>
           <p className="hero-copy">
-            The scaffold now separates the public website from the participant
-            workspace and the secretariat workflow, while keeping the API,
-            database wiring, and shared contracts local-first and ready to
-            extend.
+            Портал разделяет публичный сайт, кабинет участника и кабинет
+            секретариата. Локальная инфраструктура, база данных и авторизация
+            уже работают, а первый цикл согласования доступен в демо-режиме.
           </p>
         </div>
 
         <div className="pill-row">
           <Link className="pill" href="/">
-            Public website
+            Публичный сайт
           </Link>
           <Link className="pill" href="/participant">
-            Participant workspace
+            Кабинет участника
           </Link>
           <Link className="pill" href="/secretariat">
-            Secretariat workspace
+            Кабинет секретариата
           </Link>
           <Link className="pill" href={`${apiBaseUrl}/health`}>
-            API health
+            Состояние API
           </Link>
         </div>
 
         <div className="hero-grid">
           <article>
-            <h2>Public website</h2>
+            <h2>Публичный сайт</h2>
             <p>
-              Committee information, news, meetings, standards, and public
-              documents sit in a dedicated public route group with reusable
-              content scaffolding.
+              На публичной части размещаются сведения о комитете, новости,
+              заседания, каталог стандартов и открытые документы.
             </p>
           </article>
           <article>
-            <h2>Participant workspace</h2>
+            <h2>Кабинет участника</h2>
             <p>
-              Review rounds, protected documents, and comment activity now have
-              a separate placeholder surface prepared for local-auth work.
+              Участник видит назначенные циклы согласования, текущую редакцию
+              проекта, свои замечания и итоговую позицию.
             </p>
           </article>
           <article>
-            <h2>Secretariat workspace</h2>
+            <h2>Кабинет секретариата</h2>
             <p>
-              Approval-cycle management, notifications, and audit oversight now
-              have their own internal shell instead of living inside the public
-              website.
+              Секретариат контролирует ход цикла, ответы участников, статусы
+              замечаний и итоговые позиции по каждому проекту.
             </p>
           </article>
         </div>
@@ -63,80 +58,78 @@ export default function HomePage() {
 
       <section className="status-grid">
         <article>
-          <div className="eyebrow">Ready now</div>
-          <h2>Three distinct portal surfaces</h2>
+          <div className="eyebrow">Уже доступно</div>
+          <h2>Три независимые поверхности портала</h2>
           <p>
-            Route-level separation keeps public content and internal workflow
-            concerns from bleeding into each other as the MVP grows.
+            Публичный сайт и внутренние рабочие кабинеты не смешиваются и могут
+            развиваться независимо.
           </p>
         </article>
         <article>
-          <div className="eyebrow">API scaffold</div>
-          <h2>Module inventory and auth summary</h2>
+          <div className="eyebrow">API и база</div>
+          <h2>Локальная авторизация и реальный workflow</h2>
           <p>
-            The API exposes a root index, health endpoint, and local-auth
-            scaffold so the next implementation phase has a consistent starting
-            contract.
+            API уже хранит пользователей, сессии, организации, документы,
+            проекты стандартов, циклы согласования и замечания участников.
           </p>
         </article>
         <article>
-          <div className="eyebrow">Local-only</div>
-          <h2>No cloud or external identity coupling</h2>
+          <div className="eyebrow">Только локально</div>
+          <h2>Без облачных зависимостей и внешнего SSO</h2>
           <p>
-            The scaffold keeps authentication local and environment-driven,
-            matching the MVP constraint of avoiding external auth providers and
-            cloud integrations.
+            MVP использует локальную инфраструктуру, Docker Compose и
+            cookie-сессии без внешних провайдеров авторизации.
           </p>
         </article>
       </section>
 
       <section className="route-grid">
         <article>
-          <h2>Explore the public website</h2>
+          <h2>Разделы публичного сайта</h2>
           <p>
-            Browse the current placeholders for committee information and public
-            content sections.
+            Здесь размещаются открытые материалы комитета и служебная
+            информация для внешних посетителей.
           </p>
           <div className="pill-row">
             <Link className="pill" href="/about">
-              About
+              О комитете
             </Link>
             <Link className="pill" href="/documents">
-              Documents
+              Документы
             </Link>
             <Link className="pill" href="/standards">
-              Standards
+              Стандарты
             </Link>
             <Link className="pill" href="/meetings">
-              Meetings
+              Заседания
             </Link>
             <Link className="pill" href="/news">
-              News
+              Новости
             </Link>
             <Link className="pill" href="/contacts">
-              Contacts
+              Контакты
             </Link>
           </div>
         </article>
         <article>
-          <h2>Move into the private scaffold</h2>
+          <h2>Перейти в рабочий контур</h2>
           <p>
-            The next sprint can now build role checks, credential auth, and
-            approval screens on top of separate participant and secretariat
-            surfaces.
+            Внутренние кабинеты уже позволяют пройти первый сценарий
+            согласования: участник оставляет замечания, секретариат видит
+            прогресс и ответы.
           </p>
           <div className="pill-row">
             <Link className="pill" href="/login">
-              Login scaffold
+              Страница входа
             </Link>
             <Link className="pill" href="/participant">
-              Participant
+              Участник
             </Link>
             <Link className="pill" href="/secretariat">
-              Secretariat
+              Секретариат
             </Link>
             <Link className="pill" href={apiBaseUrl}>
-              API index
+              Корень API
             </Link>
           </div>
         </article>

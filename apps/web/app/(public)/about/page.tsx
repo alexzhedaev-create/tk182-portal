@@ -3,18 +3,18 @@ import { PageTemplate } from "../../../components/page-template";
 export default function AboutPage() {
   return (
     <PageTemplate
-      eyebrow="Committee profile"
-      title="About TK182"
-      intro="This section is ready for the committee charter, mission, membership model, governance structure, and publication context."
+      eyebrow="Профиль комитета"
+      title="О ТК 182"
+      intro="Раздел подготовлен для публикации устава комитета, описания мандата, модели участия и структуры управления."
       highlights={[
-        "Committee mandate and scope",
-        "Leadership and governance structure",
-        "Participation model and eligibility"
+        "Мандат и область деятельности комитета",
+        "Структура руководства и управления",
+        "Порядок участия и требования к организациям"
       ]}
       nextSteps={[
-        "Add managed public page content from the API",
-        "Introduce committee timeline and milestones",
-        "Link public documents and participation guidance"
+        "Подключить управляемый контент из API",
+        "Добавить хронологию развития комитета",
+        "Связать раздел с документами и памяткой по участию"
       ]}
     />
   );

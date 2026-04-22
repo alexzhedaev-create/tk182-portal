@@ -3,18 +3,18 @@ import { PageTemplate } from "../../../components/page-template";
 export default function MeetingsPage() {
   return (
     <PageTemplate
-      eyebrow="Committee calendar"
-      title="Meetings"
-      intro="Meeting scheduling, agendas, minutes, and attendance details will live here, with public visibility controlled independently from private committee material."
+      eyebrow="Календарь комитета"
+      title="Заседания"
+      intro="Здесь будут публиковаться расписание заседаний, повестки, протоколы и сведения об участии с отдельными правилами доступа."
       highlights={[
-        "Upcoming meeting schedule",
-        "Agendas and published minutes",
-        "Future participant-only meeting resources"
+        "График предстоящих заседаний",
+        "Повестки и опубликованные протоколы",
+        "Будущие закрытые материалы для участников"
       ]}
       nextSteps={[
-        "Connect to the meetings API module",
-        "Add calendar-friendly metadata and status",
-        "Separate public meeting pages from restricted attachments"
+        "Подключить модуль заседаний из API",
+        "Добавить даты, статусы и календарные атрибуты",
+        "Развести публичные карточки и закрытые вложения"
       ]}
     />
   );

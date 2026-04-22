@@ -36,7 +36,7 @@ export class RolesGuard implements CanActivate {
       request.authSession ?? (await this.authService.getRequestSession(request));
 
     if (!session) {
-      throw new UnauthorizedException("A valid session is required.");
+      throw new UnauthorizedException("Требуется действующая сессия.");
     }
 
     request.authSession = session;
@@ -46,7 +46,7 @@ export class RolesGuard implements CanActivate {
     }
 
     throw new ForbiddenException(
-      `Access is restricted to ${requiredRoles.join(", ")}. Signed in as ${session.user.role}.`
+      `Доступ разрешен только ролям: ${requiredRoles.join(", ")}. Текущая роль: ${session.user.role}.`
     );
   }
 }

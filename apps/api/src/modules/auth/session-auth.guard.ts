@@ -17,7 +17,7 @@ export class SessionAuthGuard implements CanActivate {
     const session = await this.authService.getRequestSession(request);
 
     if (!session) {
-      throw new UnauthorizedException("A valid session is required.");
+      throw new UnauthorizedException("Требуется действующая сессия.");
     }
 
     request.authSession = session;

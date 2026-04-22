@@ -3,7 +3,7 @@ import type { AuthRole } from "@tk182/shared-types";
 export type WorkspaceArea = "participant" | "secretariat";
 
 const workspaceAccess: Record<WorkspaceArea, readonly AuthRole[]> = {
-  participant: ["PARTICIPANT", "ADMIN"],
+  participant: ["PARTICIPANT"],
   secretariat: ["SECRETARIAT", "ADMIN"]
 };
 
@@ -12,11 +12,16 @@ export function canAccessWorkspace(role: AuthRole, area: WorkspaceArea): boolean
 }
 
 export function formatRole(role: AuthRole): string {
-  return role
-    .toLowerCase()
-    .split("_")
-    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
-    .join(" ");
+  switch (role) {
+    case "ADMIN":
+      return "Администратор";
+    case "SECRETARIAT":
+      return "Секретариат";
+    case "PARTICIPANT":
+      return "Участник";
+    default:
+      return role;
+  }
 }
 
 export function getDefaultWorkspacePath(role: AuthRole): string {
@@ -24,5 +29,5 @@ export function getDefaultWorkspacePath(role: AuthRole): string {
 }
 
 export function getWorkspaceLabel(area: WorkspaceArea): string {
-  return area === "participant" ? "Participant" : "Secretariat";
+  return area === "participant" ? "Кабинет участника" : "Кабинет секретариата";
 }

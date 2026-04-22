@@ -1,3 +1,5 @@
+import { DEFAULT_ALLOWED_FILE_EXTENSIONS, resolveStorageRootDirectory } from "../storage/local-file-storage";
+
 interface ApplicationConfig {
   api: {
     host: string;
@@ -15,6 +17,11 @@ interface ApplicationConfig {
     allowedOrigins: string[];
     publicUrl: string;
   };
+  storage: {
+    allowedExtensions: string[];
+    maxFileSizeBytes: number;
+    rootDir: string;
+  };
 }
 
 function parsePort(value: string | undefined, fallback: number): number {
@@ -28,6 +35,21 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
   }
 
   return value.toLowerCase() === "true";
+}
+
+function parsePositiveInteger(value: string | undefined, fallback: number): number {
+  const parsedValue = Number.parseInt(value ?? "", 10);
+
+  return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : fallback;
+}
+
+function parseCsvList(value: string | undefined, fallback: readonly string[]): string[] {
+  const entries = value
+    ?.split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  return entries && entries.length > 0 ? entries : [...fallback];
 }
 
 function buildDefaultDatabaseUrl(): string {
@@ -73,6 +95,17 @@ export function getApplicationConfig(): ApplicationConfig {
     web: {
       publicUrl: publicWebUrl,
       allowedOrigins: buildAllowedOrigins(publicWebUrl)
+    },
+    storage: {
+      rootDir: resolveStorageRootDirectory(process.env.FILE_STORAGE_DIR),
+      maxFileSizeBytes: parsePositiveInteger(
+        process.env.FILE_STORAGE_MAX_BYTES,
+        10 * 1024 * 1024
+      ),
+      allowedExtensions: parseCsvList(
+        process.env.FILE_STORAGE_ALLOWED_EXTENSIONS,
+        DEFAULT_ALLOWED_FILE_EXTENSIONS
+      )
     }
   };
 }

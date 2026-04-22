@@ -3,8 +3,6 @@
 import { startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:3001";
-
 export function LogoutButton() {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
@@ -14,13 +12,13 @@ export function LogoutButton() {
     setIsPending(true);
     setErrorMessage(null);
 
-    const response = await fetch(`${apiBaseUrl}/auth/logout`, {
+    const response = await fetch("/api/auth/logout", {
       method: "POST",
       credentials: "include"
     });
 
     if (!response.ok) {
-      setErrorMessage("Logout failed. Please try again.");
+      setErrorMessage("Не удалось выполнить выход. Попробуйте еще раз.");
       setIsPending(false);
       return;
     }
@@ -41,7 +39,7 @@ export function LogoutButton() {
         }}
         disabled={isPending}
       >
-        {isPending ? "Signing out..." : "Sign out"}
+        {isPending ? "Выход..." : "Выйти"}
       </button>
       {errorMessage ? (
         <p className="status-note status-note-error" role="alert">

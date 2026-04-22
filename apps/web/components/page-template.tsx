@@ -33,7 +33,7 @@ export function PageTemplate({
 
       <section className="content-stack">
         <article className="content-card">
-          <h2>What this page will hold</h2>
+          <h2>Что будет на странице</h2>
           <ul>
             {highlights.map((item) => (
               <li key={item}>{item}</li>
@@ -42,7 +42,7 @@ export function PageTemplate({
         </article>
 
         <article className="content-card">
-          <h2>Next implementation steps</h2>
+          <h2>Следующие шаги</h2>
           <ul>
             {nextSteps.map((item) => (
               <li key={item}>{item}</li>

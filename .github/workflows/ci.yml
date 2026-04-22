@@ -1,0 +1,162 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CI: true
+  POSTGRES_DB: tk182_portal
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_HOST: 127.0.0.1
+  POSTGRES_PORT: "5432"
+  DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/tk182_portal
+  API_HOST: 127.0.0.1
+  API_PORT: "3001"
+  WEB_HOST: 127.0.0.1
+  WEB_PORT: "3000"
+  WEB_PUBLIC_URL: http://127.0.0.1:3000
+  NEXT_PUBLIC_API_URL: http://127.0.0.1:3001
+  API_INTERNAL_URL: http://127.0.0.1:3001
+  NEXT_PUBLIC_APP_NAME: Портал ТК 182
+  SESSION_COOKIE_SECURE: "false"
+  FILE_STORAGE_DIR: storage/uploads
+  FILE_STORAGE_MAX_BYTES: "10485760"
+  FILE_STORAGE_ALLOWED_EXTENSIONS: .pdf,.doc,.docx,.xlsx,.zip,.txt
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Typecheck and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.1
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Build
+        run: pnpm build
+
+  e2e-api:
+    name: API integration tests
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: tk182_portal
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tk182_portal"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.1
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build runtime artifacts
+        run: pnpm build
+
+      - name: Prepare database
+        run: pnpm db:setup
+
+      - name: Run API e2e suite
+        run: pnpm test:e2e:api
+
+  e2e-web:
+    name: Web runtime tests
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: tk182_portal
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d tk182_portal"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.8.0
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.1
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build runtime artifacts
+        run: pnpm build
+
+      - name: Prepare database
+        run: pnpm db:setup
+
+      - name: Run web e2e suite
+        run: pnpm test:e2e:web

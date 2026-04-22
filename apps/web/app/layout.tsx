@@ -3,9 +3,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TK182 Portal",
+  title: "Портал ТК 182",
   description:
-    "Official portal scaffold for Technical Committee 182, covering the public website and future committee workspaces."
+    "Официальный локальный MVP портала ТК 182 с публичным сайтом и рабочими кабинетами участников."
 };
 
 export default function RootLayout({
@@ -14,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ru">
       <body>{children}</body>
     </html>
   );

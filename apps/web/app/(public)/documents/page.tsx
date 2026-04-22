@@ -3,18 +3,18 @@ import { PageTemplate } from "../../../components/page-template";
 export default function DocumentsPage() {
   return (
     <PageTemplate
-      eyebrow="Public records"
-      title="Documents"
-      intro="The documents page will surface public committee publications first, while protected draft material stays separate inside the participant workspace."
+      eyebrow="Публичные материалы"
+      title="Документы"
+      intro="На странице будут размещаться открытые документы комитета, тогда как рабочие редакции проектов останутся внутри кабинета участника."
       highlights={[
-        "Publicly released committee documents",
-        "Categorized downloads and metadata",
-        "Clear separation from draft review materials"
+        "Открытые документы и публикации комитета",
+        "Категории, версии и метаданные файлов",
+        "Разделение публичных и закрытых рабочих материалов"
       ]}
       nextSteps={[
-        "Connect to the documents API module",
-        "Add search, filtering, and file metadata",
-        "Introduce visibility rules for public versus restricted assets"
+        "Подключить данные из модуля документов API",
+        "Добавить поиск, фильтрацию и карточки файлов",
+        "Отразить правила доступа к открытым и закрытым материалам"
       ]}
     />
   );

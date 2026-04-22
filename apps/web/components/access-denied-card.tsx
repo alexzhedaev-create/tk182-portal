@@ -16,32 +16,31 @@ export function AccessDeniedCard({ area, user }: AccessDeniedCardProps) {
     <>
       <section className="hero-card">
         <div>
-          <div className="eyebrow">Access denied</div>
-          <h1 className="page-title">{getWorkspaceLabel(area)} workspace</h1>
+          <div className="eyebrow">Доступ ограничен</div>
+          <h1 className="page-title">{getWorkspaceLabel(area)}</h1>
           <p className="page-intro">
-            This workspace is restricted to a different role. You are signed in
-            as {user.displayName} ({formatRole(user.role)}).
+            Этот раздел доступен для другой роли. Сейчас выполнен вход как{" "}
+            {user.displayName} ({formatRole(user.role)}).
           </p>
         </div>
 
         <div className="pill-row">
-          <span className="pill">Signed in: {user.displayName}</span>
-          <span className="pill">Role: {formatRole(user.role)}</span>
+          <span className="pill">Пользователь: {user.displayName}</span>
+          <span className="pill">Роль: {formatRole(user.role)}</span>
           <Link className="pill" href={fallbackWorkspace}>
-            Go to your workspace
+            Перейти в доступный кабинет
           </Link>
           <Link className="pill" href="/login">
-            Back to login
+            Вернуться ко входу
           </Link>
         </div>
       </section>
 
       <article className="content-card">
-        <h2>Why this is blocked</h2>
+        <h2>Почему доступ закрыт</h2>
         <p>
-          The participant and secretariat surfaces are intentionally separated in
-          the MVP. Route protection is enforced both in the web app and in the
-          API.
+          В MVP кабинет участника и кабинет секретариата разделены. Проверка
+          роли выполняется и в веб-приложении, и на стороне API.
         </p>
       </article>
     </>

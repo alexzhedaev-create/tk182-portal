@@ -95,7 +95,7 @@ export class AuthService {
     const password = credentials.password;
 
     if (!email || password.trim().length === 0) {
-      throw new BadRequestException("Email and password are required.");
+      throw new BadRequestException("Укажите адрес электронной почты и пароль.");
     }
 
     const userResult = await this.databaseService.query<LoginLookupRow>(
@@ -107,7 +107,7 @@ export class AuthService {
     const user = userResult.rows[0];
 
     if (!user || !(await verifyPassword(password, user.password_hash))) {
-      throw new UnauthorizedException("Invalid email or password.");
+      throw new UnauthorizedException("Неверный адрес электронной почты или пароль.");
     }
 
     const sessionToken = createSessionToken();
@@ -132,7 +132,7 @@ export class AuthService {
       setCookieHeader: buildSessionCookie(sessionToken, expiresAt),
       response: {
         status: "success",
-        message: "Login successful.",
+        message: "Вход выполнен.",
         user: mapAuthenticatedUser(user),
         expiresAt: expiresAt.toISOString()
       }
@@ -153,7 +153,7 @@ export class AuthService {
       setCookieHeader: buildExpiredSessionCookie(),
       response: {
         status: "success",
-        message: "Logout successful."
+        message: "Выход выполнен."
       }
     };
   }

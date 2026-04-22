@@ -16,10 +16,10 @@ export function WorkspaceSessionCard({
     <article className="content-card">
       <h2>{heading}</h2>
       <p>
-        Signed in as <strong>{user.displayName}</strong>.
+        Вы вошли как <strong>{user.displayName}</strong>.
       </p>
       <div className="pill-row">
-        <span className="pill">Role: {formatRole(user.role)}</span>
+        <span className="pill">Роль: {formatRole(user.role)}</span>
         <span className="pill">{user.email}</span>
         {user.organization ? (
           <span className="pill">{user.organization.shortName}</span>

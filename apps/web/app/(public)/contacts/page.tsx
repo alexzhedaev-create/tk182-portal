@@ -3,18 +3,18 @@ import { PageTemplate } from "../../../components/page-template";
 export default function ContactsPage() {
   return (
     <PageTemplate
-      eyebrow="Directory"
-      title="Contacts"
-      intro="This page is reserved for official contact channels, secretariat details, committee participation enquiries, and submission guidance."
+      eyebrow="Контактная информация"
+      title="Контакты"
+      intro="Страница предназначена для официальных каналов связи, контактов секретариата и порядка обращения по вопросам участия в работе комитета."
       highlights={[
-        "Secretariat and general enquiries",
-        "Participation guidance contacts",
-        "Official communication channels"
+        "Контакты секретариата и общие обращения",
+        "Контакты по вопросам участия",
+        "Официальные каналы коммуникации"
       ]}
       nextSteps={[
-        "Add editable committee contact data",
-        "Surface office hours and response expectations",
-        "Prepare structured forms for internal handling later"
+        "Добавить редактируемые контактные данные",
+        "Показать часы работы и SLA ответа",
+        "Позднее подготовить структурированные формы обращений"
       ]}
     />
   );

@@ -1,17 +1,13 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AccessDeniedCard } from "../../../components/access-denied-card";
 import { WorkspaceSessionCard } from "../../../components/workspace-session-card";
-import { getServerSession, getWorkspaceDocuments } from "../../../lib/api";
+import { getParticipantAssignedCycles, getServerSession } from "../../../lib/api";
 import { canAccessWorkspace } from "../../../lib/auth";
+import { formatDate, formatReviewCycleStatus } from "../../../lib/review";
 
 export const dynamic = "force-dynamic";
-
-const participantCapabilities = [
-  "Assigned draft standards and review rounds",
-  "Protected documents and working copies",
-  "Comment submission and review history"
-];
 
 export default async function ParticipantWorkspacePage() {
   const session = await getServerSession();
@@ -28,58 +24,91 @@ export default async function ParticipantWorkspacePage() {
     );
   }
 
-  const documents = await getWorkspaceDocuments("participant");
+  const assignedCycles = await getParticipantAssignedCycles();
 
   return (
     <div className="page-frame">
       <section className="hero-card">
         <div>
-          <div className="eyebrow">Participant workspace</div>
-          <h1 className="page-title">Draft review surface</h1>
+          <div className="eyebrow">Кабинет участника</div>
+          <h1 className="page-title">На согласовании</h1>
           <p className="page-intro">
-            This workspace now uses the live session from the API and loads
-            participant-visible documents from PostgreSQL seed data.
+            Здесь отображаются назначенные вам проекты стандартов, сроки ответа,
+            текущие редакции и рабочие замечания по активным циклам.
           </p>
         </div>
 
         <div className="pill-row">
-          <span className="pill">Live session</span>
-          <span className="pill">Participant role boundary</span>
-          <span className="pill">Seeded draft documents</span>
+          <span className="pill">Назначено циклов: {assignedCycles.length}</span>
+          <span className="pill">Роль: Участник</span>
+          <span className="pill">Локальная сессия активна</span>
         </div>
       </section>
 
       <section className="info-grid">
-        <WorkspaceSessionCard heading="Current session" user={session.user} />
+        <WorkspaceSessionCard heading="Текущая сессия" user={session.user} />
 
         <article className="content-card">
-          <h2>Visible draft documents</h2>
-          {documents.items.length > 0 ? (
-            <div className="content-stack">
-              {documents.items.map((document) => (
-                <div key={document.id} className="document-card">
-                  <strong>{document.title}</strong>
-                  <p>{document.summary}</p>
-                  <div className="pill-row">
-                    <span className="pill">{document.category}</span>
-                    <span className="pill">{document.visibility}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p>No participant documents are available yet.</p>
-          )}
-        </article>
-
-        <article className="content-card">
-          <h2>Participant capabilities</h2>
+          <h2>Как работать с замечаниями</h2>
           <ul>
-            {participantCapabilities.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
+            <li>Откройте карточку проекта и проверьте текущую редакцию документа.</li>
+            <li>Добавьте замечания с указанием раздела, пункта или страницы.</li>
+            <li>После подготовки комментариев отправьте итоговую позицию организации.</li>
           </ul>
         </article>
+      </section>
+
+      <section className="content-stack">
+        {assignedCycles.length > 0 ? (
+          assignedCycles.map((item) => (
+            <article key={item.assignmentId} className="content-card review-card">
+              <div className="review-card-header">
+                <div>
+                  <div className="eyebrow">{item.draftStandard.code}</div>
+                  <h2>{item.draftStandard.title}</h2>
+                  <p>{item.draftStandard.summary}</p>
+                </div>
+                <div className="pill-row">
+                  <span className="pill">
+                    Статус: {formatReviewCycleStatus(item.cycle.status)}
+                  </span>
+                  <span className="pill">
+                    Срок ответа: {formatDate(item.cycle.deadlineAt)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="info-grid compact-grid">
+                <div>
+                  <strong>Цикл</strong>
+                  <p>{item.cycle.title}</p>
+                </div>
+                <div>
+                  <strong>Текущая версия</strong>
+                  <p>{item.currentVersion.versionLabel}</p>
+                </div>
+                <div>
+                  <strong>Файл</strong>
+                  <p>{item.currentVersion.fileName}</p>
+                </div>
+              </div>
+
+              <div className="pill-row">
+                <Link
+                  className="pill"
+                  href={`/participant/reviews/${item.cycle.id}/${item.draftStandard.id}`}
+                >
+                  Открыть карточку проекта
+                </Link>
+              </div>
+            </article>
+          ))
+        ) : (
+          <article className="content-card">
+            <h2>Активных назначений нет</h2>
+            <p>Сейчас на вас не назначено активных циклов согласования.</p>
+          </article>
+        )}
       </section>
     </div>
   );

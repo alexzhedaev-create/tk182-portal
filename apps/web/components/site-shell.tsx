@@ -3,14 +3,14 @@ import Link from "next/link";
 import type { SiteNavigationItem } from "@tk182/shared-types";
 
 const navigationItems: SiteNavigationItem[] = [
-  { href: "/", label: "Home", area: "public" },
-  { href: "/about", label: "About", area: "public" },
-  { href: "/documents", label: "Documents", area: "public" },
-  { href: "/standards", label: "Standards", area: "public" },
-  { href: "/meetings", label: "Meetings", area: "public" },
-  { href: "/news", label: "News", area: "public" },
-  { href: "/contacts", label: "Contacts", area: "public" },
-  { href: "/login", label: "Login", area: "public" }
+  { href: "/", label: "Главная", area: "public" },
+  { href: "/about", label: "О комитете", area: "public" },
+  { href: "/documents", label: "Документы", area: "public" },
+  { href: "/standards", label: "Стандарты", area: "public" },
+  { href: "/meetings", label: "Заседания", area: "public" },
+  { href: "/news", label: "Новости", area: "public" },
+  { href: "/contacts", label: "Контакты", area: "public" },
+  { href: "/login", label: "Вход", area: "public" }
 ];
 
 export function SiteShell({ children }: { children: React.ReactNode }) {
@@ -21,11 +21,11 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
           <div className="brand-mark">
             <div className="brand-badge">182</div>
             <div className="brand-copy">
-              <span>Technical Committee Portal</span>
-              <strong>TK182 Portal</strong>
+              <span>Официальный портал</span>
+              <strong>ТК 182</strong>
               <p>
-                Public information on the committee, with a clean path toward
-                participant and secretariat workspaces.
+                Публичная информация о комитете и единая точка входа в рабочие
+                кабинеты участника и секретариата.
               </p>
             </div>
           </div>
@@ -42,8 +42,8 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
         <main className="main-panel">{children}</main>
 
         <footer className="footer-card">
-          <p>Local MVP foundation for the official TK182 portal.</p>
-          <p>Public website now, review workflows next.</p>
+          <p>Локальный MVP официального портала ТК 182.</p>
+          <p>Публичный сайт и первый рабочий контур согласования проектов стандартов.</p>
         </footer>
       </div>
     </div>

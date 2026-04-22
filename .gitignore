@@ -6,6 +6,7 @@ node_modules/
 
 # Build output
 .next/
+.next-dev/
 dist/
 build/
 coverage/
@@ -27,5 +28,6 @@ yarn-error.log*
 .idea/
 .vscode/
 infra/postgres-data
+storage/uploads/
 
 *.tsbuildinfo

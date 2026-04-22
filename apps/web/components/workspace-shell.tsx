@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 const workspaceNavigation = [
-  { href: "/participant", label: "Participant" },
-  { href: "/secretariat", label: "Secretariat" },
-  { href: "/login", label: "Login" },
-  { href: "/", label: "Public site" }
+  { href: "/participant", label: "Участник" },
+  { href: "/secretariat", label: "Секретариат" },
+  { href: "/login", label: "Вход" },
+  { href: "/", label: "Публичный сайт" }
 ];
 
 export function WorkspaceShell({ children }: { children: React.ReactNode }) {
@@ -13,16 +13,15 @@ export function WorkspaceShell({ children }: { children: React.ReactNode }) {
       <div className="workspace-shell">
         <header className="workspace-header">
           <div>
-            <div className="workspace-eyebrow">Private scaffold</div>
-            <h1 className="workspace-title">TK182 internal workspaces</h1>
+            <div className="workspace-eyebrow">Рабочая зона</div>
+            <h1 className="workspace-title">Кабинеты ТК 182</h1>
             <p className="workspace-copy">
-              Participant review work and secretariat approval operations are
-              intentionally isolated from the public website in this MVP
-              scaffold.
+              Процессы согласования участников и рабочий контур секретариата
+              отделены от публичного сайта и используют локальную авторизацию.
             </p>
           </div>
 
-          <nav className="workspace-nav" aria-label="Workspace">
+          <nav className="workspace-nav" aria-label="Рабочие разделы">
             {workspaceNavigation.map((item) => (
               <Link key={item.href} className="workspace-link" href={item.href}>
                 {item.label}

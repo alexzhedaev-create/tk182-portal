@@ -3,18 +3,18 @@ import { PageTemplate } from "../../../components/page-template";
 export default function NewsPage() {
   return (
     <PageTemplate
-      eyebrow="Updates"
-      title="News"
-      intro="The news area is prepared for announcements, publication releases, meeting notices, and review-cycle updates that belong on the public website."
+      eyebrow="Обновления"
+      title="Новости"
+      intro="Новостной раздел предназначен для публикации объявлений, релизов документов, уведомлений о заседаниях и открытых обновлений по работе комитета."
       highlights={[
-        "Committee announcements",
-        "Publishing and meeting updates",
-        "Structured news entries from the API"
+        "Официальные объявления комитета",
+        "Новости публикаций и заседаний",
+        "Структурированные новостные записи из API"
       ]}
       nextSteps={[
-        "Connect to the news API module",
-        "Add article detail pages and archives",
-        "Define editorial workflow for public announcements"
+        "Подключить модуль новостей из API",
+        "Добавить страницы новостей и архив",
+        "Определить редакционный процесс публикаций"
       ]}
     />
   );
