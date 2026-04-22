@@ -169,6 +169,7 @@ test(
     assert.match(contentBackofficeHtml, /Утвержденные стандарты/u);
     assert.match(contentBackofficeHtml, /Реестр материалов старого сайта/u);
     assert.match(contentBackofficeHtml, /Создано в портале/u);
+    assert.match(contentBackofficeHtml, /Создать документ/u);
     assert.match(contentBackofficeHtml, /Журнал изменений контента/u);
   }
 );

@@ -600,6 +600,90 @@ test(
 );
 
 test(
+  "secretariat can create a portal draft directly from legacy inventory and duplicate creation is blocked",
+  { timeout: 120000 },
+  async () => {
+    const secretariat = new SessionClient(apiBaseUrl);
+    await loginAs(secretariat, secretariatCredentials);
+
+    const marker = `${Date.now()}`;
+
+    const createdInventoryRecord = await secretariat.requestJson("/content/backoffice/inventory", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        legacySection: "WORK_REPORTS",
+        legacyTitle: `Материал для создания draft ${marker}`,
+        legacyUrl: `https://viam.ru/tk182/reports/create-draft-${marker}`,
+        legacyDate: "2026-04-22T10:00:00.000Z",
+        legacyType: "PDF",
+        migrationStatus: "FOUND",
+        migrationNote: `Создать черновик в портале ${marker}`
+      })
+    });
+    assertCreatedOrOk(createdInventoryRecord.response.status, createdInventoryRecord.text);
+    assert.equal(createdInventoryRecord.data.linkedPortalRecord, null);
+    assert.equal(createdInventoryRecord.data.migrationStatus, "FOUND");
+
+    const createdDraft = await secretariat.requestJson(
+      `/content/backoffice/inventory/${createdInventoryRecord.data.id}/create-portal-draft`,
+      {
+        method: "POST"
+      }
+    );
+    assertCreatedOrOk(createdDraft.response.status, createdDraft.text);
+    assert.equal(createdDraft.data.createdPortalRecord.entityType, "PUBLIC_DOCUMENT");
+    assert.equal(
+      createdDraft.data.inventoryRecord.migrationStatus,
+      "CREATED_IN_PORTAL"
+    );
+    assert.equal(
+      createdDraft.data.inventoryRecord.linkedPortalRecord?.entityId,
+      createdDraft.data.createdPortalRecord.entityId
+    );
+
+    const linkedInventory = await secretariat.requestJson(
+      `/content/backoffice/inventory?migrationStatus=CREATED_IN_PORTAL&legacySection=WORK_REPORTS`
+    );
+    assert.equal(linkedInventory.response.status, 200);
+    const linkedRecord = linkedInventory.data.find(
+      (item) => item.id === createdInventoryRecord.data.id
+    );
+    assert.ok(linkedRecord);
+    assert.equal(
+      linkedRecord.linkedPortalRecord?.entityId,
+      createdDraft.data.createdPortalRecord.entityId
+    );
+
+    const backofficeDocuments = await secretariat.requestJson(
+      "/documents/backoffice?migrationStatus=NOT_IMPORTED&legacySection=WORK_REPORTS"
+    );
+    assert.equal(backofficeDocuments.response.status, 200);
+    const createdDocument = backofficeDocuments.data.find(
+      (item) => item.id === createdDraft.data.createdPortalRecord.entityId
+    );
+    assert.ok(createdDocument);
+    assert.equal(createdDocument.title, `Материал для создания draft ${marker}`);
+    assert.equal(
+      createdDocument.migration.legacySourceUrl,
+      `https://viam.ru/tk182/reports/create-draft-${marker}`
+    );
+    assert.equal(createdDocument.status, "draft");
+
+    const duplicateCreate = await secretariat.requestJson(
+      `/content/backoffice/inventory/${createdInventoryRecord.data.id}/create-portal-draft`,
+      {
+        method: "POST"
+      }
+    );
+    assert.equal(duplicateCreate.response.status, 400);
+    assert.match(duplicateCreate.text, /уже создана и связана запись портала/u);
+  }
+);
+
+test(
   "secretariat can manage committee structure and public committee data reflects changes",
   { timeout: 120000 },
   async () => {

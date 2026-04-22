@@ -76,6 +76,25 @@ function parseLinkedPortalValue(value: string): {
   };
 }
 
+function getCreatePortalActionLabel(legacySection: LegacyContentSection): string {
+  switch (legacySection) {
+    case "NEWS":
+      return "Создать новость";
+    case "MAIN_DOCUMENTS":
+    case "WORK_REPORTS":
+    case "WORK_PLANS":
+    case "NATIONAL_STANDARDS_PROGRAM":
+      return "Создать документ";
+    case "MEETING_AGENDA":
+    case "MEETING_MINUTES":
+      return "Создать запись заседания";
+    case "APPROVED_STANDARDS":
+      return "Создать утвержденный стандарт";
+    default:
+      return "Создать запись в портале";
+  }
+}
+
 export function SecretariatLegacyContentInventoryPanel({
   inventoryRecords,
   portalOptions
@@ -233,6 +252,47 @@ export function SecretariatLegacyContentInventoryPanel({
     });
   }
 
+  async function handleCreatePortalDraft(inventoryRecord: LegacyContentInventoryRecord) {
+    setIsPending(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const response = await fetch(
+      `${apiBaseUrl}/content/backoffice/inventory/${encodeURIComponent(
+        inventoryRecord.id
+      )}/create-portal-draft`,
+      {
+        method: "POST",
+        credentials: "include"
+      }
+    );
+
+    if (!response.ok) {
+      setErrorMessage(
+        await extractApiErrorMessage(
+          response,
+          "Не удалось создать запись портала из реестра старого сайта."
+        )
+      );
+      setIsPending(false);
+      return;
+    }
+
+    const payload = (await response.json()) as {
+      createdPortalRecord: LinkedPortalEntityReference;
+    };
+
+    setSuccessMessage(
+      `Создана запись портала: ${formatLinkedPortalEntityType(
+        payload.createdPortalRecord.entityType
+      )} «${payload.createdPortalRecord.title}».`
+    );
+    setIsPending(false);
+    startTransition(() => {
+      router.refresh();
+    });
+  }
+
   return (
     <article className="content-card" data-testid="secretariat-legacy-content-inventory-panel">
       <h2>Реестр материалов старого сайта</h2>
@@ -382,6 +442,18 @@ export function SecretariatLegacyContentInventoryPanel({
                 >
                   Редактировать
                 </button>
+                {!item.linkedPortalRecord && item.migrationStatus !== "SKIPPED" ? (
+                  <button
+                    className="pill pill-button"
+                    type="button"
+                    onClick={() => {
+                      void handleCreatePortalDraft(item);
+                    }}
+                    disabled={isPending}
+                  >
+                    {getCreatePortalActionLabel(item.legacySection)}
+                  </button>
+                ) : null}
               </div>
             </div>
           ))

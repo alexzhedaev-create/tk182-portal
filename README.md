@@ -203,12 +203,13 @@ Recommended end-to-end migration workflow for secretariat users:
 
 1. Add a material to `Реестр материалов старого сайта`
 2. Fill in `Источник на старом сайте`, section, optional date, and migration note
-3. Keep the inventory status as `Найдено` until a portal entry is created
-4. Create the real portal content entry and upload the local file if needed
-5. Link the inventory record to `Связанная запись портала`
-6. Change the inventory status to `Создано в портале`
-7. Verify the rendered public page and downloadable file
-8. Mark both the portal content entry and the inventory record as `Проверено`
+3. Use `Создать новость`, `Создать документ`, `Создать запись заседания`, or `Создать утвержденный стандарт` directly from the inventory row
+4. The portal draft is created automatically with copied title, date, source URL, legacy section, and migration note
+5. The inventory record is linked to the new portal entry and moves to `Создано в портале`
+6. Complete metadata in the regular portal backoffice form and upload the local file if needed
+7. Publish the portal entry when it is ready for the public site
+8. Verify the rendered public page and downloadable file
+9. Mark both the portal content entry and the inventory record as `Проверено`
 
 This makes the full migration scope traceable even before every legacy item has a destination record in the new portal.
 

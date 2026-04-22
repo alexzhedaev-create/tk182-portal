@@ -15,6 +15,7 @@ import type {
   CreateLegacyContentInventoryDto,
   CreateMeetingRecordDto,
   CreateNewsItemDto,
+  CreatePortalDraftFromInventoryResult,
   CreatePublicDocumentDto,
   LegacyContentInventoryFilters,
   LegacyContentInventoryRecord,
@@ -1347,6 +1348,163 @@ export class ContentService {
     return item;
   }
 
+  async createPortalDraftFromLegacyInventory(
+    userId: string,
+    inventoryId: string
+  ): Promise<CreatePortalDraftFromInventoryResult> {
+    const inventoryRecord = await this.getLegacyContentInventoryById(inventoryId);
+
+    if (inventoryRecord.linkedPortalRecord) {
+      throw new BadRequestException(
+        "Для этой записи реестра уже создана и связана запись портала."
+      );
+    }
+
+    if (inventoryRecord.migrationStatus === "SKIPPED") {
+      throw new BadRequestException(
+        "Для записи со статусом «Не переносить» нельзя создать запись портала."
+      );
+    }
+
+    const targetEntityType = this.inferLinkedPortalEntityTypeFromLegacySection(
+      inventoryRecord.legacySection
+    );
+    const publicationDate = inventoryRecord.legacyDate ?? new Date().toISOString();
+
+    let createdPortalRecord: LinkedPortalEntityReference;
+
+    switch (targetEntityType) {
+      case "NEWS_ITEM": {
+        const createdItem = await this.createNewsItem(userId, {
+          title: inventoryRecord.legacyTitle,
+          excerpt: this.buildLegacyInventorySummary(
+            inventoryRecord,
+            "Материал перенесен из реестра старого сайта. Заполните краткое описание перед публикацией."
+          ),
+          body: this.buildLegacyInventoryBody(
+            inventoryRecord,
+            "Черновик новости создан из реестра материалов старого сайта. Дополните текст и проверьте данные перед публикацией."
+          ),
+          publicationDate,
+          legacySection: inventoryRecord.legacySection,
+          legacySourceUrl: inventoryRecord.legacyUrl,
+          migrationStatus: "NOT_IMPORTED",
+          migrationNote: inventoryRecord.migrationNote
+        });
+
+        createdPortalRecord = {
+          entityType: "NEWS_ITEM",
+          entityId: createdItem.id,
+          title: createdItem.title
+        };
+        break;
+      }
+      case "PUBLIC_DOCUMENT": {
+        const category = this.mapLegacySectionToPublicDocumentCategory(
+          inventoryRecord.legacySection
+        );
+        const createdDocument = await this.createPublicDocument(userId, {
+          title: inventoryRecord.legacyTitle,
+          summary: this.buildLegacyInventorySummary(
+            inventoryRecord,
+            "Черновик публичного документа создан из реестра старого сайта. Дополните описание, загрузите файл и уточните реквизиты."
+          ),
+          category,
+          publicationDate,
+          fileDescription: inventoryRecord.migrationNote,
+          legacySection: inventoryRecord.legacySection,
+          legacySourceUrl: inventoryRecord.legacyUrl,
+          migrationStatus: "NOT_IMPORTED",
+          migrationNote: inventoryRecord.migrationNote
+        });
+
+        createdPortalRecord = {
+          entityType: "PUBLIC_DOCUMENT",
+          entityId: createdDocument.id,
+          title: createdDocument.title
+        };
+        break;
+      }
+      case "MEETING_RECORD": {
+        const category = this.mapLegacySectionToMeetingCategory(
+          inventoryRecord.legacySection
+        );
+        const createdMeeting = await this.createMeetingRecord(userId, {
+          title: inventoryRecord.legacyTitle,
+          summary: this.buildLegacyInventorySummary(
+            inventoryRecord,
+            "Черновик записи заседания создан из реестра старого сайта. Проверьте дату, содержание и вложения."
+          ),
+          body: this.buildLegacyInventoryBody(
+            inventoryRecord,
+            "Черновик записи заседания создан из реестра материалов старого сайта. Дополните содержание протокола или повестки перед публикацией."
+          ),
+          location: null,
+          category,
+          meetingDate: publicationDate,
+          publicationDate,
+          fileDescription: inventoryRecord.migrationNote,
+          legacySection: inventoryRecord.legacySection,
+          legacySourceUrl: inventoryRecord.legacyUrl,
+          migrationStatus: "NOT_IMPORTED",
+          migrationNote: inventoryRecord.migrationNote
+        });
+
+        createdPortalRecord = {
+          entityType: "MEETING_RECORD",
+          entityId: createdMeeting.id,
+          title: createdMeeting.title
+        };
+        break;
+      }
+      case "APPROVED_STANDARD": {
+        const placeholderCode = `ТРЕБУЕТ-УТОЧНЕНИЯ-${Date.now()}`;
+        const createdStandard = await this.createApprovedStandard(userId, {
+          code: placeholderCode,
+          title: inventoryRecord.legacyTitle,
+          summary: this.buildLegacyInventorySummary(
+            inventoryRecord,
+            "Черновик карточки утвержденного стандарта создан из реестра старого сайта. Уточните обозначение, описание, файл и ответственный подкомитет."
+          ),
+          approvalDate: publicationDate,
+          publicationDate,
+          responsibleSubcommitteeId: null,
+          fileDescription: inventoryRecord.migrationNote,
+          legacySection: inventoryRecord.legacySection,
+          legacySourceUrl: inventoryRecord.legacyUrl,
+          migrationStatus: "NOT_IMPORTED",
+          migrationNote: inventoryRecord.migrationNote
+        });
+
+        createdPortalRecord = {
+          entityType: "APPROVED_STANDARD",
+          entityId: createdStandard.id,
+          title: `${createdStandard.code} — ${createdStandard.title}`
+        };
+        break;
+      }
+      default:
+        throw new BadRequestException("Для выбранного раздела нельзя создать запись портала.");
+    }
+
+    const updatedInventoryRecord = await this.updateLegacyContentInventory(userId, inventoryId, {
+      legacySection: inventoryRecord.legacySection,
+      legacyTitle: inventoryRecord.legacyTitle,
+      legacyUrl: inventoryRecord.legacyUrl,
+      legacyDate: inventoryRecord.legacyDate,
+      legacyType: inventoryRecord.legacyType,
+      migrationStatus: "CREATED_IN_PORTAL",
+      migrationNote: inventoryRecord.migrationNote,
+      linkedPortalEntityType: createdPortalRecord.entityType,
+      linkedPortalEntityId: createdPortalRecord.entityId
+    });
+
+    return {
+      createdPortalRecord,
+      inventoryRecord: updatedInventoryRecord
+    };
+  }
+
   private async getLegacyContentInventoryById(
     inventoryId: string
   ): Promise<LegacyContentInventoryRecord> {
@@ -2625,6 +2783,73 @@ export class ContentService {
     }
 
     throw new BadRequestException("Связанная запись портала не найдена.");
+  }
+
+  private inferLinkedPortalEntityTypeFromLegacySection(
+    legacySection: LegacyContentSection
+  ): LinkedPortalEntityType {
+    if (NEWS_LEGACY_SECTIONS.includes(legacySection)) {
+      return "NEWS_ITEM";
+    }
+
+    if (DOCUMENT_LEGACY_SECTIONS.includes(legacySection)) {
+      return "PUBLIC_DOCUMENT";
+    }
+
+    if (MEETING_LEGACY_SECTIONS.includes(legacySection)) {
+      return "MEETING_RECORD";
+    }
+
+    if (APPROVED_STANDARD_LEGACY_SECTIONS.includes(legacySection)) {
+      return "APPROVED_STANDARD";
+    }
+
+    throw new BadRequestException("Для выбранного раздела старого сайта нельзя определить тип записи портала.");
+  }
+
+  private mapLegacySectionToPublicDocumentCategory(
+    legacySection: LegacyContentSection
+  ): PublicDocumentCategory {
+    if (DOCUMENT_LEGACY_SECTIONS.includes(legacySection)) {
+      return legacySection as PublicDocumentCategory;
+    }
+
+    throw new BadRequestException("Раздел старого сайта не соответствует категории публичного документа.");
+  }
+
+  private mapLegacySectionToMeetingCategory(
+    legacySection: LegacyContentSection
+  ): MeetingRecordCategory {
+    if (MEETING_LEGACY_SECTIONS.includes(legacySection)) {
+      return legacySection as MeetingRecordCategory;
+    }
+
+    throw new BadRequestException("Раздел старого сайта не соответствует категории записи заседания.");
+  }
+
+  private buildLegacyInventorySummary(
+    item: LegacyContentInventoryRecord,
+    fallbackText: string
+  ): string {
+    const note = item.migrationNote?.trim();
+    return note ? `${fallbackText} ${note}`.trim() : fallbackText;
+  }
+
+  private buildLegacyInventoryBody(
+    item: LegacyContentInventoryRecord,
+    fallbackText: string
+  ): string {
+    const parts = [fallbackText];
+
+    if (item.legacyUrl) {
+      parts.push(`Источник на старом сайте: ${item.legacyUrl}`);
+    }
+
+    if (item.migrationNote) {
+      parts.push(`Комментарий по переносу: ${item.migrationNote}`);
+    }
+
+    return parts.join("\n\n");
   }
 
   private assertLegacySectionSupportsLinkedEntity(

@@ -235,6 +235,11 @@ export interface UpdateLegacyContentInventoryDto {
   migrationStatus: LegacyContentInventoryStatus;
 }
 
+export interface CreatePortalDraftFromInventoryResult {
+  createdPortalRecord: LinkedPortalEntityReference;
+  inventoryRecord: LegacyContentInventoryRecord;
+}
+
 export interface CreateNewsItemDto {
   body: string;
   excerpt: string;

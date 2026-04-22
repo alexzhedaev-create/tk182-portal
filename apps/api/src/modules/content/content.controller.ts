@@ -11,6 +11,7 @@ import {
   UseGuards
 } from "@nestjs/common";
 import type {
+  CreatePortalDraftFromInventoryResult,
   CreateLegacyContentInventoryDto,
   LegacyContentInventoryRecord,
   LegacyContentInventoryStatus,
@@ -68,6 +69,19 @@ export class ContentController {
       request.authSession!.user.id,
       inventoryId,
       payload
+    );
+  }
+
+  @Post("backoffice/inventory/:inventoryId/create-portal-draft")
+  @UseGuards(SessionAuthGuard, RolesGuard)
+  @Roles("SECRETARIAT", "ADMIN")
+  createPortalDraftFromInventory(
+    @Req() request: AuthenticatedRequest,
+    @Param("inventoryId") inventoryId: string
+  ): Promise<CreatePortalDraftFromInventoryResult> {
+    return this.contentService.createPortalDraftFromLegacyInventory(
+      request.authSession!.user.id,
+      inventoryId
     );
   }
 }
