@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   Patch,
   Post,
@@ -27,7 +28,7 @@ import { NewsService } from "./news.service";
 
 @Controller("news")
 export class NewsController {
-  constructor(private readonly newsService: NewsService) {}
+  constructor(@Inject(NewsService) private readonly newsService: NewsService) {}
 
   @Get()
   listPublishedNewsItems(

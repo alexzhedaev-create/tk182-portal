@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import type {
   BackofficeContentListFilters,
   BackofficeNewsItemRecord,
@@ -12,7 +12,7 @@ import { ContentService } from "../content/content.service";
 
 @Injectable()
 export class NewsService {
-  constructor(private readonly contentService: ContentService) {}
+  constructor(@Inject(ContentService) private readonly contentService: ContentService) {}
 
   listPublishedNewsItems(filters: PublicNewsFilters = {}): Promise<NewsItemRecord[]> {
     return this.contentService.listPublishedNewsItems(filters);

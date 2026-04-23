@@ -4,6 +4,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   Patch,
   Post,
@@ -39,7 +40,10 @@ import { DocumentsService } from "./documents.service";
 
 @Controller("documents")
 export class DocumentsController {
-  constructor(private readonly documentsService: DocumentsService) {}
+  constructor(
+    @Inject(DocumentsService)
+    private readonly documentsService: DocumentsService
+  ) {}
 
   @Get()
   getPublicDocuments(

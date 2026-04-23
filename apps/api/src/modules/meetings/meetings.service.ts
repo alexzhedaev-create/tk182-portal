@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import type {
   BackofficeContentListFilters,
   BackofficeMeetingRecord,
@@ -14,7 +14,9 @@ import type { UploadedBinaryFile } from "../content/content-file-storage.service
 
 @Injectable()
 export class MeetingsService {
-  constructor(private readonly contentService: ContentService) {}
+  constructor(
+    @Inject(ContentService) private readonly contentService: ContentService
+  ) {}
 
   getMeetingsPageData(
     filters: PublicMeetingsFilters = {}

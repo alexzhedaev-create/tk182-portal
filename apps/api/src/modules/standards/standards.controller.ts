@@ -4,6 +4,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   Patch,
   Post,
@@ -38,7 +39,10 @@ import { StandardsService } from "./standards.service";
 
 @Controller("standards")
 export class StandardsController {
-  constructor(private readonly standardsService: StandardsService) {}
+  constructor(
+    @Inject(StandardsService)
+    private readonly standardsService: StandardsService
+  ) {}
 
   @Get()
   listStandards(

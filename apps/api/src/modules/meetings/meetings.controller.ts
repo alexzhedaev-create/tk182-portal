@@ -4,6 +4,7 @@ import {
   Body,
   Controller,
   Get,
+  Inject,
   Param,
   Patch,
   Post,
@@ -37,7 +38,10 @@ import { MeetingsService } from "./meetings.service";
 
 @Controller("meetings")
 export class MeetingsController {
-  constructor(private readonly meetingsService: MeetingsService) {}
+  constructor(
+    @Inject(MeetingsService)
+    private readonly meetingsService: MeetingsService
+  ) {}
 
   @Get()
   getMeetingsPageData(

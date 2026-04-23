@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   BadRequestException,
+  Inject,
   Injectable,
   UnauthorizedException
 } from "@nestjs/common";
@@ -60,7 +61,10 @@ const USER_SELECT = `
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    @Inject(DatabaseService)
+    private readonly databaseService: DatabaseService
+  ) {}
 
   getSummary(): AuthSummaryResponse {
     return {

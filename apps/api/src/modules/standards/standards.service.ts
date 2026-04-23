@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import type {
   BackofficeApprovedStandardRecord,
   BackofficeContentListFilters,
@@ -32,7 +32,9 @@ interface StandardRow {
 @Injectable()
 export class StandardsService {
   constructor(
+    @Inject(DatabaseService)
     private readonly databaseService: DatabaseService,
+    @Inject(ContentService)
     private readonly contentService: ContentService
   ) {}
 

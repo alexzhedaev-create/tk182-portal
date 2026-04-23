@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  NotFoundException
+} from "@nestjs/common";
 import type {
   BackofficeApprovedStandardRecord,
   BackofficeContentListFilters,
@@ -226,8 +231,11 @@ export interface ContentDownload {
 @Injectable()
 export class ContentService {
   constructor(
+    @Inject(DatabaseService)
     private readonly databaseService: DatabaseService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(ContentFileStorageService)
     private readonly contentFileStorageService: ContentFileStorageService
   ) {}
 

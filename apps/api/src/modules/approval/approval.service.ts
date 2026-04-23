@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException
 } from "@nestjs/common";
@@ -337,9 +338,13 @@ const REVIEW_FILE_VISIBILITIES: readonly ReviewFileVisibility[] = [
 @Injectable()
 export class ApprovalService {
   constructor(
+    @Inject(DatabaseService)
     private readonly databaseService: DatabaseService,
+    @Inject(ApprovalFileStorageService)
     private readonly approvalFileStorageService: ApprovalFileStorageService,
+    @Inject(AuditService)
     private readonly auditService: AuditService,
+    @Inject(NotificationsService)
     private readonly notificationsService: NotificationsService
   ) {}
 

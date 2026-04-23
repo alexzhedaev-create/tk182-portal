@@ -4,6 +4,7 @@ import {
   Body,
   Controller,
   Delete,
+  Inject,
   Get,
   Param,
   Patch,
@@ -53,7 +54,10 @@ import type { UploadedBinaryFile } from "./approval-file-storage.service";
 
 @Controller("approval")
 export class ApprovalController {
-  constructor(private readonly approvalService: ApprovalService) {}
+  constructor(
+    @Inject(ApprovalService)
+    private readonly approvalService: ApprovalService
+  ) {}
 
   @Get()
   getSummary() {

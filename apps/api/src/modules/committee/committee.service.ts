@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException
 } from "@nestjs/common";
@@ -90,7 +91,9 @@ const SINGLE_HOLDER_ROLE_CODES = new Set([
 @Injectable()
 export class CommitteeService {
   constructor(
+    @Inject(DatabaseService)
     private readonly databaseService: DatabaseService,
+    @Inject(AuditService)
     private readonly auditService: AuditService
   ) {}
 
