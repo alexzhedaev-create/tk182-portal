@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import type {
   ApprovalAuditEvent,
   AuditActionType,
@@ -54,7 +54,10 @@ interface RecordAuditEventInput {
 
 @Injectable()
 export class AuditService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    @Inject(DatabaseService)
+    private readonly databaseService: DatabaseService
+  ) {}
 
   getSummary() {
     return {

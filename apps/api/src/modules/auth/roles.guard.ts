@@ -2,6 +2,7 @@ import {
   CanActivate,
   ExecutionContext,
   ForbiddenException,
+  Inject,
   Injectable,
   UnauthorizedException
 } from "@nestjs/common";
@@ -16,7 +17,9 @@ import type { AuthenticatedRequest } from "./auth.types";
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(
+    @Inject(Reflector)
     private readonly reflector: Reflector,
+    @Inject(AuthService)
     private readonly authService: AuthService
   ) {}
 
