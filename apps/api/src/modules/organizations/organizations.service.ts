@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import type { OrganizationSummary } from "@tk182/shared-types";
 
 import { DatabaseService } from "../../common/database/database.service";
@@ -12,7 +12,10 @@ interface OrganizationRow {
 
 @Injectable()
 export class OrganizationsService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    @Inject(DatabaseService)
+    private readonly databaseService: DatabaseService
+  ) {}
 
   async listOrganizations(): Promise<OrganizationSummary[]> {
     const result = await this.databaseService.query<OrganizationRow>(

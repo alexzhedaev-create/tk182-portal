@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import type { AuthenticatedUser } from "@tk182/shared-types";
 
 import { DatabaseService } from "../../common/database/database.service";
@@ -6,7 +6,10 @@ import { mapAuthenticatedUser, type UserIdentityRow } from "../auth/auth.user-ma
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly databaseService: DatabaseService) {}
+  constructor(
+    @Inject(DatabaseService)
+    private readonly databaseService: DatabaseService
+  ) {}
 
   async listUsers(): Promise<AuthenticatedUser[]> {
     const result = await this.databaseService.query<UserIdentityRow>(

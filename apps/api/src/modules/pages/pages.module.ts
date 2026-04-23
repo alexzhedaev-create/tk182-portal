@@ -1,4 +1,4 @@
-import { Controller, Get, Injectable, Module } from "@nestjs/common";
+import { Controller, Get, Inject, Injectable, Module } from "@nestjs/common";
 
 import type { ModuleStubResponse } from "@tk182/shared-types";
 
@@ -18,7 +18,7 @@ class PagesService {
 
 @Controller("pages")
 class PagesController {
-  constructor(private readonly pagesService: PagesService) {}
+  constructor(@Inject(PagesService) private readonly pagesService: PagesService) {}
 
   @Get()
   getSummary(): ModuleStubResponse {

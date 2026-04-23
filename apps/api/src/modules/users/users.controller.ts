@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from "@nestjs/common";
+import { Controller, Get, Inject, UseGuards } from "@nestjs/common";
 import type { AuthenticatedUser } from "@tk182/shared-types";
 
 import { Roles } from "../auth/roles.decorator";
@@ -10,7 +10,7 @@ import { UsersService } from "./users.service";
 @UseGuards(SessionAuthGuard, RolesGuard)
 @Roles("SECRETARIAT", "ADMIN")
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(@Inject(UsersService) private readonly usersService: UsersService) {}
 
   @Get()
   listUsers(): Promise<AuthenticatedUser[]> {
