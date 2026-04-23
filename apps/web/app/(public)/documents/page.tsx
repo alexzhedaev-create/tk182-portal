@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { getPublicApiUrl, getPublicDocumentsPageData } from "../../../lib/api";
 import { formatPublicDocumentCategory, readQueryValue } from "../../../lib/content";
-import { formatDate, formatFileSize } from "../../../lib/review";
+import { formatDate, formatFileSize, formatOptionalDate } from "../../../lib/review";
 
 export const dynamic = "force-dynamic";
 
@@ -132,7 +132,11 @@ export default async function DocumentsPage({ searchParams }: DocumentsPageProps
                         <p>{document.summary}</p>
                       </div>
                       <span className="pill">
-                        Публикация: {formatDate(document.publicationDate)}
+                        Публикация:{" "}
+                        {formatOptionalDate(
+                          document.publicationDate,
+                          "дата на старом сайте не указана"
+                        )}
                       </span>
                     </div>
 

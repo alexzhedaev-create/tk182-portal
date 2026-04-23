@@ -17,7 +17,7 @@ import {
   formatPublicationStatus
 } from "../lib/content";
 import { extractApiErrorMessage, toDateInputValue } from "../lib/form-utils";
-import { formatDate, formatFileSize } from "../lib/review";
+import { formatFileSize, formatOptionalDate } from "../lib/review";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:3001";
 const documentCategories: PublicDocumentCategory[] = [
@@ -45,6 +45,7 @@ export function SecretariatPublicDocumentsPanel({
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
+  const [body, setBody] = useState("");
   const [category, setCategory] = useState<PublicDocumentCategory>("MAIN_DOCUMENTS");
   const [publicationDate, setPublicationDate] = useState("");
   const [fileDescription, setFileDescription] = useState("");
@@ -76,6 +77,7 @@ export function SecretariatPublicDocumentsPanel({
     if (!selectedDocument) {
       setTitle("");
       setSummary("");
+      setBody("");
       setCategory("MAIN_DOCUMENTS");
       setPublicationDate("");
       setFileDescription("");
@@ -89,6 +91,7 @@ export function SecretariatPublicDocumentsPanel({
 
     setTitle(selectedDocument.title);
     setSummary(selectedDocument.summary);
+    setBody(selectedDocument.body ?? "");
     setCategory(selectedDocument.category);
     setPublicationDate(toDateInputValue(selectedDocument.publicationDate));
     setFileDescription(selectedDocument.attachment?.description ?? "");
@@ -108,8 +111,12 @@ export function SecretariatPublicDocumentsPanel({
     const formData = new FormData();
     formData.set("title", title);
     formData.set("summary", summary);
+    formData.set("body", body);
     formData.set("category", category);
-    formData.set("publicationDate", new Date(publicationDate).toISOString());
+    formData.set(
+      "publicationDate",
+      publicationDate ? new Date(publicationDate).toISOString() : ""
+    );
     formData.set("fileDescription", fileDescription);
     formData.set("legacySection", legacySection);
     formData.set("legacySourceUrl", legacySourceUrl);
@@ -150,6 +157,7 @@ export function SecretariatPublicDocumentsPanel({
       setSelectedDocumentId("");
       setTitle("");
       setSummary("");
+      setBody("");
       setCategory("MAIN_DOCUMENTS");
       setPublicationDate("");
       setFileDescription("");
@@ -250,7 +258,12 @@ export function SecretariatPublicDocumentsPanel({
             <div className="info-grid compact-grid">
               <div>
                 <strong>Дата публикации</strong>
-                <p>{formatDate(document.publicationDate)}</p>
+                <p>
+                  {formatOptionalDate(
+                    document.publicationDate,
+                    "Дата на старом сайте не указана"
+                  )}
+                </p>
               </div>
               <div>
                 <strong>Файл</strong>
@@ -454,6 +467,18 @@ export function SecretariatPublicDocumentsPanel({
               setSummary(event.target.value);
             }}
             placeholder="Кратко опишите содержание и назначение документа"
+          />
+        </label>
+
+        <label className="field-label">
+          <span>Содержимое документа</span>
+          <textarea
+            className="text-area"
+            value={body}
+            onChange={(event) => {
+              setBody(event.target.value);
+            }}
+            placeholder="Текст публикации, таблица программы или иное содержимое документа"
           />
         </label>
 

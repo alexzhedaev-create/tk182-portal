@@ -145,12 +145,13 @@ export interface DocumentSummary {
 }
 
 export interface PublicDocumentRecord {
+  body: string | null;
   id: string;
   title: string;
   category: PublicDocumentCategory;
   summary: string;
   status: ContentPublicationStatus;
-  publicationDate: string;
+  publicationDate: string | null;
   publishedAt: string | null;
   attachment: ContentFileAttachment | null;
 }
@@ -295,25 +296,27 @@ export interface UpdateNewsItemDto {
 }
 
 export interface CreatePublicDocumentDto {
+  body?: string | null;
   category: PublicDocumentCategory;
   fileDescription?: string | null;
   legacySection: LegacyContentSection;
   legacySourceUrl?: string | null;
   migrationNote?: string | null;
   migrationStatus: ContentMigrationStatus;
-  publicationDate: string;
+  publicationDate?: string | null;
   summary: string;
   title: string;
 }
 
 export interface UpdatePublicDocumentDto {
+  body?: string | null;
   category: PublicDocumentCategory;
   fileDescription?: string | null;
   legacySection: LegacyContentSection;
   legacySourceUrl?: string | null;
   migrationNote?: string | null;
   migrationStatus: ContentMigrationStatus;
-  publicationDate: string;
+  publicationDate?: string | null;
   summary: string;
   title: string;
 }

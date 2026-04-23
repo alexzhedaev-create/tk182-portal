@@ -7,7 +7,7 @@ import {
   isApiNotFoundError
 } from "../../../../lib/api";
 import { formatPublicDocumentCategory } from "../../../../lib/content";
-import { formatDate, formatFileSize } from "../../../../lib/review";
+import { formatDate, formatFileSize, formatOptionalDate } from "../../../../lib/review";
 
 export const dynamic = "force-dynamic";
 
@@ -37,7 +37,8 @@ export default async function DocumentDetailPage({
 
           <div className="pill-row">
             <span className="pill">
-              Дата публикации: {formatDate(document.publicationDate)}
+              Дата публикации:{" "}
+              {formatOptionalDate(document.publicationDate, "на старом сайте не указана")}
             </span>
             <span className="pill">
               Раздел: {formatPublicDocumentCategory(document.category)}
@@ -66,11 +67,22 @@ export default async function DocumentDetailPage({
               </div>
               <div>
                 <strong>Дата публикации</strong>
-                <p>{formatDate(document.publicationDate)}</p>
+                <p>
+                  {formatOptionalDate(
+                    document.publicationDate,
+                    "Дата на старом сайте не указана"
+                  )}
+                </p>
               </div>
               <div>
                 <strong>Описание</strong>
                 <p>{document.summary}</p>
+              </div>
+              <div>
+                <strong>Содержимое</strong>
+                <p style={{ whiteSpace: "pre-line" }}>
+                  {document.body?.trim() || "Текстовое содержимое документа пока не добавлено."}
+                </p>
               </div>
             </div>
           </article>
@@ -97,7 +109,10 @@ export default async function DocumentDetailPage({
                 </div>
               </div>
             ) : (
-              <p>Файл для этого документа пока не добавлен.</p>
+              <p>
+                Файл для этого документа не добавлен. Материал может быть опубликован
+                как текстовая запись без отдельного вложения.
+              </p>
             )}
           </article>
         </section>

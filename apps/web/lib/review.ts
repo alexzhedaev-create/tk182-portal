@@ -63,6 +63,25 @@ export function formatDate(value: string): string {
   }).format(new Date(value));
 }
 
+export function formatOptionalDate(
+  value: string | null | undefined,
+  fallback = "Не указана"
+): string {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return fallback;
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "medium"
+  }).format(parsed);
+}
+
 export function formatReviewFileVisibility(visibility: ReviewFileVisibility): string {
   switch (visibility) {
     case "ASSIGNED_PARTICIPANTS":

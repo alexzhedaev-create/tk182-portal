@@ -9,7 +9,7 @@ import {
   formatPublicStandardsSection,
   readQueryValue
 } from "../../../lib/content";
-import { formatDate, formatFileSize } from "../../../lib/review";
+import { formatDate, formatFileSize, formatOptionalDate } from "../../../lib/review";
 
 export const dynamic = "force-dynamic";
 
@@ -162,7 +162,13 @@ export default async function StandardsPage({ searchParams }: StandardsPageProps
                       </strong>
                       <p>{document.summary}</p>
                     </div>
-                    <span className="pill">Публикация: {formatDate(document.publicationDate)}</span>
+                    <span className="pill">
+                      Публикация:{" "}
+                      {formatOptionalDate(
+                        document.publicationDate,
+                        "дата на старом сайте не указана"
+                      )}
+                    </span>
                   </div>
 
                   {document.attachment ? (

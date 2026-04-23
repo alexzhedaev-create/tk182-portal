@@ -151,9 +151,10 @@ interface NewsRow extends MigrationColumns {
 }
 
 interface PublicDocumentRow extends FileColumns, MigrationColumns {
+  body: string | null;
   category: PublicDocumentCategory;
   id: string;
-  publication_date: string;
+  publication_date: string | null;
   published_at: string | null;
   status: PublicationStatus;
   summary: string;
@@ -560,6 +561,7 @@ export class ContentService {
             title,
             category,
             summary,
+            body,
             status,
             publication_date,
             file_original_name,
@@ -578,9 +580,9 @@ export class ContentService {
             updated_at
           )
           VALUES (
-            $1, $2, $3, $4, 'draft', $5,
-            $6, $7, $8, $9, $10, $11, $12,
-            $13, $14, $15, $16, $17, $17, NOW()
+            $1, $2, $3, $4, $5, 'draft', $6,
+            $7, $8, $9, $10, $11, $12, $13,
+            $14, $15, $16, $17, $18, $18, NOW()
           )
         `,
         [
@@ -588,6 +590,7 @@ export class ContentService {
           normalized.title,
           normalized.category,
           normalized.summary,
+          normalized.body,
           normalized.publicationDate,
           savedFile?.originalName ?? null,
           savedFile?.storedName ?? null,
@@ -640,19 +643,20 @@ export class ContentService {
             title = $2,
             category = $3,
             summary = $4,
-            publication_date = $5,
-            file_original_name = $6,
-            file_stored_name = $7,
-            file_mime_type = $8,
-            file_size_bytes = $9,
-            file_uploaded_at = $10,
-            file_uploaded_by_user_id = $11,
-            file_description = $12,
-            legacy_source_url = $13,
-            legacy_section = $14,
-            migration_status = $15,
-            migration_note = $16,
-            updated_by_user_id = $17,
+            body = $5,
+            publication_date = $6,
+            file_original_name = $7,
+            file_stored_name = $8,
+            file_mime_type = $9,
+            file_size_bytes = $10,
+            file_uploaded_at = $11,
+            file_uploaded_by_user_id = $12,
+            file_description = $13,
+            legacy_source_url = $14,
+            legacy_section = $15,
+            migration_status = $16,
+            migration_note = $17,
+            updated_by_user_id = $18,
             updated_at = NOW()
           WHERE id = $1
         `,
@@ -661,6 +665,7 @@ export class ContentService {
           normalized.title,
           normalized.category,
           normalized.summary,
+          normalized.body,
           normalized.publicationDate,
           savedFile?.originalName ?? existing.attachment?.originalName ?? null,
           savedFile?.storedName ?? existing.attachment?.storedName ?? null,
@@ -1529,8 +1534,12 @@ export class ContentService {
             inventoryRecord,
             "Черновик публичного документа создан из реестра старого сайта. Дополните описание, загрузите файл и уточните реквизиты."
           ),
+          body: this.buildLegacyInventoryBody(
+            inventoryRecord,
+            "Черновик публичного документа создан из реестра старого сайта."
+          ),
           category,
-          publicationDate,
+          publicationDate: inventoryRecord.legacyDate ?? null,
           fileDescription: inventoryRecord.migrationNote,
           legacySection: inventoryRecord.legacySection,
           legacySourceUrl: inventoryRecord.legacyUrl,
@@ -1809,8 +1818,9 @@ export class ContentService {
   ): CreatePublicDocumentDto {
     const title = payload.title.trim();
     const summary = payload.summary.trim();
+    const body = this.normalizeOptionalText(payload.body);
     const category = this.parseDocumentCategory(payload.category);
-    const publicationDate = this.parseDate(
+    const publicationDate = this.parseOptionalDate(
       payload.publicationDate,
       "Укажите дату публикации документа."
     );
@@ -1829,6 +1839,7 @@ export class ContentService {
       title,
       category,
       summary,
+      body,
       publicationDate,
       fileDescription,
       ...migration
@@ -1951,6 +1962,7 @@ export class ContentService {
           pd.title,
           pd.category,
           pd.summary,
+          pd.body,
           pd.status,
           pd.publication_date,
           pd.published_at,
@@ -1976,7 +1988,7 @@ export class ContentService {
             WHEN 'WORK_PLANS' THEN 2
             ELSE 3
           END,
-          pd.publication_date DESC,
+          pd.publication_date DESC NULLS LAST,
           pd.title ASC
       `,
       values
@@ -2197,6 +2209,7 @@ export class ContentService {
           pd.title,
           pd.category,
           pd.summary,
+          pd.body,
           pd.status,
           pd.publication_date,
           pd.published_at,
@@ -2248,6 +2261,7 @@ export class ContentService {
           title,
           category,
           summary,
+          body,
           status,
           publication_date,
           published_at,
@@ -2559,8 +2573,11 @@ export class ContentService {
       title: row.title,
       category: row.category,
       summary: row.summary,
+      body: row.body ?? null,
       status: row.status,
-      publicationDate: new Date(row.publication_date).toISOString(),
+      publicationDate: row.publication_date
+        ? new Date(row.publication_date).toISOString()
+        : null,
       publishedAt: row.published_at ? new Date(row.published_at).toISOString() : null,
       attachment: this.mapStoredAttachment(row),
       migration: this.mapMigrationInfo(row)
@@ -3150,6 +3167,7 @@ export class ContentService {
     this.appendPublicTextSearchFilter(conditions, values, filters.q, [
       `${tableAlias}.title`,
       `${tableAlias}.summary`,
+      `${tableAlias}.body`,
       `${tableAlias}.file_original_name`,
       `${tableAlias}.file_description`
     ]);

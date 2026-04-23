@@ -10,7 +10,11 @@ export function toDateTimeLocalValue(value: string): string {
   return new Date(parsed.getTime() - timezoneOffsetMs).toISOString().slice(0, 16);
 }
 
-export function toDateInputValue(value: string): string {
+export function toDateInputValue(value: string | null | undefined): string {
+  if (!value) {
+    return "";
+  }
+
   const parsed = new Date(value);
 
   if (Number.isNaN(parsed.getTime())) {

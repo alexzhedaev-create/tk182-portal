@@ -66,6 +66,8 @@ async function ensureTracePlaceholdersForDirectory(directoryPath) {
 }
 
 async function ensureLegacyRuntimePlaceholders() {
+  await mkdir(resolve(process.cwd(), distDirectory), { recursive: true });
+  await mkdir(serverOutputDirectory, { recursive: true });
   await mkdir(pagesOutputDirectory, { recursive: true });
 
   try {
